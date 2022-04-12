@@ -54,15 +54,41 @@ def options():
                         type=str,
                         choices=["NVT", "NPT"])
 
+    fatomes = parser.add_argument_group("fatomes file parameters")
+
+    # fatomes group
+    fatomes.add_argument("-f", "--files",
+                        help="Indica all coordinates files seguidas\
+                        que quiere cargar",
+                        default=None,
+                        nargs="+")
+
 
     return vars(parser.parse_args())
 
 
 def main():
+    """
+    Central core of program execution.
+
+    """
+
     args = options()
 
-    save.write_run_file(**args)
+    if args["type"] == "donnees":
+        # Generates the DONNEES input file with the simulation parameters.
+        save.write_run(**args)
 
+    elif args["type"] == "fatomes":
+        # Generates the input file FAtoms with the structural and force
+        #field information of the system.
+        save.write_topol(**args)
+
+    if args["files"]:
+        print("someone")
+        print(args["files"])
+    else:
+        print("anyone")
 
 
 # RUN

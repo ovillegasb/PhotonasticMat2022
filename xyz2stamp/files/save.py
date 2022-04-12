@@ -7,7 +7,7 @@ Submodule dedicated to functions that write information to files.
 import time
 
 
-def write_run_file(**kwargs):
+def write_run(**kwargs):
     """
     Reads the options set to generate the donnees file.
 
@@ -89,3 +89,19 @@ def write_run_file(**kwargs):
         f.write(lines)
 
     print("file DONNEES.in writed")
+
+
+def write_topol(**kwargs):
+    # Head
+    now = time.ctime()
+    lines = "*\n"
+    lines += "* run file created on {}\n".format(now)
+    lines += "* Created using XYZ2STAMP module\n"
+    lines += "* mail: orlando.villegas@chimieparistech.psl.eu\n"
+    lines += "*\n"
+
+    # writing all
+    with open("FAtomes.in", "w") as f:
+        f.write(lines)
+
+    print("file FAtomes.in writed")
