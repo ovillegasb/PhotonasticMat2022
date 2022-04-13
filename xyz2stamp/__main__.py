@@ -1,16 +1,16 @@
-r"""
+"""
 Module created to generate input files to STAMP.
 
 Author: Orlando VILLEGAS
 Date: 2022
-
+\033[1;36m
  __   ____     ___________   _____ _______       __  __ _____
- \ \ / /\ \   / /___  /__ \ / ____|__   __|/\   |  \/  |  __ \
-  \ V /  \ \_/ /   / /   ) | (___    | |  /  \  | \  / | |__) |
-   > <    \   /   / /   / / \___ \   | | / /\ \ | |\/| |  ___/
-  / . \    | |   / /__ / /_ ____) |  | |/ ____ \| |  | | |
- /_/ \_\   |_|  /_____|____|_____/   |_/_/    \_\_|  |_|_|
-
+ \\ \\ / /\\ \\   / /___  /__ \\ / ____|__   __|/\\   |  \\/  |  __ \\
+  \\ V /  \\ \\_/ /   / /   ) | (___    | |  /  \\  | \\  / | |__) |
+   > <    \\   /   / /   / / \\___ \\   | | / /\\ \\ | |\\/| |  ___/
+  / . \\    | |   / /__ / /_ ____) |  | |/ ____ \\| |  | | |
+ /_/ \\_\\   |_|  /_____|____|_____/   |_/_/    \\_\\_|  |_|_|
+\033[m
 Module created to generate input files to STAMP.
 
 Author: Orlando VILLEGAS
@@ -24,6 +24,41 @@ import argparse
 from xyz2stamp.files import save
 from xyz2stamp.files.load import load_structure
 from xyz2stamp.structure import connectivity, MOL, FField
+
+
+TITLE = """
+Module created to generate input files to STAMP.
+
+Author: Orlando VILLEGAS
+Date: 2022
+\033[1;36m
+ __   ____     ___________   _____ _______       __  __ _____
+ \\ \\ / /\\ \\   / /___  /__ \\ / ____|__   __|/\\   |  \\/  |  __ \\
+  \\ V /  \\ \\_/ /   / /   ) | (___    | |  /  \\  | \\  / | |__) |
+   > <    \\   /   / /   / / \\___ \\   | | / /\\ \\ | |\\/| |  ___/
+  / . \\    | |   / /__ / /_ ____) |  | |/ ____ \\| |  | | |
+ /_/ \\_\\   |_|  /_____|____|_____/   |_/_/    \\_\\_|  |_|_|
+\033[m
+Module created to generate input files to STAMP.
+
+Author: Orlando VILLEGAS
+Date: 2022
+
+###############################################################
+
+"""
+
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
 def options():
@@ -49,7 +84,8 @@ def options():
         choices=["donnees", "fatomes"]
     )
 
-    donnees = parser.add_argument_group("donnees file parameters")
+    donnees = parser.add_argument_group(
+        "\033[1;36mDonnees file parameters\033[m")
 
     # donnees group
     donnees.add_argument(
@@ -60,13 +96,58 @@ def options():
         choices=["NVT", "NPT"]
     )
 
-    fatomes = parser.add_argument_group("fatomes file parameters")
+    # Temperature
+    donnees.add_argument(
+        "-temp", "--Trequis",
+        help="Temperature (K)",
+        default=300.0,
+        type=float,
+        metavar="TEMPERATURE"
+    )
+
+    # Time step
+    donnees.add_argument(
+        "-dt", "--Deltatemps",
+        help="Time step (fs)",
+        default=1.0,
+        type=float,
+        metavar="TIME"
+    )
+
+    # Number of steps
+    donnees.add_argument(
+        "-nstep", "--StepLimit",
+        help="Numer of steps N x fs = Simulation time.",
+        default=10,
+        type=int,
+        metavar="NSTEP"
+    )
+
+    # save frame every step
+    donnees.add_argument(
+        "-frames", "--XyzFrequence",
+        help="save a frame every n step.",
+        default=10,
+        type=int,
+        metavar="NSTEPS"
+    )
+
+    # save a checkpoint every n step
+    donnees.add_argument(
+        "-check", "--Protection",
+        help="save a checkpoint every n step.",
+        default=10,
+        type=int,
+        metavar="NSTEPS"
+    )
+
+    fatomes = parser.add_argument_group(
+        "\033[1;36mFatomes file parameters\033[m")
 
     # fatomes group
     fatomes.add_argument(
         "-f", "--files",
-        help="Indica all coordinates files seguidas\
-        que quiere cargar",
+        help="Specifies all coordinates files in series that you want to load",
         default=None,
         nargs="+"
     )
@@ -88,6 +169,8 @@ def main():
     Central core of program execution.
 
     """
+
+    print(TITLE)
 
     args = options()
 
@@ -131,7 +214,7 @@ def main():
             save.fatomes(MOL)
 
         else:
-            print("anyone")
+            print("No file found")
 
         # save.write_topol(**args)
 
