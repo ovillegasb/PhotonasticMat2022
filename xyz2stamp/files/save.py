@@ -107,7 +107,7 @@ def fatomes(MOL):
             lines += "* Atome {}\n".format(i)
             lines += "nom             {}\n".format(MOL.dftypes.loc[i, "type"])
             lines += "type            {}\n".format(kwargs["type"])
-            lines += "mass            {:.2e} kg/mol\n".format(MOL.dftypes.loc[i, "mass"] / 1000)
+            lines += "masse           {:.2e} kg/mol\n".format(MOL.dftypes.loc[i, "mass"] / 1000)
             lines += "structure       {}\n".format(kwargs["structure"])
             lines += "* Box\n"
             lines += "maille_long     {:.3e} {:.3e} {:.3e} metre\n".format(kwargs["box_a"], kwargs["box_a"], kwargs["box_a"])
