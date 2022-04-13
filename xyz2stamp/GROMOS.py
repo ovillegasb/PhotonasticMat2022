@@ -4,6 +4,12 @@
 from xyz2stamp import structure as material
 import numpy as np
 import pandas as pd
+import re
+import os
+
+
+# database force field path
+ffpath = os.path.dirname(os.path.realpath(__file__))
 
 
 class ForceFieldError(Exception):
@@ -50,6 +56,62 @@ def get_row(at, i):
     return row
 
 
+def FFcoef(dftypes, ff="gromos"):
+
+    ffdata = os.path.join(ffpath, "forcefields", "%s.dat" % ff)
+
+    dftypes["sigma"] = 0
+    dftypes["epsilon"] = 0
+    """
+    def get_atype(x):
+        atype = m["type"]
+        if atype == x:
+            yield m["c6"]
+
+            yield m["c12"]
+    """
+
+    def sigma(c6, c12):
+        return (c12/c6)**(1/6)
+
+    def epsilon(c6, c12):
+        return (c6**2) / (4 * c12)
+
+    # VDW parameters
+    vdw = re.compile(
+        r"""
+        ^(?P<type>\w+)\s+
+        (?P<c6>[+-]?\d+\.\d+)\s+                    # kJ/mol nm6
+        (?P<c12>[+-]?\d+\.\d+e?[+-]?\d?\d?)\s+      # kJ/mol nm12
+        """, re.X)
+
+    with open(ffdata, "r") as DBASE:
+        for line in DBASE:
+            # VDW
+            if vdw.match(line):
+                m = vdw.match(line)
+                m = m.groupdict()
+                print(m)
+
+                if ff == "gromos":
+                    m = {
+                        m["type"]: [
+                            sigma(np.float64(m["c6"]), np.float64(m["c12"])),  # sigma (nm)
+                            epsilon(np.float64(m["c6"]), np.float64(m["c12"]))  # epsilon (Kj/mol)
+                        ]
+                    }
+                print(m)
+
+                dftypes["sigma"] = dftypes["type"].apply(lambda x: m[x][0])
+                dftypes["epsilon"] = dftypes["type"].apply(lambda x: m[x][1])
+
+                print(dftypes)
+
+
+def get_vdw_par(MOL):
+    pass
+
+
 def Get_ATypes():
     """
     Generates Gromos 54a7 atoms types from a atomic coordinates dataframe
@@ -87,5 +149,8 @@ def Get_ATypes():
         else:
             raise ForceFieldError("It was not possible to assign atom type to %s" % coord.atsb[i])
 
-    out = pd.DataFrame(out, index=np.arange(1, len(out) + 1))
+    # out = pd.DataFrame(out, index=np.arange(1, len(out) + 1))
+    out = pd.DataFrame(out)
     material.MOL.dftypes = out
+
+    FFcoef(material.MOL.dftypes, ff="gromos")

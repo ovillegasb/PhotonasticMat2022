@@ -5,6 +5,7 @@ Submodule dedicated to functions that write information to files.
 """
 
 import time
+from scipy.constants import N_A
 
 
 def write_run(**kwargs):
@@ -90,35 +91,53 @@ def write_run(**kwargs):
     print("file DONNEES.in writed")
 
 
-def write_topol(**kwargs):
-    # Head
-    now = time.ctime()
-    lines = "*\n"
-    lines += "* run file created on {}\n".format(now)
-    lines += "* Created using XYZ2STAMP module\n"
-    lines += "* mail: orlando.villegas@chimieparistech.psl.eu\n"
-    lines += "*\n"
-    """
-    **** table atomes **
-    * le mot clef NbTypesAtomes doit etre obligatoirement en tete du fichier
-    NbTypesAtomes        1
-    *
-    *Atome 1
-    nom             AR
-    type        Atome
-    masse           39.95e-3 kg/mol
-    structure   CFC
-    *structure  1atome
-    maille_long 5.275e-10 5.275e-10 5.275e-10 metre
-    maille_angle    90.0 90.0 90.0 degre
-    maille_orient   0                               ** 0={a~x / b~xy} - 1={a~z / b~yz} - 2={a~z / c~yz} - 3={b~z / c~yz}
-    maille_ref
-    *
-    * Fonction potentielle
-    Potentiel 0 0  LJ epsilon 1.6567944e-21 J rc 2.5 - sigma 3.405e-10 metre
-    """
-    # writing all
-    with open("FAtomes.in", "w") as f:
-        f.write(lines)
+def fatomes(MOL):
+
+    def write_topol(**kwargs):
+        # Head
+        now = time.ctime()
+        lines = "*\n"
+        lines += "* run file created on {}\n".format(now)
+        lines += "* Created using XYZ2STAMP module\n"
+        lines += "* mail: orlando.villegas@chimieparistech.psl.eu\n"
+        lines += "*\n"
+        lines += "NbTypesAtomes      {:>20}\n".format(kwargs["NbTypesAtomes"])
+
+        for i in MOL.dftypes.index:
+            lines += "* Atome {}\n".format(i)
+            lines += "nom             {}\n".format(MOL.dftypes.loc[i, "type"])
+            lines += "type            {}\n".format(kwargs["type"])
+            lines += "mass            {:.2e} kg/mol\n".format(MOL.dftypes.loc[i, "mass"] / 1000)
+            lines += "structure       {}\n".format(kwargs["structure"])
+            lines += "* Box\n"
+            lines += "maille_long     {:.3e} {:.3e} {:.3e} metre\n".format(kwargs["box_a"], kwargs["box_a"], kwargs["box_a"])
+            lines += "maille_angle    90.0 90.0 90.0 degre\n"
+            lines += "maille_orient   0\n"
+            lines += "maille_ref\n"
+            lines += "*\n"
+            lines += "* Fonction potentielle\n"
+            lines += "Potentiel {} {}  LJ epsilon {:.7e} J rc {:.1f} - sigma {:.3e} metre\n".format(
+                    i,
+                    i,
+                    MOL.dftypes.loc[i, "epsilon"] * 1000 / N_A,  # J
+                    kwargs["rc"],  # nanometers
+                    MOL.dftypes.loc[i, "sigma"] * 1e-10  # metre
+                )
+        """
+        Potentiel 0 0  LJ epsilon 1.6567944e-21 J rc 2.5 - sigma 3.405e-10 metre
+        """
+        # writing all
+        with open("FAtomes.in", "w") as f:
+            f.write(lines)
+
+    options = {
+        "NbTypesAtomes": len(MOL.dftypes),
+        "type": "Atome",
+        "structure": "CFC",
+        "box_a": 3.0 * 1e-10,  # Angstrom
+        "rc": 2.0  # nanometers
+    }
+
+    write_topol(**options)
 
     print("file FAtomes.in writed")

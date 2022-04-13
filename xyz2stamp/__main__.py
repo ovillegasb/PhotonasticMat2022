@@ -128,6 +128,8 @@ def main():
 
             print(MOL.dftypes)
 
+            save.fatomes(MOL)
+
         else:
             print("anyone")
 
