@@ -68,8 +68,7 @@ def options():
         prog="XYZ2STAMP",
         usage="%(prog)s [-option] value",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="Enjoy the program!",
-        description=__doc__
+        epilog="Enjoy the program!"  #, description=__doc__
     )
 
     # Add the arguments
