@@ -6,7 +6,7 @@ import pandas as pd
 from scipy.spatial.distance import cdist
 import os
 
-from xyz2stamp import GROMOS
+from xyz2stamp import GROMOS, GAFF
 
 
 class MoleculeDefintionError(Exception):
@@ -22,6 +22,12 @@ class MOL:
     dfatoms = pd.DataFrame()
     connect = None
     dftypes = pd.DataFrame()
+
+    dfbonds = pd.DataFrame()
+    dfangles = pd.DataFrame()
+
+    bonds_list = []
+    angles_list = []
 
     def __init__(self, dfatoms, connect):
         """
@@ -52,17 +58,36 @@ class MOL:
                     all_paths += list(nx.algorithms.all_simple_paths(connect, s, e, cutoff=3))
 
         bonds_list = [tuple(p) for p in all_paths if len(set(p)) == 2]
+        bonds_types = []
+        for iat, jat in bonds_list:
+            if iat < jat:
+                MOL.bonds_list.append((iat, jat))
+                bonds_types.append((MOL.dfatoms.loc[iat, "atsb"], MOL.dfatoms.loc[jat, "atsb"]))
+
+        MOL.dfbonds["list"] = MOL.bonds_list
+        MOL.dfbonds["types"] = bonds_types
 
         angles_list = [tuple(p) for p in all_paths if len(set(p)) == 3]
+        angles_types = []
+        for iat, jat, kat in angles_list:
+            if iat < kat:
+                MOL.angles_list.append((iat, jat, kat))
+                angles_types.append((MOL.dfatoms.loc[iat, "atsb"], MOL.dfatoms.loc[jat, "atsb"], MOL.dfatoms.loc[kat, "atsb"]))
+
+        MOL.dfangles["list"] = MOL.angles_list
+        MOL.dfangles["types"] = angles_types
 
         dihedrals_list = [tuple(p) for p in all_paths if len(set(p)) == 4]
 
         pairs_list = [(p[0], p[3]) for p in all_paths if len(set(p)) == 4]
 
-        print(bonds_list)
-        print(angles_list)
-        print(dihedrals_list)
-        print(pairs_list)
+        print("Natoms:", connect.number_of_nodes())
+        print("Bonds:\n", MOL.bonds_list)
+        print("Nbonds:", len(MOL.bonds_list) / 2)
+        print("Angles:\n", MOL.angles_list)
+        print("Nangles:", len(MOL.angles_list) / 2)
+        # print(dihedrals_list)
+        # print(pairs_list)
 
 
 class ATOM(MOL):
@@ -238,9 +263,15 @@ class FField:
         self.ffdata = ffdata
         self.ff = ff
 
-        self.get_atoms_types()
-
-    def get_atoms_types(self):
+    def get_atoms_types(self, MOL):
 
         if self.ff == "gromos":
-            GROMOS.Get_ATypes()
+            print("\033[1;35mForce field: GROMOS\033[m")
+            ffdata = os.path.join(ffpath, "forcefields", "%s.dat" % self.ff)
+            GROMOS.Get_ATypes(MOL, ffdata)
+
+        elif self.ff == "gaff":
+            print("\033[1;35mForce field: GAFF\033[m")
+            ffdata = os.path.join(ffpath, "forcefields", "%s.dat" % self.ff)
+            GAFF.Get_ATypes(MOL, ffdata)
+            # GAFF.get_bonds(MOL, ffdata)

@@ -1,15 +1,8 @@
 
-# from .structure import MOL
-
 from xyz2stamp import structure as material
 import numpy as np
 import pandas as pd
 import re
-import os
-
-
-# database force field path
-ffpath = os.path.dirname(os.path.realpath(__file__))
 
 
 class ForceFieldError(Exception):
@@ -56,9 +49,7 @@ def get_row(at, i):
     return row
 
 
-def FFcoef(dftypes, ff="gromos"):
-
-    ffdata = os.path.join(ffpath, "forcefields", "%s.dat" % ff)
+def FFcoef(dftypes, ffdata, ff="gromos"):
 
     dftypes["sigma"] = 0
     dftypes["epsilon"] = 0
@@ -112,7 +103,7 @@ def get_vdw_par(MOL):
     pass
 
 
-def Get_ATypes():
+def Get_ATypes(MOL, ffdata):
     """
     Generates Gromos 54a7 atoms types from a atomic coordinates dataframe
 
@@ -123,7 +114,7 @@ def Get_ATypes():
             Coordinates atomics
 
     """
-    coord = material.MOL.dfatoms
+    coord = MOL.dfatoms
     coord["type"] = "No Found"
     out = list()
 
@@ -151,6 +142,6 @@ def Get_ATypes():
 
     # out = pd.DataFrame(out, index=np.arange(1, len(out) + 1))
     out = pd.DataFrame(out)
-    material.MOL.dftypes = out
+    MOL.dftypes = out
 
-    FFcoef(material.MOL.dftypes, ff="gromos")
+    FFcoef(MOL.dftypes, ffdata, ff="gromos")

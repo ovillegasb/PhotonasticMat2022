@@ -6,6 +6,9 @@ Submodule dedicated to functions that write information to files.
 
 import time
 from scipy.constants import N_A
+import itertools as it
+import pandas as pd
+import numpy as np
 
 
 def write_run(**kwargs):
@@ -91,53 +94,108 @@ def write_run(**kwargs):
     print("file \033[1;36mDONNEES.in\033[m writed\n")
 
 
-def fatomes(MOL):
-
-    def write_topol(**kwargs):
-        # Head
-        now = time.ctime()
-        lines = "*\n"
-        lines += "* run file created on {}\n".format(now)
-        lines += "* Created using XYZ2STAMP module\n"
-        lines += "* mail: orlando.villegas@chimieparistech.psl.eu\n"
-        lines += "*\n"
-        lines += "NbTypesAtomes      {:>20}\n".format(kwargs["NbTypesAtomes"])
-
-        for i in MOL.dftypes.index:
-            lines += "* Atome {}\n".format(i)
-            lines += "nom             {}\n".format(MOL.dftypes.loc[i, "type"])
-            lines += "type            {}\n".format(kwargs["type"])
-            lines += "masse           {:.2e} kg/mol\n".format(MOL.dftypes.loc[i, "mass"] / 1000)
-            lines += "structure       {}\n".format(kwargs["structure"])
-            lines += "* Box\n"
-            lines += "maille_long     {:.3e} {:.3e} {:.3e} metre\n".format(kwargs["box_a"], kwargs["box_a"], kwargs["box_a"])
-            lines += "maille_angle    90.0 90.0 90.0 degre\n"
-            lines += "maille_orient   0\n"
-            lines += "maille_ref\n"
-            lines += "*\n"
-            lines += "* Fonction potentielle\n"
-            lines += "Potentiel {} {}  LJ epsilon {:.7e} J rc {:.1f} - sigma {:.3e} metre\n".format(
-                    i,
-                    i,
-                    MOL.dftypes.loc[i, "epsilon"] * 1000 / N_A,  # J
-                    kwargs["rc"],  # nanometers
-                    MOL.dftypes.loc[i, "sigma"] * 1e-10  # metre
-                )
-        """
-        Potentiel 0 0  LJ epsilon 1.6567944e-21 J rc 2.5 - sigma 3.405e-10 metre
-        """
-        # writing all
-        with open("FAtomes.in", "w") as f:
-            f.write(lines)
+class fatomes:
 
     options = {
-        "NbTypesAtomes": len(MOL.dftypes),
-        "type": "Atome",
-        "structure": "CFC",
-        "box_a": 3.0 * 1e-10,  # Angstrom
-        "rc": 2.0  # nanometers
+        "NbTypesAtomes": 0,
+        "structure": "FICHIER",
+        "maille_long": 12.4,  # angs
+        "maille_angle": 90.0,
+        "maille_orient": 0,
+        "maille_red": None,
+        "rc": 1.5
     }
 
-    write_topol(**options)
+    lines = ""
 
-    print("file FAtomes.in writed")
+    def __init__(self):
+
+        """
+        Se inicializa la clase cargando el sistem y definiendo las opciones.
+
+        """
+
+        self.system = []
+
+        # Head
+        now = time.ctime()
+        lines0 = "*\n"
+        lines0 += "* run file created on {}\n".format(now)
+        lines0 += "* Created using XYZ2STAMP module\n"
+        lines0 += "* mail: orlando.villegas@chimieparistech.psl.eu\n"
+        lines0 += "*\n"
+
+        self._lines0 = lines0
+        self._lines1 = ""
+        self._lines_pot = ""
+        self.natypes = 0
+        self.atypes = []
+
+        self.dftypes = []
+
+    def write_atominfo(self, MOL, **kwargs):
+        lines = ""
+        lines_pot = "\n* Fonction potentielle\n"
+
+        for i in MOL.dftypes.index:
+            atype = MOL.dftypes.loc[i, "type"]
+
+            if atype not in self.atypes:
+                self.atypes.append(atype)
+                lines += "\n"
+                lines += "* Atome {}\n".format(self.natypes)
+                lines += "nom             {:>}\n".format(MOL.dftypes.loc[i, "type"])
+                lines += "masse           {:>.2e} kg/mol\n".format(MOL.dftypes.loc[i, "mass"] / 1000)
+
+                lines_pot += "Potentiel {} {}  LJ epsilon {:.7e} J rc {:.1f} - sigma {:.3e} metre\n".format(
+                    self.natypes,
+                    self.natypes,
+                    MOL.dftypes.loc[i, "epsilon"] * 1000 / N_A,  # J
+                    self.options["rc"],  # nanometers
+                    MOL.dftypes.loc[i, "sigma"] * 1e-10  # metre
+                )
+
+                self.natypes += 1
+                self.dftypes.append(dict(MOL.dftypes.loc[i, :]))
+
+        self._lines1 += lines
+        self._lines_pot += lines_pot
+
+    def write_ffpar(self, **kwargs):
+        lines = self._lines0
+        lines += "NbTypesAtomes   {:>}\n".format(self.natypes)
+        lines += "maille_long     {:.3f} {:.3f} {:.3f} ang\n".format(
+            fatomes.options["maille_long"],
+            fatomes.options["maille_long"],
+            fatomes.options["maille_long"])
+        lines += "maille_angle    90.0 90.0 90.0 degre\n"
+        lines += "maille_orient   0\n"
+        lines += "maille_ref\n"
+        lines += "*\n"
+
+        self._lines0 += lines
+        self.dftypes = pd.DataFrame(self.dftypes)
+        lines_pot = ""
+        for i, j in it.combinations(range(self.natypes), 2):
+            epsilon_ij = np.sqrt(self.dftypes.loc[i, "epsilon"] * self.dftypes.loc[j, "epsilon"])
+            sigma_ij = (self.dftypes.loc[i, "sigma"] + self.dftypes.loc[j, "sigma"]) / 2
+
+            lines_pot += "Potentiel {} {}  LJ epsilon {:.7e} J rc {:.1f} - sigma {:.3e} metre\n".format(
+                i,
+                j,
+                epsilon_ij * 1000 / N_A,  # J
+                self.options["rc"],  # nanometers
+                sigma_ij * 1e-10  # metre
+                )
+
+        self._lines_pot += lines_pot
+
+    def write_topol(self, **kwargs):
+
+        fatomes.lines = self._lines0 + self._lines1 + self._lines_pot
+
+        # writing all
+        with open("FAtomes.in", "w") as f:
+            f.write(fatomes.lines)
+
+        print("\nfile \033[1;36mFAtomes.in\033[m writed\n")

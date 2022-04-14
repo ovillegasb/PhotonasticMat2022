@@ -182,37 +182,47 @@ def main():
         # Generates the input file FAtoms with the structural and force
         # field information of the system.
 
-        if args["files"]:
-            print(args["files"])
-            print(len(args["files"]))
+        if args["files"]:  
+            # -1) Initialize a list of molecules in the system.
+            # Numer of systems
+            # nystems = len(args["files"])
+            Fatomes = save.fatomes()
+
+            # 0) Read all entry files
+            print("files:", args["files"])
+            print("N files", len(args["files"]))
+
             # for ...
             mol0 = args["files"][0]
-
+            # 1) load structure info, charge, geometry
             dfatoms = load_structure(mol0)
-            print(dfatoms)
+            print("DATA:\n", dfatoms)
 
+            # 2) Search connectivity from geometry
+            # NOTE: This can change from the input file type.
             connect = connectivity()
             connect.get_connectivity(dfatoms)
 
-            df = connect.get_df()
-            print(df)
-
-            print("Natoms", connect.number_of_nodes())
-            print("Nbonds", connect.number_of_edges())
-
-            print("Edges", connect.edges)
-
+            # 3) Builds the object molecule. using the coordinates and its
+            # connectivity.
+            # Build list of all interactions: bonds, angles, dihedrals
             MOL(dfatoms, connect)
 
-            # print(connect[0])
-            # print(connect[1])
-
-            FField(args["forcefield"])
-
+            # 4) Call the object forcefield. Initialize with the forcefiled
+            # choiced.
+            FF = FField(args["forcefield"])
+            FF.get_atoms_types(MOL)
             print(MOL.dftypes)
+            print(MOL.dfbonds)
+            print(MOL.dfangles)
 
-            save.fatomes(MOL)
+            # 5) Add the molecule to system list elements
+            Fatomes.write_atominfo(MOL)
+            # -------------------- END for
 
+            # 6) write all information
+            Fatomes.write_ffpar()
+            Fatomes.write_topol()
         else:
             print("No file found")
 
