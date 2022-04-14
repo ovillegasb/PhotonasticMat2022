@@ -128,7 +128,10 @@ class fatomes:
         self._lines0 = lines0
         self._lines1 = ""
         self._lines_pot = ""
+        self._lines_xyz = "PositionDesAtomesCart angstrom\n"
+        self._lines_zmat = "* Connectivity\n Zmatrice\n"
         self.natypes = 0
+        self.natoms = 0
         self.atypes = []
 
         self.dftypes = []
@@ -136,6 +139,8 @@ class fatomes:
     def write_atominfo(self, MOL, **kwargs):
         lines = ""
         lines_pot = "\n* Fonction potentielle\n"
+        lines_xyz = ""
+        lines_zmat = ""
 
         for i in MOL.dftypes.index:
             atype = MOL.dftypes.loc[i, "type"]
@@ -145,6 +150,8 @@ class fatomes:
                 lines += "\n"
                 lines += "* Atome {}\n".format(self.natypes)
                 lines += "nom             {:>}\n".format(MOL.dftypes.loc[i, "type"])
+                lines += "nomFF           {:>}\n".format(MOL.dftypes.loc[i, "type"])
+                lines += "type            {:>}\n".format("Atome")
                 lines += "masse           {:>.2e} kg/mol\n".format(MOL.dftypes.loc[i, "mass"] / 1000)
 
                 lines_pot += "Potentiel {} {}  LJ epsilon {:.7e} J rc {:.1f} - sigma {:.3e} metre\n".format(
@@ -158,8 +165,24 @@ class fatomes:
                 self.natypes += 1
                 self.dftypes.append(dict(MOL.dftypes.loc[i, :]))
 
+            self.natoms += 1
+
+            lines_xyz += "{:>6}{:>15.6f}{:>15.6f}{:>15.6f}\n".format(
+                MOL.dftypes.loc[i, "atsb"],
+                MOL.dftypes.loc[i, "x"],
+                MOL.dftypes.loc[i, "y"],
+                MOL.dftypes.loc[i, "z"]
+            )
+
+            lines_zmat += "{} {}".format(i, ' '.join(list(MOL.connect.neighbors(i))))
+
+        lines_xyz = "%d\n" % self.natoms + lines_xyz
+        lines_zmat = "%d\n" % self.natoms + lines_zmat
+
         self._lines1 += lines
         self._lines_pot += lines_pot
+        self._lines_xyz += lines_xyz
+        self._lines_zmat += lines_zmat
 
     def write_ffpar(self, **kwargs):
         lines = self._lines0
@@ -192,7 +215,7 @@ class fatomes:
 
     def write_topol(self, **kwargs):
 
-        fatomes.lines = self._lines0 + self._lines1 + self._lines_pot
+        fatomes.lines = self._lines0 + self._lines1 + self._lines_pot + self._lines_xyz + self._lines_zmat
 
         # writing all
         with open("FAtomes.in", "w") as f:
