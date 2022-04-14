@@ -176,6 +176,7 @@ class fatomes:
         self._lines0 += lines
         self.dftypes = pd.DataFrame(self.dftypes)
         lines_pot = ""
+        # Add combination using Lorentz-Berthelot rules
         for i, j in it.combinations(range(self.natypes), 2):
             epsilon_ij = np.sqrt(self.dftypes.loc[i, "epsilon"] * self.dftypes.loc[j, "epsilon"])
             sigma_ij = (self.dftypes.loc[i, "sigma"] + self.dftypes.loc[j, "sigma"]) / 2
