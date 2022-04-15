@@ -128,26 +128,33 @@ class fatomes:
         self._lines0 = lines0
         self._lines1 = ""
         self._lines_pot = ""
-        self._lines_xyz = "PositionDesAtomesCart angstrom\n"
-        self._lines_zmat = "* Connectivity\n Zmatrice\n"
+        self._lines_xyz = "*\nPositionDesAtomesCart angstrom\nNATOMS\n"
+        self._lines_zmat = "*\n* Connectivity\nZmatrice\nNATOMS\n"
+        self._lines_ffintra = "*\n* Champ de force intramoleculaire\nChampDeForces\nNPARINTRA\n"
+        self._lines_pcharges = "*\nModificationChargeDesAtomes e-\nNATOMS\n"
         self.natypes = 0
         self.natoms = 0
+        self.n_parintra = 0
         self.atypes = []
+        self.btypes = []
+        self.angtypes = []
 
         self.dftypes = []
 
     def write_atominfo(self, MOL, **kwargs):
         lines = ""
-        lines_pot = "\n* Fonction potentielle\n"
+        lines_pot = "* Fonction potentielle\n"
         lines_xyz = ""
         lines_zmat = ""
+        lines_ffintra = ""
+        lines_pcharges = ""
 
         for i in MOL.dftypes.index:
             atype = MOL.dftypes.loc[i, "type"]
 
             if atype not in self.atypes:
                 self.atypes.append(atype)
-                lines += "\n"
+                lines += ""
                 lines += "* Atome {}\n".format(self.natypes)
                 lines += "nom             {:>}\n".format(MOL.dftypes.loc[i, "type"])
                 lines += "nomFF           {:>}\n".format(MOL.dftypes.loc[i, "type"])
@@ -174,18 +181,49 @@ class fatomes:
                 MOL.dftypes.loc[i, "z"]
             )
 
-            lines_zmat += "{} {}".format(i, ' '.join(list(MOL.connect.neighbors(i))))
+            neighbors = list(MOL.connect.neighbors(i))
+            neighbors = [str(i) for i in neighbors]
 
-        lines_xyz = "%d\n" % self.natoms + lines_xyz
-        lines_zmat = "%d\n" % self.natoms + lines_zmat
+            lines_zmat += "{} {}\n".format(i, ' '.join(neighbors))
+            lines_pcharges += "{}  {:>8.3f}\n".format(i, MOL.dftypes.loc[i, "charges"])
+
+        for i in MOL.dfbonds.index:
+            btypes = MOL.dfbonds.loc[i, "types"]
+            if btypes not in self.btypes:
+                lines_ffintra += "{}{:>8}{:>4} {:>8.3f} ang {:>8.6f} kcal/mol/ang2\n".format(
+                    "bond_gaff",
+                    btypes[0],
+                    btypes[1],
+                    MOL.dfbonds.loc[i, "b0"],
+                    MOL.dfbonds.loc[i, "kb"]
+                )
+
+                self.btypes.append(btypes)
+                self.n_parintra += 1
+
+        for i in MOL.dfangles.index:
+            atype = MOL.dfangles.loc[i, "types"]
+            if atype not in self.angtypes and atype[::-1] not in self.angtypes:
+                lines_ffintra += "{}{:>7}{:>4}{:>4} {:>8.3f} deg {:>8.6f} kcal/mol/rad2\n".format(
+                    "angle_gaff",
+                    atype[0],
+                    atype[1],
+                    atype[2],
+                    MOL.dfangles.loc[i, "th0"],
+                    MOL.dfangles.loc[i, "kth"]
+                )
+                self.angtypes.append(atype)
+                self.n_parintra += 1
 
         self._lines1 += lines
         self._lines_pot += lines_pot
         self._lines_xyz += lines_xyz
         self._lines_zmat += lines_zmat
+        self._lines_ffintra += lines_ffintra
+        self._lines_pcharges += lines_pcharges
 
     def write_ffpar(self, **kwargs):
-        lines = self._lines0
+        lines = ""
         lines += "NbTypesAtomes   {:>}\n".format(self.natypes)
         lines += "maille_long     {:.3f} {:.3f} {:.3f} ang\n".format(
             fatomes.options["maille_long"],
@@ -216,7 +254,17 @@ class fatomes:
 
     def write_topol(self, **kwargs):
 
-        fatomes.lines = self._lines0 + self._lines1 + self._lines_pot + self._lines_xyz + self._lines_zmat
+        fatomes.lines += self._lines0
+        fatomes.lines += self._lines1
+        fatomes.lines += self._lines_pot
+        self._lines_xyz = self._lines_xyz.replace('NATOMS', '%d' % self.natoms)
+        fatomes.lines += self._lines_xyz
+        self._lines_pcharges = self._lines_pcharges.replace('NATOMS', '%d' % self.natoms)
+        fatomes.lines += self._lines_pcharges
+        self._lines_zmat = self._lines_zmat.replace('NATOMS', '%d' % self.natoms)
+        fatomes.lines += self._lines_zmat
+        self._lines_ffintra = self._lines_ffintra.replace('NPARINTRA', '%d' % self.n_parintra)
+        fatomes.lines += self._lines_ffintra
 
         # writing all
         with open("FAtomes.in", "w") as f:

@@ -28,6 +28,14 @@ Atype_ijk    theta_ijk (degree)
 H - C - H    109.500
 
 
+Dihedrals Types
+-----------
+
+Dtype_ijk    theta_ijk (degree)
+---------------------------------------------------------------------------------
+H - C - H    109.500
+
+
 Reference
 ---------
 Development and Testing of a General Amber Force Field (2004)
