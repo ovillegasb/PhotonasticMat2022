@@ -35,26 +35,10 @@ Dtype                 divider  barrier_term Vn (kcal/mol)    phase (degree)     
 ---------------------------------------------------------------------------------
 hc - c3 - c3 - hc     1        0.15                          0.0                 3.    Junmei et al, 1999
 hc - c3 - c3 - c3     1        0.16                          0.0                 3.    Junmei et al, 1999
+c3 - c3 - c3 - c3     1        0.18                          0.0                -3.    Junmei et al, 1999
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-HC  CT  CT  HC    9       0.0      0.62760     3
-
-GROMACS = Vd = kphi(1 + cos(n*phi - phi_s))
-AMBER = Vd = kphi / 2 * (1 + cos(n*phi - phi_s))
-func      phase      kd      pn
-Dihedrals Types
 -----------
 
 Dtype_ijk    theta_ijk (degree)

@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from scipy.spatial.distance import cdist
 import os
+import re
 
 from xyz2stamp import GROMOS, GAFF
 
@@ -262,12 +263,10 @@ class FField:
         los tipos de atomos.
 
         """
-
-        print(ffpath)
-
+        # print(ffpath)
         ffdata = os.path.join(ffpath, "forcefields", "%s.dat" % ff)
 
-        print("Campo de fuerza seleccionado:", ff)
+        print("Force field:", ff)
         print(ffdata)
 
         # with open(ffdata, "r") as F:
@@ -289,3 +288,112 @@ class FField:
             ffdata = os.path.join(ffpath, "forcefields", "%s.dat" % self.ff)
             GAFF.Get_ATypes(MOL, ffdata)
             # GAFF.get_bonds(MOL, ffdata)
+
+    @property
+    def database(self):
+        # VDW parameters
+        vdw = re.compile(
+            r"""
+            ^(?P<type>\w+)\s+
+            (?P<sigma>[+-]?\d+\.\d+e?[+-]?\d?\d?)\s+      # nm
+            (?P<epsilon>[+-]?\d+\.\d+e?[+-]?\d?\d?)\s+   # kJ/mol
+            """, re.X)
+        vdwpar = {}
+
+        # BONDS parameters
+        bonds = re.compile(
+            r"""
+            ^(?P<b1>\w+)\s-\s(?P<b2>\w+)\s+
+            (?P<kb>[+-]?\d+\.\d+)\s+           # kb kcal/mol/ang2
+            (?P<b0>[+-]?\d+\.\d+)\s+           # b0 ang
+            """, re.X)
+        bondspar = {}
+
+        # ANGLES parameters
+        angles = re.compile(
+            r"""
+            ^(?P<a1>\w+)\s-\s(?P<a2>\w+)\s-\s(?P<a3>\w+)\s+
+            (?P<kth>[+-]?\d+\.\d+)\s+          # kth kcal/mol/rad2
+            (?P<th0>[+-]?\d+\.\d+)\s+          # degree
+            """, re.X)
+        anglespar = {}
+
+        # DIHEDRALS parameters
+        dihedrals = re.compile(
+            r"""
+            ^(?P<d1>\w+)\s-\s(?P<d2>\w+)\s-\s(?P<d3>\w+)\s-\s(?P<d4>\w+)\s+
+            (?P<divider>[+-]?\d+)\s+               # int
+            (?P<Vn>[+-]?\d+\.\d+)\s+               # kcal/mol
+            (?P<phi>[+-]?\d+\.\d+)\s+              # degree
+            (?P<n>[+-]?\d\.\d*)\s+                # periodicity
+            """, re.X)
+        dihedralspar = {}
+
+        with open(self.ffdata, "r") as DBASE:
+            for line in DBASE:
+                if vdw.match(line):
+                    # VDW
+                    m = vdw.match(line)
+                    m = m.groupdict()
+                    # print(m)
+                    # exit()
+
+                    vdwpar[m["type"]] = [
+                            np.float64(m["sigma"]), np.float64(m["epsilon"])
+                        ]
+
+                elif bonds.match(line):
+                    # BONDS
+                    m = bonds.match(line)
+                    m = m.groupdict()
+                    bond = (m["b1"], m["b2"])
+                    # print(m)
+                    # print(bond)
+                    # exit()
+
+                    bondspar[bond] = [
+                            np.float64(m["b0"]), np.float64(m["kb"])
+                        ]
+
+                elif angles.match(line):
+                    # ANGLES
+                    m = angles.match(line)
+                    m = m.groupdict()
+                    angle = (m["a1"], m["a2"], m["a3"])
+                    # print(m)
+                    # print(angle)
+                    # exit()
+
+                    anglespar[angle] = [
+                            np.float64(m["th0"]), np.float64(m["kth"])
+                        ]
+
+                    anglespar[angle[::-1]] = [
+                            np.float64(m["th0"]), np.float64(m["kth"])
+                        ]
+
+                elif dihedrals.match(line):
+                    # DIHEDRALS
+                    m = dihedrals.match(line)
+                    m = m.groupdict()
+                    dih = (m["d1"], m["d2"], m["d3"], m["d4"])
+                    # print(m)
+                    # print("HOLA" * 80)
+                    # print(dih)
+                    # print(dih)
+                    # exit()
+                    dihedralspar[dih] = [
+                                np.int64(m["divider"]),
+                                np.float64(m["Vn"]),
+                                np.float64(m["phi"]),
+                                int(np.float64(m["n"]))
+                            ]
+
+                    dihedralspar[dih[::-1]] = [
+                            np.int64(m["divider"]),
+                            np.float64(m["Vn"]),
+                            np.float64(m["phi"]),
+                            int(np.float64(m["n"]))
+                        ]
+
+        return {"vdw": vdwpar, "bonds": bondspar, "angles": anglespar, "dihedrals": dihedralspar}

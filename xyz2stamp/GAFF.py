@@ -126,7 +126,6 @@ def FFcoef(MOL, ffdata, ff):
         (?P<phi>[+-]?\d+\.\d+)\s+              # degree
         (?P<n>[+-]?\d\.\d*)\s+                # periodicity
         """, re.X)
-
     dihedralspar = {}
 
     with open(ffdata, "r") as DBASE:
