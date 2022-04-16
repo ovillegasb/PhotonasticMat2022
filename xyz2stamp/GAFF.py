@@ -13,13 +13,16 @@ def assinging_at_type(atom):
     m_error = """\033[1;31m
 
     The force field for {} - {} is not defined
-    Bonded with {}
+    Bonded with {}.
     \033[m""".format(atom.n, atom.sb, atom.atoms_connect)
 
     if atom.sb == "C":
         """ CARBON """
         if atom.atoms_connect.count("H") == 4:
-            return "C3"
+            return "c3"
+
+        elif atom.hyb == "sp3" and atom.atoms_connect.count("H") == 3:
+            return "c3"
 
         else:
             raise ForceFieldError(m_error)
@@ -27,7 +30,7 @@ def assinging_at_type(atom):
     elif atom.sb == "H":
         """ HYDROGEN """
         if atom.atoms_connect == "Csp3":
-            return "HC"
+            return "hc"
 
     else:
         raise ForceFieldError(m_error)
@@ -73,13 +76,16 @@ def FFcoef(MOL, ffdata, ff):
     dftypes = MOL.dftypes
     dfbonds = MOL.dfbonds
     dfangles = MOL.dfangles
+    dfdih = MOL.dfdih
+
+    # print(MOL.get_interctions_list())
+    # MOL.get_interctions_list()
 
     dftypes["sigma"] = 0
     dftypes["epsilon"] = 0
 
     dfbonds["b0"] = 0
     dfbonds["kb"] = 0
-    dfbonds["types"] = dfbonds["types"].apply(lambda x: tuple(sorted(x)))
 
     # VDW parameters
     vdw = re.compile(
@@ -94,8 +100,8 @@ def FFcoef(MOL, ffdata, ff):
     bonds = re.compile(
         r"""
         ^(?P<b1>\w+)\s-\s(?P<b2>\w+)\s+
-        (?P<b0>[+-]?\d+\.\d+)\s+              # b0
-        (?P<ln_kb>[+-]?\d+\.\d+)\s+           # ln force ctte
+        (?P<kb>[+-]?\d+\.\d+)\s+           # kb kcal/mol/ang2
+        (?P<b0>[+-]?\d+\.\d+)\s+           # b0 ang
         """, re.X)
     bondspar = {}
 
@@ -103,9 +109,21 @@ def FFcoef(MOL, ffdata, ff):
     angles = re.compile(
         r"""
         ^(?P<a1>\w+)\s-\s(?P<a2>\w+)\s-\s(?P<a3>\w+)\s+
-        (?P<th0>[+-]?\d+\.\d+)\s+
+        (?P<kth>[+-]?\d+\.\d+)\s+          # kth kcal/mol/rad2
+        (?P<th0>[+-]?\d+\.\d+)\s+          # degree
         """, re.X)
     anglespar = {}
+
+    # DIHEDRALS parameters
+    dihedrals = re.compile(
+        r"""
+        ^(?P<d1>\w+)\s-\s(?P<d2>\w+)\s-\s(?P<d3>\w+)\s-\s(?P<d4>\w+)\s+
+        (?P<divider>[+-]?\d+)\s+               # int
+        (?P<Vn>[+-]?\d+\.\d+)\s+              # kcal/mol
+        (?P<phi>[+-]?\d+\.\d+)\s+              # degree
+        (?P<n>[+-]?\d+\.\d+)\s+                # periodicity
+        """, re.X)
+    dihedralspar = {}
 
     with open(ffdata, "r") as DBASE:
         for line in DBASE:
@@ -113,7 +131,8 @@ def FFcoef(MOL, ffdata, ff):
                 # VDW
                 m = vdw.match(line)
                 m = m.groupdict()
-                # print(m)
+                print(m)
+                # exit()
 
                 if ff == "gaff":
                     vdwpar[m["type"]] = [
@@ -125,10 +144,13 @@ def FFcoef(MOL, ffdata, ff):
                 m = bonds.match(line)
                 m = m.groupdict()
                 bond = (m["b1"], m["b2"])
+                print(m)
+                print(bond)
+                # exit()
 
                 if ff == "gaff":
                     bondspar[bond] = [
-                            np.float64(m["b0"]), np.exp(np.float64(m["ln_kb"]))
+                            np.float64(m["b0"]), np.float64(m["kb"])
                         ]
 
             elif angles.match(line):
@@ -136,31 +158,101 @@ def FFcoef(MOL, ffdata, ff):
                 m = angles.match(line)
                 m = m.groupdict()
                 angle = (m["a1"], m["a2"], m["a3"])
+                print(m)
+                print(angle)
+                # exit()
 
                 if ff == "gaff":
                     anglespar[angle] = [
-                            np.float64(m["th0"])
+                            np.float64(m["th0"]), np.float64(m["kth"])
                         ]
 
                     anglespar[angle[::-1]] = [
-                            np.float64(m["th0"])
+                            np.float64(m["th0"]), np.float64(m["kth"])
+                        ]
+
+            elif dihedrals.match(line):
+                # DIHEDRALS
+                m = dihedrals.match(line)
+                m = m.groupdict()
+                dih = (m["d1"], m["d2"], m["d3"], m["d4"])
+                print(m)
+                # exit()
+                if ff == "gaff":
+                    dihedralspar[dih] = [
+                            np.int64(m["divider"]),
+                            np.float64(m["Vn"]),
+                            np.float64(m["phi"]),
+                            int(np.float64(m["n"]))
+                        ]
+
+                    dihedralspar[dih[::-1]] = [
+                            np.int64(m["divider"]),
+                            np.float64(m["Vn"]),
+                            np.float64(m["phi"]),
+                            int(np.float64(m["n"]))
                         ]
 
     # VDW
     dftypes["sigma"] = dftypes["type"].apply(lambda x: vdwpar[x][0])
     dftypes["epsilon"] = dftypes["type"].apply(lambda x: vdwpar[x][1])
+    print(dftypes)
+    # exit()
     # BONDS
-    dfbonds["b0"] = dfbonds["types"].apply(lambda x: bondspar[x][0])
-    dfbonds["kb"] = dfbonds["types"].apply(lambda x: bondspar[x][1])
+    try:
+        dfbonds["b0"] = dfbonds["types"].apply(lambda x: bondspar[x][0])
+        dfbonds["kb"] = dfbonds["types"].apply(lambda x: bondspar[x][1])
+    except KeyError:
+        # Exist bonds not found
+        bonds = set(dfbonds.types.values)
+        not_found = []
+        for b in bonds:
+            if b not in bondspar:
+                not_found.append(b)
+        raise ForceFieldError("""\033[1;31m
+                It was not possible to assign a bond type:{}
+                \033[m""".format(not_found))
+
     for i in dfbonds.index:
         ai = dfbonds.loc[i, "list"][0]
         aj = dfbonds.loc[i, "list"][1]
         MOL.connect[ai][aj]["dist"] = dfbonds.loc[i, "b0"]
         MOL.connect[aj][ai]["dist"] = dfbonds.loc[i, "b0"]
-
+    print(dfbonds)
+    # exit()
     # ANGLES
-    dfangles["th0"] = dfangles["types"].apply(lambda x: anglespar[x][0])
-    gaff_Kth(MOL)
+    try:
+        dfangles["th0"] = dfangles["types"].apply(lambda x: anglespar[x][0])
+        dfangles["kth"] = dfangles["types"].apply(lambda x: anglespar[x][1])
+    except KeyError:
+        # Exist angles not found
+        angles = set(dfangles.types.values)
+        not_found = []
+        for a in angles:
+            if a not in bondspar:
+                not_found.append(a)
+        raise ForceFieldError("""\033[1;31m
+                It was not possible to assign a angle type:{}
+                \033[m""".format(not_found))
+    # gaff_Kth(MOL)
+    print(dfangles)
+    # DIHEDRALS
+    try:
+        dfdih["divider"] = dfdih["types"].apply(lambda x: dihedralspar[x][0])
+        dfdih["Vn"] = dfdih["types"].apply(lambda x: dihedralspar[x][1])
+        dfdih["phi"] = dfdih["types"].apply(lambda x: dihedralspar[x][2])
+        dfdih["n"] = dfdih["types"].apply(lambda x: dihedralspar[x][3])
+    except KeyError:
+        # Exist angles not found
+        dih = set(dfdih.types.values)
+        not_found = []
+        for d in dih:
+            if d not in dihedralspar:
+                not_found.append(d)
+        raise ForceFieldError("""\033[1;31m
+                It was not possible to assign a angle type:{}
+                \033[m""".format(not_found))
+    print(dfdih)
 
 
 def Get_ATypes(MOL, ffdata):
@@ -176,7 +268,6 @@ def Get_ATypes(MOL, ffdata):
     """
     coord = MOL.dfatoms
     coord["type"] = "No Found"
-    coord["charge"] = 0
 
     # Central Iterator
     for i in coord.index:
@@ -188,6 +279,9 @@ def Get_ATypes(MOL, ffdata):
         elif coord.atsb[i] == "H":
             """ HYDROGEN """
             H = material.ATOM("H", i)
+            print("Here")
+            print(H.n)
+            print(H.sb)
             coord.loc[H.n, "type"] = assinging_at_type(H)
 
         else:
@@ -197,43 +291,30 @@ def Get_ATypes(MOL, ffdata):
                 \033[m""" % coord.atsb[i])
 
     MOL.dftypes = coord
+    # print(coord)
+    # exit()
+
+    MOL.dfbonds["types"] = MOL.dfbonds["list"].apply(
+        lambda x: (
+            MOL.dftypes.loc[x[0], "type"],
+            MOL.dftypes.loc[x[1], "type"])
+        )
+    MOL.dfbonds["types"] = MOL.dfbonds["types"].apply(
+        lambda x: tuple(sorted(x)))
+
+    MOL.dfangles["types"] = MOL.dfangles["list"].apply(
+        lambda x: (
+            MOL.dftypes.loc[x[0], "type"],
+            MOL.dftypes.loc[x[1], "type"],
+            MOL.dftypes.loc[x[2], "type"])
+        )
+
+    MOL.dfdih["types"] = MOL.dfdih["list"].apply(
+        lambda x: (
+            MOL.dftypes.loc[x[0], "type"],
+            MOL.dftypes.loc[x[1], "type"],
+            MOL.dftypes.loc[x[2], "type"],
+            MOL.dftypes.loc[x[3], "type"])
+        )
 
     FFcoef(MOL, ffdata, ff="gaff")
-
-
-def get_bonds(MOL, ffdata, databonds):
-    """
-    Get parameters for bonds.
-
-    """
-    i = 1
-    idbond = list()
-    bond_list = list()
-    bond_type = list()
-
-    coord = MOL.dftypes
-
-    for iat, jat in MOL.bonds_list:
-        if iat < jat:
-            if (coord.loc[iat, 'ndx'], coord.loc[jat, 'ndx']) in databonds or (coord.loc[jat, 'ndx'], coord.loc[iat, 'ndx']) in databonds:
-                idbond.append(i)
-                bond_list.append((iat, jat))
-                tp1 = coord.loc[iat, 'type']
-                tp2 = coord.loc[jat, 'type']
-                # bond_type.append(
-                #     (re.sub("CH\d", "CHn", tp1), re.sub("CH\d", "CHn", tp2))
-                # )
-                i += 1
-
-    dfbonds = pd.DataFrame({
-        'bdid': idbond,
-        'list': bond_list,
-        'type': bond_type}
-    )
-    dfbonds = dfbonds.set_index('bdid')
-    print(dfbonds)
-    # dfbonds["code"] = "No assigned"
-    # dfbonds["b0"] = "No assigned"
-    # dfbonds["kb"] = "No assigned"
-
-    # return dfbonds

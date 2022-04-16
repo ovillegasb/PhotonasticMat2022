@@ -3,31 +3,56 @@ GAFF - General Amber Force Field (2004)
 Atom Types
 ----------
 
-Atype     sigma (nm)      epsilon (Kj/mol)   Description
+Atype     sigma (Angstrom)      depth (kcal/mol)   Description
 ---------------------------------------------------------------------------------
-C                                            sp2 carbon in C=O, C=S
-C1                                           sp1 carbon
-C2                                           sp2 carbon, alihatic
-C3        3.39967e-01     4.57730e-01        sp3 carbon
-HC        2.64953e-01     6.56888e-02        hygrogen on aliphatic carbon
+c3        1.9080                0.1094             sp3 carbon
+hc        1.4870                0.0157             hygrogen on aliphatic carbon
 
 
 Bonds Types
 -----------
 
-Btype_ij     r_ij (ang)      ln K_ij ln(Kcal/mol ang2)
+Btype        kb (kcal/mol ang2)  b0 (Angstrom)
 ---------------------------------------------------------------------------------
-C - H        0.738           4.661
+c3 - hc      330.6               1.0969
+c3 - c3      300.9               1.5375
 
 
 Angles Types
------------
+------------
 
-Atype_ijk    theta_ijk (degree)
+Atype           kth (kcal/mol rad2)     theta0 (degree)
 ---------------------------------------------------------------------------------
-H - C - H    109.500
+hc - c3 - hc    39.4                 107.58
+c3 - c3 - hc    46.3                 109.80
 
 
+
+Dihedrals Types
+---------------
+
+Dtype                 divider  barrier_term Vn (kcal/mol)    phase (degree)      perodicity n
+---------------------------------------------------------------------------------
+hc - c3 - c3 - hc     1        0.15                          0.0                 3.0    Junmei et al, 1999
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+HC  CT  CT  HC    9       0.0      0.62760     3
+
+GROMACS = Vd = kphi(1 + cos(n*phi - phi_s))
+AMBER = Vd = kphi / 2 * (1 + cos(n*phi - phi_s))
+func      phase      kd      pn
 Dihedrals Types
 -----------
 

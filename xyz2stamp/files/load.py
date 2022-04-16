@@ -19,7 +19,8 @@ def load_structure(file):
     if file.endswith("xyz"):
         dfatoms = _load_xyz(file)
         dfatoms["mass"] = dfatoms["atsb"].apply(lambda at: Elements[at]["mass"])
-        dfatoms["charges"] = 0.0
+        # This file has no partial charges .
+        dfatoms["charge"] = 0.0
 
     else:
         raise MoleculeDefintionError("Molecule format is not recognized")

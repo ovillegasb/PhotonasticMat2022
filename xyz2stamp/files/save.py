@@ -138,6 +138,7 @@ class fatomes:
         self.atypes = []
         self.btypes = []
         self.angtypes = []
+        self.dihtypes = []
 
         self.dftypes = []
 
@@ -148,7 +149,7 @@ class fatomes:
         lines_zmat = ""
         lines_ffintra = ""
         lines_pcharges = ""
-
+        # ATOMS TYPES
         for i in MOL.dftypes.index:
             atype = MOL.dftypes.loc[i, "type"]
 
@@ -160,6 +161,7 @@ class fatomes:
                 lines += "nomFF           {:>}\n".format(MOL.dftypes.loc[i, "type"])
                 lines += "type            {:>}\n".format("Atome")
                 lines += "masse           {:>.2e} kg/mol\n".format(MOL.dftypes.loc[i, "mass"] / 1000)
+                lines += "structure       {:>}\n".format(fatomes.options["structure"])
 
                 lines_pot += "Potentiel {} {}  LJ epsilon {:.7e} J rc {:.1f} - sigma {:.3e} metre\n".format(
                     self.natypes,
@@ -175,7 +177,7 @@ class fatomes:
             self.natoms += 1
 
             lines_xyz += "{:>6}{:>15.6f}{:>15.6f}{:>15.6f}\n".format(
-                MOL.dftypes.loc[i, "atsb"],
+                MOL.dftypes.loc[i, "type"],
                 MOL.dftypes.loc[i, "x"],
                 MOL.dftypes.loc[i, "y"],
                 MOL.dftypes.loc[i, "z"]
@@ -185,12 +187,12 @@ class fatomes:
             neighbors = [str(i) for i in neighbors]
 
             lines_zmat += "{} {}\n".format(i, ' '.join(neighbors))
-            lines_pcharges += "{}  {:>8.3f}\n".format(i, MOL.dftypes.loc[i, "charges"])
-
+            lines_pcharges += "{}  {:>8.3f}\n".format(i, MOL.dftypes.loc[i, "charge"])
+        # BONDS
         for i in MOL.dfbonds.index:
             btypes = MOL.dfbonds.loc[i, "types"]
             if btypes not in self.btypes:
-                lines_ffintra += "{}{:>8}{:>4} {:>8.3f} ang {:>8.6f} kcal/mol/ang2\n".format(
+                lines_ffintra += "{}{:>8}{:>4} {:>8.3f} ang {:>8.2f} kcal/mol/ang2\n".format(
                     "bond_gaff",
                     btypes[0],
                     btypes[1],
@@ -200,11 +202,11 @@ class fatomes:
 
                 self.btypes.append(btypes)
                 self.n_parintra += 1
-
+        # ANGLES
         for i in MOL.dfangles.index:
             atype = MOL.dfangles.loc[i, "types"]
             if atype not in self.angtypes and atype[::-1] not in self.angtypes:
-                lines_ffintra += "{}{:>7}{:>4}{:>4} {:>8.3f} deg {:>8.6f} kcal/mol/rad2\n".format(
+                lines_ffintra += "{}{:>7}{:>4}{:>4} {:>8.2f} deg {:>8.2f} kcal/mol/rad2\n".format(
                     "angle_gaff",
                     atype[0],
                     atype[1],
@@ -213,6 +215,23 @@ class fatomes:
                     MOL.dfangles.loc[i, "kth"]
                 )
                 self.angtypes.append(atype)
+                self.n_parintra += 1
+        # DIHEDRALS
+        for i in MOL.dfdih.index:
+            dtype = MOL.dfdih.loc[i, "types"]
+            if dtype not in self.dihtypes and atype[::-1] not in self.dihtypes:
+                lines_ffintra += "{}{:>7}{:>4}{:>4}{:>4} {:>8.2f} kcal/mol {:>8d} {:>8d} {:>8.2f} deg\n".format(
+                    "torsion_gaff",
+                    dtype[0],
+                    dtype[1],
+                    dtype[2],
+                    dtype[3],
+                    MOL.dfdih.loc[i, "Vn"],
+                    MOL.dfdih.loc[i, "divider"],
+                    MOL.dfdih.loc[i, "n"],
+                    MOL.dfdih.loc[i, "phi"]
+                )
+                self.dihtypes.append(dtype)
                 self.n_parintra += 1
 
         self._lines1 += lines
@@ -225,14 +244,6 @@ class fatomes:
     def write_ffpar(self, **kwargs):
         lines = ""
         lines += "NbTypesAtomes   {:>}\n".format(self.natypes)
-        lines += "maille_long     {:.3f} {:.3f} {:.3f} ang\n".format(
-            fatomes.options["maille_long"],
-            fatomes.options["maille_long"],
-            fatomes.options["maille_long"])
-        lines += "maille_angle    90.0 90.0 90.0 degre\n"
-        lines += "maille_orient   0\n"
-        lines += "maille_ref\n"
-        lines += "*\n"
 
         self._lines0 += lines
         self.dftypes = pd.DataFrame(self.dftypes)
@@ -253,9 +264,19 @@ class fatomes:
         self._lines_pot += lines_pot
 
     def write_topol(self, **kwargs):
+        lines = "*\n"
+        lines += "maille_long     {:.3f} {:.3f} {:.3f} ang\n".format(
+            fatomes.options["maille_long"],
+            fatomes.options["maille_long"],
+            fatomes.options["maille_long"])
+        lines += "maille_angle    90.0 90.0 90.0 degre\n"
+        lines += "maille_orient   0\n"
+        lines += "maille_ref\n"
+        lines += "*\n"
 
         fatomes.lines += self._lines0
         fatomes.lines += self._lines1
+        fatomes.lines += lines
         fatomes.lines += self._lines_pot
         self._lines_xyz = self._lines_xyz.replace('NATOMS', '%d' % self.natoms)
         fatomes.lines += self._lines_xyz

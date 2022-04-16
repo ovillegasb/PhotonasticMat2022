@@ -196,7 +196,7 @@ c2-s4  263.2    1.7600              SOUECE3       1
 c2-s6  263.2    1.7600              SOUECE3       1	
 c2-sh  248.9    1.7820      SOURCE4_SOURCE5      13	 0.0077
 c2-ss  280.0    1.7360              SOURCE1     209	 0.0155
-c3-c3  300.9    1.5375      SOURCE1_SOURCE5   88072	 0.0058
+*c3-c3  300.9    1.5375      SOURCE1_SOURCE5   88072	 0.0058
 c3-ca  321.0    1.5156      SOURCE1_SOURCE5   10699	 0.0054
 c3-cc  334.8    1.5015      SOURCE3_SOURCE5    3926	 0.0049
 c3-cd  334.8    1.5015      SOURCE3_SOURCE5    3926	 0.0049
@@ -211,7 +211,7 @@ c3-f   356.9    1.3497      SOURCE1_SOURCE5    2188	 0.0139
 c3-h1  330.6    1.0969      SOURCE3_SOURCE5  112144	 0.0055
 c3-h2  331.7    1.0961      SOURCE3_SOURCE5    2681	 0.0032
 c3-h3  333.3    1.0949      SOURCE4_SOURCE5      64	 0.0028
-c3-hc  330.6    1.0969      SOURCE3_SOURCE5  133628	 0.0015
+*c3-hc  330.6    1.0969      SOURCE3_SOURCE5  133628	 0.0015
 c3-hx  338.7    1.0910      SOURCE3_SOURCE5    6495	 0.0022
 c3-i   197.8    2.2117      SOURCE1_SOURCE5      35	 0.0128
 c3-n1  359.6    1.4330      SOURCE3_SOURCE5       7	 0.0033
@@ -1339,7 +1339,7 @@ c3-c3-cy    62.7      112.43               5/2017          317    1.3511
 c3-c3-f     66.1      109.24      SOURCE3_SOURCE5          785    1.1106
 c3-c3-h1    46.4      109.56      SOURCE3_SOURCE5        55294    0.8125
 c3-c3-h2    46.2      110.22      SOURCE3_SOURCE5         1083    0.9457
-c3-c3-hc    46.3      109.80      SOURCE3_SOURCE5       179054    0.7972
+*c3-c3-hc    46.3      109.80      SOURCE3_SOURCE5       179054    0.7972
 c3-c3-hx    46.2      110.56      SOURCE3_SOURCE5         1758    0.9658
 c3-c3-i     57.2      111.15      SOURCE3_SOURCE5           48    1.3033
 c3-c3-n1    67.3      108.98      SOURCE4_SOURCE5           20    0.8416
@@ -1532,7 +1532,7 @@ h3-c3-nd    49.9      109.37              SOURCE3            1
 h3-c3-nh    49.5      110.20      SOURCE4_SOURCE5           11    1.4222
 h3-c3-os    50.4      111.51      SOURCE4_SOURCE5           44    1.4444
 h3-c3-ss    42.0      109.09      SOURCE4_SOURCE5           19    0.8547
-hc-c3-hc    39.4      107.58      SOURCE3_SOURCE5        92717    0.5328
+*hc-c3-hc    39.4      107.58      SOURCE3_SOURCE5        92717    0.5328
 hc-c3-i     37.6      104.99              SOURCE3            1
 hc-c3-n2    49.6      109.50              SOURCE3            1
 hc-c3-n3    49.5      109.80              SOURCE2            5    2.0070
@@ -6986,7 +6986,7 @@ h1-c3-c -o    1    0.08        180.0             3.         Junmei et al, 1999
 hc-c3-c -o    1    0.80          0.0            -1.         Junmei et al, 1999
 hc-c3-c -o    1    0.00          0.0            -2.         Junmei et al, 1999
 hc-c3-c -o    1    0.08        180.0             3.         Junmei et al, 1999
-hc-c3-c3-hc   1    0.15          0.0             3.         Junmei et al, 1999
+*hc-c3-c3-hc   1    0.15          0.0             3.         Junmei et al, 1999
 hc-c3-c3-c3   1    0.16          0.0             3.         Junmei et al, 1999
 hc-c3-c2-c2   1    0.38        180.0            -3.         Junmei et al, 1999
 hc-c3-c2-c2   1    0.00          0.0            -2.         Junmei et al, 1999
@@ -7115,7 +7115,7 @@ na-n2-ca-n2         1.1          180.          2.           dac, 10/94
 
   hw  ow  0000.     0000.                                4.  flag for fast water
 
-
+    atomic radius (Angstrom)    depth (kcal/mol)
 MOD4      RE
   h1          1.3870  0.0157             Veenstra et al JCC,8,(1992),963 
   h2          1.2870  0.0157             Veenstra et al JCC,8,(1992),963 
@@ -7123,7 +7123,7 @@ MOD4      RE
   h4          1.4090  0.0150             Spellmeyer, one electrowithdr. neighbor
   h5          1.3590  0.0150             Spellmeyer, two electrowithdr. neighbor
   ha          1.4590  0.0150             Spellmeyer 
-  hc          1.4870  0.0157             OPLS
+*  hc          1.4870  0.0157             OPLS
   hn          0.6000  0.0157            !Ferguson base pair geom.
   ho          0.0000  0.0000             OPLS Jorgensen, JACS,110,(1988),1657
   hp          0.6000  0.0157             same to hs (be careful !) 
@@ -7139,7 +7139,7 @@ MOD4      RE
   c           1.9080  0.0860             OPLS
   c1          1.9080  0.2100             cp C DLM 11/2007 well depth from OPLS replacing 0.0860
   c2          1.9080  0.0860             sp2 atom in the middle of C=CD-CD=C
-  c3          1.9080  0.1094             OPLS
+*  c3          1.9080  0.1094             OPLS
   ca          1.9080  0.0860             OPLS
   cc          1.9080  0.0860             OPLS
   cd          1.9080  0.0860             OPLS

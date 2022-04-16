@@ -25,9 +25,11 @@ class MOL:
 
     dfbonds = pd.DataFrame()
     dfangles = pd.DataFrame()
+    dfdih = pd.DataFrame()
 
     bonds_list = []
     angles_list = []
+    dihedrals_list = []
 
     def __init__(self, dfatoms, connect):
         """
@@ -58,35 +60,42 @@ class MOL:
                     all_paths += list(nx.algorithms.all_simple_paths(connect, s, e, cutoff=3))
 
         bonds_list = [tuple(p) for p in all_paths if len(set(p)) == 2]
-        bonds_types = []
         for iat, jat in bonds_list:
             if iat < jat:
                 MOL.bonds_list.append((iat, jat))
-                bonds_types.append((MOL.dfatoms.loc[iat, "atsb"], MOL.dfatoms.loc[jat, "atsb"]))
 
         MOL.dfbonds["list"] = MOL.bonds_list
-        MOL.dfbonds["types"] = bonds_types
 
         angles_list = [tuple(p) for p in all_paths if len(set(p)) == 3]
-        angles_types = []
         for iat, jat, kat in angles_list:
             if iat < kat:
                 MOL.angles_list.append((iat, jat, kat))
-                angles_types.append((MOL.dfatoms.loc[iat, "atsb"], MOL.dfatoms.loc[jat, "atsb"], MOL.dfatoms.loc[kat, "atsb"]))
 
         MOL.dfangles["list"] = MOL.angles_list
-        MOL.dfangles["types"] = angles_types
 
         dihedrals_list = [tuple(p) for p in all_paths if len(set(p)) == 4]
+        print(dihedrals_list)
+        print(len(dihedrals_list))
+        for iat, jat, kat, lat in dihedrals_list:
+            if iat < lat:
+                MOL.dihedrals_list.append((iat, jat, kat, lat))
 
-        pairs_list = [(p[0], p[3]) for p in all_paths if len(set(p)) == 4]
+        MOL.dfdih["list"] = MOL.dihedrals_list
+
+        # pairs_list = [(p[0], p[3]) for p in all_paths if len(set(p)) == 4]
 
         print("Natoms:", connect.number_of_nodes())
         print("Bonds:\n", MOL.bonds_list)
-        print("Nbonds:", len(MOL.bonds_list) / 2)
+        print("Nbonds:", len(MOL.bonds_list))
         print("Angles:\n", MOL.angles_list)
-        print("Nangles:", len(MOL.angles_list) / 2)
-        # print(dihedrals_list)
+        print("Nangles:", len(MOL.angles_list))
+        print("Dihedrals:\n", MOL.dihedrals_list)
+        # for i in MOL.dihedrals_list:
+        #     # print(MOL.dftypes.loc[list(i), :])
+        #     print(i)
+        #     print(MOL.dfatoms.loc[i, :])
+        # exit()
+        print("NDihedrals:", len(MOL.dihedrals_list))
         # print(pairs_list)
 
 
@@ -143,8 +152,7 @@ class ATOM(MOL):
         try:
             return atms_hyb[self.sb][len(self.connect[self.n])]
         except KeyError:
-            print("Hybridization was not found for the atom %s - %s" % (self.n, self.sb))
-            exit()
+            raise MoleculeDefintionError("Hybridation for {} - {} not found".format(self.n, self.sb))
 
     @property
     def charge(self):
@@ -203,11 +211,17 @@ class connectivity(nx.DiGraph):
         """Return neighboring pairs"""
 
         xyz = coord.loc[:, ['x', 'y', 'z']].values.astype(np.float64)
+        # atoms = xyz = coord.loc[:, ['atsb']].values
         # compute distance
         m = cdist(xyz, xyz, 'euclidean')
         m = np.triu(m)
 
-        indexs = np.where((m > 0.) & (m <= 1.8))
+        indexs = np.where((m > 0.) & (m <= 1.7))
+        # print(indexs)
+        # print(indexs[0])
+        # print(coord["atsb"][indexs[0]])
+        # print(coord["atsb"][indexs[1]])
+        # exit()
 
         pairs = map(lambda in0, in1: (in0, in1), indexs[0], indexs[1])
 
