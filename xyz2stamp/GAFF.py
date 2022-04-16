@@ -24,6 +24,9 @@ def assinging_at_type(atom):
         elif atom.hyb == "sp3" and atom.atoms_connect.count("H") == 3:
             return "c3"
 
+        elif atom.hyb == "sp3" and atom.atoms_connect.count("H") == 2:
+            return "c3"
+
         else:
             raise ForceFieldError(m_error)
 
@@ -119,10 +122,11 @@ def FFcoef(MOL, ffdata, ff):
         r"""
         ^(?P<d1>\w+)\s-\s(?P<d2>\w+)\s-\s(?P<d3>\w+)\s-\s(?P<d4>\w+)\s+
         (?P<divider>[+-]?\d+)\s+               # int
-        (?P<Vn>[+-]?\d+\.\d+)\s+              # kcal/mol
+        (?P<Vn>[+-]?\d+\.\d+)\s+               # kcal/mol
         (?P<phi>[+-]?\d+\.\d+)\s+              # degree
-        (?P<n>[+-]?\d+\.\d+)\s+                # periodicity
+        (?P<n>[+-]?\d\.\d*)\s+                # periodicity
         """, re.X)
+
     dihedralspar = {}
 
     with open(ffdata, "r") as DBASE:
@@ -131,7 +135,7 @@ def FFcoef(MOL, ffdata, ff):
                 # VDW
                 m = vdw.match(line)
                 m = m.groupdict()
-                print(m)
+                # print(m)
                 # exit()
 
                 if ff == "gaff":
@@ -144,8 +148,8 @@ def FFcoef(MOL, ffdata, ff):
                 m = bonds.match(line)
                 m = m.groupdict()
                 bond = (m["b1"], m["b2"])
-                print(m)
-                print(bond)
+                # print(m)
+                # print(bond)
                 # exit()
 
                 if ff == "gaff":
@@ -158,8 +162,8 @@ def FFcoef(MOL, ffdata, ff):
                 m = angles.match(line)
                 m = m.groupdict()
                 angle = (m["a1"], m["a2"], m["a3"])
-                print(m)
-                print(angle)
+                # print(m)
+                # print(angle)
                 # exit()
 
                 if ff == "gaff":
@@ -176,7 +180,10 @@ def FFcoef(MOL, ffdata, ff):
                 m = dihedrals.match(line)
                 m = m.groupdict()
                 dih = (m["d1"], m["d2"], m["d3"], m["d4"])
-                print(m)
+                # print(m)
+                # print("HOLA" * 80)
+                # print(dih)
+                # print(dih)
                 # exit()
                 if ff == "gaff":
                     dihedralspar[dih] = [
@@ -192,7 +199,8 @@ def FFcoef(MOL, ffdata, ff):
                             np.float64(m["phi"]),
                             int(np.float64(m["n"]))
                         ]
-
+    print(dihedrals)
+    # exit()
     # VDW
     dftypes["sigma"] = dftypes["type"].apply(lambda x: vdwpar[x][0])
     dftypes["epsilon"] = dftypes["type"].apply(lambda x: vdwpar[x][1])
@@ -279,9 +287,9 @@ def Get_ATypes(MOL, ffdata):
         elif coord.atsb[i] == "H":
             """ HYDROGEN """
             H = material.ATOM("H", i)
-            print("Here")
-            print(H.n)
-            print(H.sb)
+            # print("Here")
+            # print(H.n)
+            # print(H.sb)
             coord.loc[H.n, "type"] = assinging_at_type(H)
 
         else:

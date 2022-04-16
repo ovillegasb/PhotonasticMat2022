@@ -25,7 +25,7 @@ Atype           kth (kcal/mol rad2)     theta0 (degree)
 ---------------------------------------------------------------------------------
 hc - c3 - hc    39.4                 107.58
 c3 - c3 - hc    46.3                 109.80
-
+c3 - c3 - c3    62.9                 111.51
 
 
 Dihedrals Types
@@ -33,7 +33,8 @@ Dihedrals Types
 
 Dtype                 divider  barrier_term Vn (kcal/mol)    phase (degree)      perodicity n
 ---------------------------------------------------------------------------------
-hc - c3 - c3 - hc     1        0.15                          0.0                 3.0    Junmei et al, 1999
+hc - c3 - c3 - hc     1        0.15                          0.0                 3.    Junmei et al, 1999
+hc - c3 - c3 - c3     1        0.16                          0.0                 3.    Junmei et al, 1999
 
 
 

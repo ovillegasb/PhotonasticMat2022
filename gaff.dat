@@ -1327,7 +1327,7 @@ c2-c3-oh    68.2      110.35      SOURCE4_SOURCE5          793    1.4429
 c2-c3-os    68.5      108.56      SOURCE4_SOURCE5          763    1.7474
 c2-c3-s4    61.9      109.89      SOURCE4_SOURCE5           19    0.8365
 c2-c3-ss    63.1      104.97              SOURCE3            2    2.2248
-c3-c3-c3    62.9      111.51      SOURCE3_SOURCE5        61999    1.8007
+*c3-c3-c3    62.9      111.51      SOURCE3_SOURCE5        61999    1.8007
 c3-c3-ca    63.1      112.07      SOURCE4_SOURCE5        11982    1.5875
 c3-c3-cc    63.5      111.93         CORR_SOURCE5         2280    1.5614
 c3-c3-cd    63.5      111.93         CORR_SOURCE5         2280    1.5614
