@@ -3,16 +3,21 @@ Gromos 54a7
 Atom Types
 ----------
 
-Atype     mass      Description
+Atype     sigma (Angstrom)      depth (kcal/mol)   Description
 -------------------------------------------------------------------------------
-CH4       16.04300  methane
+CH4       3.7100                0.3020             Methane
+CH3       3.7479                0.2073
 
 
-No Bonded Parameters
---------------------
+0.0096138025  2.6646244e-05
 
-Atype     c6 (kJ/mol nm6)          c12 (kJ/mol nm12)
--------------------------------------------------------------------------------
-CH4       0.01317904               3.4363044e-05
+Bonds Types
+-----------
+La division por 1/2 esta incluida
+
+Btype        kb (kcal/mol ang2)  b0 (Angstrom)
+---------------------------------------------------------------------------------
+
+CH3 - CH3    400.0342            1.530
 
 Reference

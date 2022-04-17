@@ -6987,7 +6987,7 @@ hc-c3-c -o    1    0.80          0.0            -1.         Junmei et al, 1999
 hc-c3-c -o    1    0.00          0.0            -2.         Junmei et al, 1999
 hc-c3-c -o    1    0.08        180.0             3.         Junmei et al, 1999
 *hc-c3-c3-hc   1    0.15          0.0             3.         Junmei et al, 1999
-hc-c3-c3-c3   1    0.16          0.0             3.         Junmei et al, 1999
+*hc-c3-c3-c3   1    0.16          0.0             3.         Junmei et al, 1999
 hc-c3-c2-c2   1    0.38        180.0            -3.         Junmei et al, 1999
 hc-c3-c2-c2   1    0.00          0.0            -2.         Junmei et al, 1999
 hc-c3-c2-c2   1    1.15          0.0             1.         Junmei et al, 1999
@@ -6999,7 +6999,7 @@ c2-c2-c -o    1    2.175       180.0            -2.         Junmei et al, 1999
 c2-c2-c -o    1    0.30          0.0             3.         Junmei et al, 1999
 c3-c2-c2-c3   1    6.65        180.0            -2.         Junmei et al, 1999
 c3-c2-c2-c3   1    1.90        180.0             1.         Junmei et al, 1999
-c3-c3-c3-c3   1    0.18          0.0            -3.         Junmei et al, 1999
+*c3-c3-c3-c3   1    0.18          0.0            -3.         Junmei et al, 1999
 c3-c3-c3-c3   1    0.25        180.0            -2.         Junmei et al, 1999
 c3-c3-c3-c3   1    0.20        180.0             1.         Junmei et al, 1999
 c3-c3-n3-c3   1    0.30          0.0            -3.         Junmei et al, 1999

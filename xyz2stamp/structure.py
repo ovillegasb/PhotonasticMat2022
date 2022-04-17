@@ -14,6 +14,10 @@ class MoleculeDefintionError(Exception):
     pass
 
 
+class ForceFieldError(Exception):
+    pass
+
+
 # database force field path
 ffpath = os.path.dirname(os.path.realpath(__file__))
 
@@ -40,6 +44,16 @@ class MOL:
         MOL.dfatoms = dfatoms
         MOL.connect = connect
 
+        self._get_interctions_list()
+
+    def update_lists(self):
+        MOL.dfbonds = pd.DataFrame()
+        MOL.dfangles = pd.DataFrame()
+        MOL.dfdih = pd.DataFrame()
+
+        MOL.bonds_list = []
+        MOL.angles_list = []
+        MOL.dihedrals_list = []
         self._get_interctions_list()
 
     def _get_interctions_list(self):
@@ -289,6 +303,53 @@ class FField:
             GAFF.Get_ATypes(MOL, ffdata)
             # GAFF.get_bonds(MOL, ffdata)
 
+    def get_parameters(self, MOL):
+        dftypes = MOL.dftypes
+        dfbonds = MOL.dfbonds
+        # print(dftypes)
+        # print(dfbonds)
+        # print(self.database)
+        # exit()
+        # VDW
+        vdwpar = self.database["vdw"]
+        try:
+            dftypes["sigma"] = dftypes["type"].apply(lambda x: vdwpar[x][0])
+            dftypes["epsilon"] = dftypes["type"].apply(lambda x: vdwpar[x][1])
+        except KeyError:
+            raise ForceFieldError("""\033[1;31m
+
+                It was not possible to assign atom type to :\n%s
+                \033[m""" % dftypes)
+        # print(dftypes)
+        # BONDS
+        bondspar = self.database["bonds"]
+        dfbonds["types"] = MOL.dfbonds["list"].apply(
+            lambda x: (
+                MOL.dftypes.loc[x[0], "type"],
+                MOL.dftypes.loc[x[1], "type"])
+            )
+
+        try:
+            dfbonds["b0"] = dfbonds["types"].apply(lambda x: bondspar[x][0])
+            dfbonds["kb"] = dfbonds["types"].apply(lambda x: bondspar[x][1])
+        except KeyError:
+            # Exist bonds not found
+            bonds = set(dfbonds.types.values)
+            not_found = []
+            for b in bonds:
+                if b not in bondspar:
+                    not_found.append(b)
+            raise ForceFieldError("""\033[1;31m
+                    It was not possible to assign a bond type:{}
+                    \033[m""".format(not_found))
+
+        for i in dfbonds.index:
+            ai = dfbonds.loc[i, "list"][0]
+            aj = dfbonds.loc[i, "list"][1]
+            MOL.connect[ai][aj]["dist"] = dfbonds.loc[i, "b0"]
+            MOL.connect[aj][ai]["dist"] = dfbonds.loc[i, "b0"]
+        # print(dfbonds)
+
     @property
     def database(self):
         # VDW parameters
@@ -397,3 +458,23 @@ class FField:
                         ]
 
         return {"vdw": vdwpar, "bonds": bondspar, "angles": anglespar, "dihedrals": dihedralspar}
+
+
+def sigma(c6, c12):
+    # nm --> angstrom
+    sig = (c12/c6)**(1/6)
+    return sig * 10
+
+
+def epsilon(c6, c12):
+    # 1 kcal = 4.184 kj
+    # kJ / mol --> kcal / mol
+    return (c6**2) / (4 * c12) / 4.184
+
+
+def kbharm(b0, kb):
+    # gromos bonds --> harm bonds
+    # 1 kcal = 4.184 kj
+    # 1 nm = 10 ang
+    # kJ / mol / nm2 --> kcal / mol / ang2
+    return (kb * b0 ** 2) / 10**2 / 4.184

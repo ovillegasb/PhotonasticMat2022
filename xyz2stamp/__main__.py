@@ -222,18 +222,21 @@ def main():
             # connectivity.
             print_steps("3) Builds the object molecule. using the coordinates and its connectivity.")
             # Build list of all interactions: bonds, angles, dihedrals
-            MOL(dfatoms, connect)
+            mol = MOL(dfatoms, connect)
             # 4) Call the object forcefield. Initialize with the forcefiled
             # choiced.
             print_steps("4) Call the object forcefield. Initialize with the forcefiled choiced.")
             FF = FField(args["forcefield"])
-            FF.get_atoms_types(MOL)
-            # print(MOL.dftypes)
-            # print(MOL.dfbonds)
+            print(FF.database)
+            FF.get_atoms_types(mol)
+            mol.update_lists()
+            FF.get_parameters(mol)
+            # print(mol.dftypes)
+            # print(mol.dfbonds)
             # print(MOL.dfangles)
             # 5) Add the molecule to system list elements.
             print_steps("5) Add the molecule to system list elements.")
-            Fatomes.write_atominfo(MOL)
+            Fatomes.write_atominfo(mol)
             # END for ...
             # exit()
             # 6) write all information.

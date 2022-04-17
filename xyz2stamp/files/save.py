@@ -42,7 +42,12 @@ def write_run(**kwargs):
         "NbFantomesSup": "0",
         "XyzSortie": "1",  # config
         "XyzFrequence": 100,
-        "XyzOrdonnee": "1"
+        "XyzOrdonnee": "1",
+        "Molecule": 1,
+        "Molecule_CalculIntra": 1,
+        "Molecule_ContribVdwIntra12": 0,
+        "Molecule_ContribVdwIntra13": 0,
+        "Molecule_ContribVdwIntra14": 0
     }
 
     # update the default values based on the arguments
@@ -60,7 +65,7 @@ def write_run(**kwargs):
     lines += "TauNVT             {:>20}\n".format(options["TauNVT"])
     lines += "*\n"
     lines += "Schema             {:>20}\n".format(options["Schema"])
-    lines += "Deltatemps         {:>20.1e}\n".format(options["Deltatemps"] * 1e-12)
+    lines += "Deltatemps         {:>20.1e}\n".format(options["Deltatemps"] * 1e-15)
     lines += "StepLimit          {:>20d}\n".format(options["StepLimit"])
     lines += "StepAvg            {:>20}\n".format(options["StepAvg"])
     lines += "*\n"
@@ -86,6 +91,12 @@ def write_run(**kwargs):
     lines += "XyzSortie          {:>20}\n".format(options["XyzSortie"])
     lines += "XyzFrequence       {:>20d}\n".format(options["XyzFrequence"])
     lines += "XyzOrdonnee        {:>20}\n".format(options["XyzOrdonnee"])
+    lines += "*\n"
+    lines += "Molecule                     {:>20d}\n".format(options["Molecule"])
+    lines += "Molecule_CalculIntra         {:>20d}\n".format(options["Molecule_CalculIntra"])
+    lines += "Molecule_ContribVdwIntra12   {:>20d}\n".format(options["Molecule_ContribVdwIntra12"])
+    lines += "Molecule_ContribVdwIntra13   {:>20d}\n".format(options["Molecule_ContribVdwIntra13"])
+    lines += "Molecule_ContribVdwIntra14   {:>20d}\n".format(options["Molecule_ContribVdwIntra14"])
 
     # writing all
     with open("DONNEES.in", "w") as f:
@@ -161,7 +172,15 @@ class fatomes:
                 lines += "nomFF           {:>}\n".format(MOL.dftypes.loc[i, "type"])
                 lines += "type            {:>}\n".format("Atome")
                 lines += "masse           {:>.2e} kg/mol\n".format(MOL.dftypes.loc[i, "mass"] / 1000)
-                lines += "structure       {:>}\n".format(fatomes.options["structure"])
+                if self.natypes == 0:
+                    lines += "maille_long     {:.3f} {:.3f} {:.3f} ang\n".format(
+                        fatomes.options["maille_long"],
+                        fatomes.options["maille_long"],
+                        fatomes.options["maille_long"])
+                    lines += "maille_angle    90.0 90.0 90.0 degre\n"
+                    lines += "maille_orient   0\n"
+                    lines += "maille_ref\n"
+                    lines += "structure       {:>}\n".format(fatomes.options["structure"])
 
                 lines_pot += "Potentiel {} {}  LJ epsilon {:.7e} J rc {:.1f} - sigma {:.3e} metre\n".format(
                     self.natypes,
@@ -189,50 +208,52 @@ class fatomes:
             lines_zmat += "{} {}\n".format(i, ' '.join(neighbors))
             lines_pcharges += "{}  {:>8.3f}\n".format(i, MOL.dftypes.loc[i, "charge"])
         # BONDS
-        for i in MOL.dfbonds.index:
-            btypes = MOL.dfbonds.loc[i, "types"]
-            if btypes not in self.btypes:
-                lines_ffintra += "{}{:>8}{:>4} {:>8.3f} ang {:>8.2f} kcal/mol/ang2\n".format(
-                    "bond_gaff",
-                    btypes[0],
-                    btypes[1],
-                    MOL.dfbonds.loc[i, "b0"],
-                    MOL.dfbonds.loc[i, "kb"]
-                )
-
-                self.btypes.append(btypes)
-                self.n_parintra += 1
+        if "types" in MOL.dfbonds:
+            for i in MOL.dfbonds.index:
+                btypes = MOL.dfbonds.loc[i, "types"]
+                if btypes not in self.btypes:
+                    lines_ffintra += "{}{:>8}{:>4} {:>8.3f} ang {:>8.2f} kcal/mol/ang2\n".format(
+                        "bond_gaff",
+                        btypes[0],
+                        btypes[1],
+                        MOL.dfbonds.loc[i, "b0"],
+                        MOL.dfbonds.loc[i, "kb"]
+                    )
+                    self.btypes.append(btypes)
+                    self.n_parintra += 1
         # ANGLES
-        for i in MOL.dfangles.index:
-            atype = MOL.dfangles.loc[i, "types"]
-            if atype not in self.angtypes and atype[::-1] not in self.angtypes:
-                lines_ffintra += "{}{:>7}{:>4}{:>4} {:>8.2f} deg {:>8.2f} kcal/mol/rad2\n".format(
-                    "angle_gaff",
-                    atype[0],
-                    atype[1],
-                    atype[2],
-                    MOL.dfangles.loc[i, "th0"],
-                    MOL.dfangles.loc[i, "kth"]
-                )
-                self.angtypes.append(atype)
-                self.n_parintra += 1
+        if "types" in MOL.dfangles:
+            for i in MOL.dfangles.index:
+                atype = MOL.dfangles.loc[i, "types"]
+                if atype not in self.angtypes and atype[::-1] not in self.angtypes:
+                    lines_ffintra += "{}{:>7}{:>4}{:>4} {:>8.2f} deg {:>8.2f} kcal/mol/rad2\n".format(
+                        "angle_gaff",
+                        atype[0],
+                        atype[1],
+                        atype[2],
+                        MOL.dfangles.loc[i, "th0"],
+                        MOL.dfangles.loc[i, "kth"]
+                    )
+                    self.angtypes.append(atype)
+                    self.n_parintra += 1
         # DIHEDRALS
-        for i in MOL.dfdih.index:
-            dtype = MOL.dfdih.loc[i, "types"]
-            if dtype not in self.dihtypes and atype[::-1] not in self.dihtypes:
-                lines_ffintra += "{}{:>7}{:>4}{:>4}{:>4} {:>8.2f} kcal/mol {:>8d} {:>8d} {:>8.2f} deg\n".format(
-                    "torsion_gaff",
-                    dtype[0],
-                    dtype[1],
-                    dtype[2],
-                    dtype[3],
-                    MOL.dfdih.loc[i, "Vn"],
-                    MOL.dfdih.loc[i, "divider"],
-                    MOL.dfdih.loc[i, "n"],
-                    MOL.dfdih.loc[i, "phi"]
-                )
-                self.dihtypes.append(dtype)
-                self.n_parintra += 1
+        if "types" in MOL.dfdih:
+            for i in MOL.dfdih.index:
+                dtype = MOL.dfdih.loc[i, "types"]
+                if dtype not in self.dihtypes and atype[::-1] not in self.dihtypes:
+                    lines_ffintra += "{}{:>7}{:>4}{:>4}{:>4} {:>8.2f} kcal/mol {:>8d} {:>8d} {:>8.2f} deg\n".format(
+                        "torsion_gaff",
+                        dtype[0],
+                        dtype[1],
+                        dtype[2],
+                        dtype[3],
+                        MOL.dfdih.loc[i, "Vn"],
+                        MOL.dfdih.loc[i, "divider"],
+                        MOL.dfdih.loc[i, "n"],
+                        MOL.dfdih.loc[i, "phi"]
+                    )
+                    self.dihtypes.append(dtype)
+                    self.n_parintra += 1
 
         self._lines1 += lines
         self._lines_pot += lines_pot
@@ -264,19 +285,8 @@ class fatomes:
         self._lines_pot += lines_pot
 
     def write_topol(self, **kwargs):
-        lines = "*\n"
-        lines += "maille_long     {:.3f} {:.3f} {:.3f} ang\n".format(
-            fatomes.options["maille_long"],
-            fatomes.options["maille_long"],
-            fatomes.options["maille_long"])
-        lines += "maille_angle    90.0 90.0 90.0 degre\n"
-        lines += "maille_orient   0\n"
-        lines += "maille_ref\n"
-        lines += "*\n"
-
         fatomes.lines += self._lines0
         fatomes.lines += self._lines1
-        fatomes.lines += lines
         fatomes.lines += self._lines_pot
         self._lines_xyz = self._lines_xyz.replace('NATOMS', '%d' % self.natoms)
         fatomes.lines += self._lines_xyz

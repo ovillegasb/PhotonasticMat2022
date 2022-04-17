@@ -17,6 +17,12 @@ def assinging_at_type(atom):
         if atom.atoms_connect.count("H") == 4:
             return "CH4"
 
+        elif atom.atoms_connect.count("H") == 3:
+            return "CH3"
+
+        else:
+            raise ForceFieldError(m_error)
+
     elif atom.sb == "H":
         """ HYDROGEN """
         if atom.atoms_connect == "Csp3":
@@ -42,9 +48,14 @@ def get_row(at, i):
     row["type"] = assinging_at_type(at)
     row["charge"] = at.charge
 
-    if "CH" in row["type"]:
-        row["mass"] = massUA[row["type"]]
-    row["ndx"] = i
+    # if row["type"]:
+    try:
+        if "CH" in row["type"]:
+            row["mass"] = massUA[row["type"]]
+        row["ndx"] = i
+    except TypeError:
+        print(row)
+        exit()
 
     return row
 
@@ -63,9 +74,13 @@ def FFcoef(dftypes, ffdata, ff="gromos"):
     """
 
     def sigma(c6, c12):
-        return (c12/c6)**(1/6)
+        # nm --> angstrom
+        sig = (c12/c6)**(1/6)
+        return sig / 10
 
     def epsilon(c6, c12):
+        # 1 kcal = 4.184 kj
+        # kJ / mol --> kcal / mol
         return (c6**2) / (4 * c12)
 
     # VDW parameters
@@ -91,12 +106,12 @@ def FFcoef(dftypes, ffdata, ff="gromos"):
                             epsilon(np.float64(m["c6"]), np.float64(m["c12"]))  # epsilon (Kj/mol)
                         ]
                     }
-                print(m)
+                # print(m)
 
                 dftypes["sigma"] = dftypes["type"].apply(lambda x: m[x][0])
                 dftypes["epsilon"] = dftypes["type"].apply(lambda x: m[x][1])
 
-                print(dftypes)
+                # print(dftypes)
 
 
 def get_vdw_par(MOL):
@@ -115,8 +130,15 @@ def Get_ATypes(MOL, ffdata):
 
     """
     coord = MOL.dfatoms
+    connect = MOL.connect
+    print(connect)
+    print(coord)
     coord["type"] = "No Found"
     out = list()
+
+    # print(coord)
+    # exit()
+    to_remove = []
 
     # Central Iterator
     for i in coord.index:
@@ -133,6 +155,8 @@ def Get_ATypes(MOL, ffdata):
 
             if H.atoms_connect == "Csp3":
                 coord.loc[H.n, "type"] = "Found"
+                # connect.remove_node(i)
+                to_remove.append(i)
                 continue
             out.append(get_row(H, i))
             coord.loc[H.n, "type"] = "Found"
@@ -143,5 +167,15 @@ def Get_ATypes(MOL, ffdata):
     # out = pd.DataFrame(out, index=np.arange(1, len(out) + 1))
     out = pd.DataFrame(out)
     MOL.dftypes = out
+    # print(coord)
+    if len(to_remove) > 0:
+        for i in to_remove:
+            connect.remove_node(i)
 
-    FFcoef(MOL.dftypes, ffdata, ff="gromos")
+    MOL.connect = connect
+
+    # print(MOL.connect)
+    # print(out)
+    # exit()
+
+    # FFcoef(MOL.dftypes, ffdata, ff="gromos")
