@@ -67,25 +67,19 @@ class MOL:
             for e in all_ps[s].keys():
                 if all_ps[s][e] == 1:
                     all_paths += list(nx.algorithms.all_simple_paths(connect, s, e, cutoff=1))
-
                 elif all_ps[s][e] == 2:
                     all_paths += list(nx.algorithms.all_simple_paths(connect, s, e, cutoff=2))
-
                 elif all_ps[s][e] == 3:
                     all_paths += list(nx.algorithms.all_simple_paths(connect, s, e, cutoff=3))
-
         bonds_list = [tuple(p) for p in all_paths if len(set(p)) == 2]
         for iat, jat in bonds_list:
             if iat < jat:
                 MOL.bonds_list.append((iat, jat))
-
         MOL.dfbonds["list"] = MOL.bonds_list
-
         angles_list = [tuple(p) for p in all_paths if len(set(p)) == 3]
         for iat, jat, kat in angles_list:
             if iat < kat:
                 MOL.angles_list.append((iat, jat, kat))
-
         MOL.dfangles["list"] = MOL.angles_list
 
         dihedrals_list = [tuple(p) for p in all_paths if len(set(p)) == 4]
@@ -316,10 +310,9 @@ class FField:
             dftypes["sigma"] = dftypes["type"].apply(lambda x: vdwpar[x][0])
             dftypes["epsilon"] = dftypes["type"].apply(lambda x: vdwpar[x][1])
         except KeyError:
-            raise ForceFieldError("""\033[1;31m
-
-                It was not possible to assign atom type to :\n%s
-                \033[m""" % dftypes)
+            raise ForceFieldError("""
+                \033[1;31mIt was not possible to assign atom type to :\n{}
+                \033[m""".format(dftypes))
         # print(dftypes)
         # BONDS
         bondspar = self.database["bonds"]

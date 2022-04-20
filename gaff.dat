@@ -6986,8 +6986,8 @@ h1-c3-c -o    1    0.08        180.0             3.         Junmei et al, 1999
 hc-c3-c -o    1    0.80          0.0            -1.         Junmei et al, 1999
 hc-c3-c -o    1    0.00          0.0            -2.         Junmei et al, 1999
 hc-c3-c -o    1    0.08        180.0             3.         Junmei et al, 1999
-*hc-c3-c3-hc   1    0.15          0.0             3.         Junmei et al, 1999
-*hc-c3-c3-c3   1    0.16          0.0             3.         Junmei et al, 1999
+hc-c3-c3-hc   1    0.15          0.0             3.         Junmei et al, 1999
+hc-c3-c3-c3   1    0.16          0.0             3.         Junmei et al, 1999
 hc-c3-c2-c2   1    0.38        180.0            -3.         Junmei et al, 1999
 hc-c3-c2-c2   1    0.00          0.0            -2.         Junmei et al, 1999
 hc-c3-c2-c2   1    1.15          0.0             1.         Junmei et al, 1999
@@ -6999,7 +6999,7 @@ c2-c2-c -o    1    2.175       180.0            -2.         Junmei et al, 1999
 c2-c2-c -o    1    0.30          0.0             3.         Junmei et al, 1999
 c3-c2-c2-c3   1    6.65        180.0            -2.         Junmei et al, 1999
 c3-c2-c2-c3   1    1.90        180.0             1.         Junmei et al, 1999
-*c3-c3-c3-c3   1    0.18          0.0            -3.         Junmei et al, 1999
+c3-c3-c3-c3   1    0.18          0.0            -3.         Junmei et al, 1999
 c3-c3-c3-c3   1    0.25        180.0            -2.         Junmei et al, 1999
 c3-c3-c3-c3   1    0.20        180.0             1.         Junmei et al, 1999
 c3-c3-n3-c3   1    0.30          0.0            -3.         Junmei et al, 1999
@@ -7122,25 +7122,25 @@ MOD4      RE
   h3          1.1870  0.0157             Veenstra et al JCC,8,(1992),963 
   h4          1.4090  0.0150             Spellmeyer, one electrowithdr. neighbor
   h5          1.3590  0.0150             Spellmeyer, two electrowithdr. neighbor
-  ha          1.4590  0.0150             Spellmeyer 
+*  ha          1.4590  0.0150             Spellmeyer 
 *  hc          1.4870  0.0157             OPLS
-  hn          0.6000  0.0157            !Ferguson base pair geom.
-  ho          0.0000  0.0000             OPLS Jorgensen, JACS,110,(1988),1657
+*  hn          0.6000  0.0157            !Ferguson base pair geom.
+*  ho          0.0000  0.0000             OPLS Jorgensen, JACS,110,(1988),1657
   hp          0.6000  0.0157             same to hs (be careful !) 
   hs          0.6000  0.0157             W. Cornell CH3SH --> CH3OH FEP
   hw          0.0000  0.0000             OPLS Jorgensen, JACS,110,(1988),1657
   hx          1.1000  0.0157             Veenstra et al JCC,8,(1992),963
-  o           1.6612  0.2100             OPLS
-  oh          1.7210  0.2104             OPLS 
-  os          1.6837  0.1700             OPLS ether
+*  o           1.6612  0.2100             OPLS
+*  oh          1.7210  0.2104             OPLS 
+*  os          1.6837  0.1700             OPLS ether
   op          1.6837  0.1700             OPLS ether
   oq          1.6837  0.1700             OPLS ether
   ow          1.7683  0.1520             TIP3P water model
-  c           1.9080  0.0860             OPLS
-  c1          1.9080  0.2100             cp C DLM 11/2007 well depth from OPLS replacing 0.0860
-  c2          1.9080  0.0860             sp2 atom in the middle of C=CD-CD=C
+*  c           1.9080  0.0860             OPLS
+*  c1          1.9080  0.2100             cp C DLM 11/2007 well depth from OPLS replacing 0.0860
+*  c2          1.9080  0.0860             sp2 atom in the middle of C=CD-CD=C
 *  c3          1.9080  0.1094             OPLS
-  ca          1.9080  0.0860             OPLS
+*  ca          1.9080  0.0860             OPLS
   cc          1.9080  0.0860             OPLS
   cd          1.9080  0.0860             OPLS
   ce          1.9080  0.0860             OPLS
@@ -7154,29 +7154,29 @@ MOD4      RE
   cx          1.9080  0.0860             OPLS
   cy          1.9080  0.0860             OPLS
   cz          1.9080  0.0860             OPLS
-  n           1.8240  0.1700             OPLS
+*  n           1.8240  0.1700             OPLS
   ni          1.8240  0.1700             OPLS
   nj          1.8240  0.1700             OPLS
-  n1          1.8240  0.1700             OPLS
-  n2          1.8240  0.1700             OPLS
-  n3          1.8240  0.1700             OPLS
+*  n1          1.8240  0.1700             OPLS
+*  n2          1.8240  0.1700             OPLS
+*  n3          1.8240  0.1700             OPLS
   np          1.8240  0.1700             OPLS
   nq          1.8240  0.1700             OPLS
   n4          1.8240  0.1700             OPLS
   nk          1.8240  0.1700             OPLS
   nl          1.8240  0.1700             OPLS
-  na          1.8240  0.1700             OPLS
+*  na          1.8240  0.1700             OPLS
   nb          1.8240  0.1700             OPLS
   nc          1.8240  0.1700             OPLS
   nd          1.8240  0.1700             OPLS
   ne          1.8240  0.1700             OPLS
   nf          1.8240  0.1700             OPLS
-  nh          1.8240  0.1700             OPLS
+*  nh          1.8240  0.1700             OPLS
   nm          1.8240  0.1700             OPLS
   nn          1.8240  0.1700             OPLS
   no          1.8240  0.1700             OPLS
   s           2.0000  0.2500             W. Cornell CH3SH and CH3SCH3 FEP's
-  s2          2.0000  0.2500             W. Cornell CH3SH and CH3SCH3 FEP's
+*  s2          2.0000  0.2500             W. Cornell CH3SH and CH3SCH3 FEP's
   s4          2.0000  0.2500             W. Cornell CH3SH and CH3SCH3 FEP's
   s6          2.0000  0.2500             W. Cornell CH3SH and CH3SCH3 FEP's
   sx          2.0000  0.2500             W. Cornell CH3SH and CH3SCH3 FEP's
@@ -7196,7 +7196,7 @@ MOD4      RE
   pf          2.1000  0.2000             JCC,7,(1986),230; 
   px          2.1000  0.2000             JCC,7,(1986),230; 
   py          2.1000  0.2000             JCC,7,(1986),230; 
-  f           1.75    0.061              Gough et al. JCC 13,(1992),963.
+*  f           1.75    0.061              Gough et al. JCC 13,(1992),963.
   cl          1.948   0.265              Fox, JPCB,102,8070,(98),flex.mdl CHCl3
   br          2.02    0.420              Junmei, 2010
   i           2.15    0.50               Junmei, 2010
