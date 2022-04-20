@@ -294,11 +294,17 @@ class ATOM(MOL):
             "C": {4: "sp3", 3: "sp2"}
         }
         try:
-            return atms_hyb[self.sb][len(self.connect[self.n])]
+            return atms_hyb[self.atsb][len(self.connect[self.n])]
         except KeyError:
             raise MoleculeDefintionError(_errorMessages[3].format(
                 self.n, self.atsb))
 
+
+def _remove_coord_negative(coord):
+    for p in ["x", "y", "z"]:
+        if coord[p].min() < 0.0:
+            coord[p] = coord[p] - coord[p].min()
+    return coord
 
 def _load_xyz(file):
     """Read a file xyz."""
@@ -310,6 +316,8 @@ def _load_xyz(file):
         names=['atsb', 'x', 'y', 'z'],
         dtype={'x': np.float64, 'y': np.float64, 'z': np.float64}
     )
+
+    coord = _remove_coord_negative(coord)
 
     coord["mass"] = coord["atsb"].apply(lambda at: Elements[at]["mass"])
     coord["num"] = coord["atsb"].apply(lambda at: Elements[at]["num"])

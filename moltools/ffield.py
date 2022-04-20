@@ -270,11 +270,11 @@ def get_atoms_types(MOL, ff):
     print(coord)
     MOL.dftypes = coord
 
-
 def get_ffparameters(MOL, ff):
     dftypes = MOL.dftypes
     dfbonds = MOL.dfbonds
     dfangles = MOL.dfangles
+    dfdih = MOL.dfdih
 
     # VDW
     dbase = database(ff)
@@ -325,3 +325,22 @@ def get_ffparameters(MOL, ff):
                 It was not possible to assign a angle type:{}
                 \033[m""".format(not_found))
     print(dfangles)
+
+    # DIHEDRALS
+    dihedralspar = dbase["dihedrals"]
+    try:
+        dfdih["divider"] = dfdih["types"].apply(lambda x: dihedralspar[x][0])
+        dfdih["Vn"] = dfdih["types"].apply(lambda x: dihedralspar[x][1])
+        dfdih["phi"] = dfdih["types"].apply(lambda x: dihedralspar[x][2])
+        dfdih["n"] = dfdih["types"].apply(lambda x: dihedralspar[x][3])
+    except KeyError:
+        # Exist angles not found
+        dih = set(dfdih.types.values)
+        not_found = []
+        for d in dih:
+            if d not in dihedralspar:
+                not_found.append(d)
+        raise ForceFieldError("""\033[1;31m
+                It was not possible to assign a angle type:{}
+                \033[m""".format(not_found))
+    print(dfdih)
