@@ -383,7 +383,7 @@ def options():
         help="Thermodynamic Ensemble",
         default="NVT",
         type=str,
-        choices=["NVT", "NPT"]
+        choices=["NVE", "NVT", "NPT"]
     )
 
     # Temperature
