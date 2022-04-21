@@ -1,9 +1,63 @@
+"""
+Module created to generate input files to STAMP.
 
+Author: Orlando VILLEGAS
+Date: 2022
+\033[1;36m
+ __   ____     ___________   _____ _______       __  __ _____
+ \\ \\ / /\\ \\   / /___  /__ \\ / ____|__   __|/\\   |  \\/  |  __ \\
+  \\ V /  \\ \\_/ /   / /   ) | (___    | |  /  \\  | \\  / | |__) |
+   > <    \\   /   / /   / / \\___ \\   | | / /\\ \\ | |\\/| |  ___/
+  / . \\    | |   / /__ / /_ ____) |  | |/ ____ \\| |  | | |
+ /_/ \\_\\   |_|  /_____|____|_____/   |_/_/    \\_\\_|  |_|_|
+\033[m
+Module created to generate input files to STAMP.
+
+Author: Orlando VILLEGAS
+Date: 2022
+
+###############################################################
+
+"""
+
+import argparse
 import time
-from scipy.constants import N_A
 import itertools as it
 import pandas as pd
 import numpy as np
+from moltools.structure import MOL, ATOM
+from moltools.ffield import get_atoms_types, get_ffparameters, get_interactions_list
+from mkitpgmx import save_gro, save_itp
+
+TITLE = """
+Module created to generate input files to STAMP.
+
+Author: Orlando VILLEGAS
+Date: 2022
+\033[1;36m
+ __   ____     ___________   _____ _______       __  __ _____
+ \\ \\ / /\\ \\   / /___  /__ \\ / ____|__   __|/\\   |  \\/  |  __ \\
+  \\ V /  \\ \\_/ /   / /   ) | (___    | |  /  \\  | \\  / | |__) |
+   > <    \\   /   / /   / / \\___ \\   | | / /\\ \\ | |\\/| |  ___/
+  / . \\    | |   / /__ / /_ ____) |  | |/ ____ \\| |  | | |
+ /_/ \\_\\   |_|  /_____|____|_____/   |_/_/    \\_\\_|  |_|_|
+\033[m
+Module created to generate input files to STAMP.
+
+Author: Orlando VILLEGAS
+Date: 2022
+
+###############################################################
+
+References:
+
+
+Docs:
+
+http://ambermd.org/vdwequation.pdf
+
+"""
+
 
 def write_run(**kwargs):
     """
@@ -18,15 +72,15 @@ def write_run(**kwargs):
         "TauNVT": "3.e-12",
         "Schema": "verlet",
         "Deltatemps": 1.0,
-        "StepLimit": 10,
+        "StepLimit": 20,
         "StepAvg": "1",
         "FichierAtomes": "./FAtomes.in",  # config
-        "Decoupage": "10 10 10",  # config
-        "Parallele": "1 1 1",
+        "Decoupage": "5 5 5",  # config
+        "Parallele": "2 2 2",
         "ConditionX": "Periodique",
         "ConditionY": "Periodique",
         "ConditionZ": "Periodique",
-        "drVerlet": "1.e-10",
+        "drVerlet": "2.e-10",
         "Protection": 10,
         "ProtectionExaStamp": "1",  # config
         "Reprise": "0",  # config
@@ -35,7 +89,7 @@ def write_run(**kwargs):
         "Vitesse": "1",
         "NbFantomesSup": "0",
         "XyzSortie": "1",  # config
-        "XyzFrequence": 100,
+        "XyzFrequence": 10,
         "XyzOrdonnee": "1",
         "Molecule": 1,
         "Molecule_CalculIntra": 1,
@@ -296,3 +350,169 @@ class fatomes:
 
         print("\nfile \033[1;36mFAtomes.in\033[m writed\n")
 
+
+def options():
+    """Generate command line interface."""
+
+    parser = argparse.ArgumentParser(
+        prog="XYZ2STAMP",
+        usage="%(prog)s [-option] value",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Enjoy the program!"  #, description=__doc__
+    )
+
+    # Add the arguments
+
+    # Inputfile type
+    parser.add_argument(
+        "-t", "--type",
+        help="donnees or fatomes",
+        default="donnees",
+        metavar="entrytype",
+        type=str,
+        choices=["donnees", "fatomes"]
+    )
+
+    donnees = parser.add_argument_group(
+        "\033[1;36mDonnees file parameters\033[m")
+
+    # donnees group
+    donnees.add_argument(
+        "-ensemble", "--Ensemble",
+        help="Thermodynamic Ensemble",
+        default="NVT",
+        type=str,
+        choices=["NVT", "NPT"]
+    )
+
+    # Temperature
+    donnees.add_argument(
+        "-temp", "--Trequis",
+        help="Temperature (K)",
+        default=300.0,
+        type=float,
+        metavar="TEMPERATURE"
+    )
+
+    # Time step
+    donnees.add_argument(
+        "-dt", "--Deltatemps",
+        help="Time step (fs)",
+        default=1.0,
+        type=float,
+        metavar="TIME"
+    )
+
+    # Number of steps
+    donnees.add_argument(
+        "-nstep", "--StepLimit",
+        help="Numer of steps N x fs = Simulation time.",
+        default=10,
+        type=int,
+        metavar="NSTEP"
+    )
+
+    # save frame every step
+    donnees.add_argument(
+        "-frames", "--XyzFrequence",
+        help="save a frame every n step.",
+        default=10,
+        type=int,
+        metavar="NSTEPS"
+    )
+
+    # save a checkpoint every n step
+    donnees.add_argument(
+        "-check", "--Protection",
+        help="save a checkpoint every n step.",
+        default=10,
+        type=int,
+        metavar="NSTEPS"
+    )
+
+    fatomes = parser.add_argument_group(
+        "\033[1;36mFatomes file parameters\033[m")
+
+    # fatomes group
+    fatomes.add_argument(
+        "-f", "--files",
+        help="Specifies all coordinates files in series that you want to load",
+        default=None,
+        nargs="+"
+    )
+
+    # Force file
+    fatomes.add_argument(
+        "-ff", "--forcefield",
+        help="Force field family",
+        default="gaff",
+        type=str,
+        choices=["gaff", "oplsaa", "gromos"]
+    )
+
+    return vars(parser.parse_args())
+
+
+def print_steps(message):
+    print("\033[1;35m%s\033[m" % message)
+
+
+def main():
+    """
+    Central core of program execution.
+
+    """
+
+    print(TITLE)
+
+    args = options()
+
+    if args["type"] == "donnees":
+        # Generates the DONNEES input file with the simulation parameters.
+        write_run(**args)
+
+    elif args["type"] == "fatomes":
+        # Generates the input file FAtoms with the structural and force
+        # field information of the system.
+
+        if args["files"]:
+            # 0) The molecule class is initialized.
+            mol = MOL()
+
+            # 1) Read all entry files.
+            print_steps("0) Read all entry files.")
+            print("files:", args["files"])
+            print("N files", len(args["files"]))
+
+            # INIT for ...
+            mol.load_file(args["files"][0])
+            print("DATA:\n", mol.dfatoms)
+
+            # 2) Search connectivity from geometry.
+            print_steps("2) Search connectivity from geometry.")
+            mol.search_connectivity()
+
+            # 3) Atom types are assigned.
+            print_steps("3) Atom types are assigned.")
+            get_atoms_types(mol, args["forcefield"])
+
+            # 4) The force field parameters are assigned.
+            print_steps("4) The force field parameters are assigned.")
+            get_interactions_list(mol)
+            get_ffparameters(mol, args["forcefield"])
+
+            Fatomes = fatomes()
+            Fatomes.write_atominfo(mol)
+            # END for ...
+
+            # 5) write all information.
+            print_steps("5) write all information.")
+            Fatomes.write_topol()
+        else:
+            print("No file found")
+
+
+if __name__ == "__main__":
+    # RUN
+
+    main()
