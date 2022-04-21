@@ -6441,12 +6441,16 @@ Out-of-Plane Terms
 X     
  \    
   c--o,    central atom is 3rd
- /
+ /         perodicity is allways 2, divider is m=1
 o
+
+      barrier_term Vn (kcal/mol) phase (degree)   periodicity (n)
+------------------------------------------------------------------------------
+X -X -ca-ha         1.1          180.          2.           bsd.on C6H6 nmodes
+ca-ca-ca-ha         1.1          180.          2.
 
 X -o -c -o          1.1          180.          2.           JCC,7,(1986),230
 X -X -c -o          10.5         180.          2.           JCC,7,(1986),230
-X -X -ca-ha         1.1          180.          2.           bsd.on C6H6 nmodes
 X -X -n -hn         1.1          180.          2.           JCC,7,(1986),230
 X -X -n2-hn         1.1          180.          2.           JCC,7,(1986),230
 X -X -na-hn         1.1          180.          2.           JCC,7,(1986),230

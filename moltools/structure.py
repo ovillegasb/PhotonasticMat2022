@@ -150,6 +150,7 @@ class MOL:
     dfbonds = pd.DataFrame()
     dfangles = pd.DataFrame()
     dfdih = pd.DataFrame()
+    dfimp = pd.DataFrame()
 
     # Connectivity
     connect = connectivity()
@@ -157,6 +158,7 @@ class MOL:
     bonds_list = []
     angles_list = []
     dihedrals_list = []
+    impropers_list = []
 
     def load_file(self, file):
         """Extract information from file."""
@@ -305,6 +307,7 @@ def _remove_coord_negative(coord):
         if coord[p].min() < 0.0:
             coord[p] = coord[p] - coord[p].min()
     return coord
+
 
 def _load_xyz(file):
     """Read a file xyz."""

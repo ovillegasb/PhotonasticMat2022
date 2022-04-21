@@ -4,6 +4,7 @@ import networkx as nx
 import os
 import re
 from moltools.structure import ATOM
+from pandas import DataFrame
 
 
 class ForceFieldError(Exception):
@@ -75,9 +76,19 @@ def database(ff):
         (?P<divider>[+-]?\d+)\s+               # int
         (?P<Vn>[+-]?\d+\.\d+)\s+               # kcal/mol
         (?P<phi>[+-]?\d+\.\d+)\s+              # degree
-        (?P<n>[+-]?\d\.\d*)\s+                # periodicity
+        (?P<n>[+-]?\d\.\d*)\s+                 # periodicity
         """, re.X)
     dihedralspar = {}
+
+    # IMPROPERS parameters
+    impropers = re.compile(
+        r"""
+        ^(?P<d1>\w+)\s*-\s*(?P<d2>\w+)\s*-\s*(?P<d3>\w+)\s*-\s*(?P<d4>\w+)\s+
+        (?P<Vn>[+-]?\d+\.\d+)\s+                # kcal/mol
+        (?P<phi>[+-]?\d+\.\d*)\s+               # degree
+        (?P<n>[+-]?\d\.\d*)\s+                  # periodicity
+        """, re.X)
+    improperspar = {}
     # print(ffdata(ff))
     with open(ffdata(ff), "r") as DBASE:
         for line in DBASE:
@@ -137,7 +148,25 @@ def database(ff):
                         np.float64(m["phi"]),
                         int(np.float64(m["n"]))
                     ]
-    return {"vdw": vdwpar, "bonds": bondspar, "angles": anglespar, "dihedrals": dihedralspar}
+
+            elif impropers.match(line):
+                # IMPROPERS
+                m = impropers.match(line)
+                m = m.groupdict()
+                imp = (m["d1"], m["d2"], m["d3"], m["d4"])
+                improperspar[imp] = [
+                            np.float64(m["Vn"]),
+                            np.float64(m["phi"]),
+                            int(np.float64(m["n"]))
+                        ]
+
+    return {
+        "vdw": vdwpar,
+        "bonds": bondspar,
+        "angles": anglespar,
+        "dihedrals": dihedralspar,
+        "impropers": improperspar
+        }
 
 
 def get_interactions_list(MOL):
@@ -186,7 +215,8 @@ def get_interactions_list(MOL):
     dihedrals_list = [tuple(p) for p in all_paths if len(set(p)) == 4]
     for iat, jat, kat, lat in dihedrals_list:
         if iat < lat:
-            MOL.dihedrals_list.append((iat, jat, kat, lat))
+            if MOL.dftypes.loc[jat, "type"] != "ca" and MOL.dftypes.loc[kat, "type"] != "ca":
+                MOL.dihedrals_list.append((iat, jat, kat, lat))
     MOL.dfdih["list"] = MOL.dihedrals_list
 
     MOL.dfdih["types"] = MOL.dfdih["list"].apply(
@@ -196,6 +226,43 @@ def get_interactions_list(MOL):
             MOL.dftypes.loc[x[2], "type"],
             MOL.dftypes.loc[x[3], "type"])
         )
+
+    # OUT-OF-PLANE, IMPROPER, list
+    for at in MOL.dftypes.index:
+        if MOL.dftypes.loc[at, "type"] in ["ca"]:
+            i, j, z = set(nx.all_neighbors(MOL.connect, at))
+            # print(i, j, z)
+            test = MOL.dftypes.loc[[i, j, z], "type"]  # .sort_values(axis=1)
+
+            test = DataFrame({"idx": test.index, "type": test.values})
+
+            # print(test.set_index('Column_to_make_index'))
+            # print()
+            # print(test)
+            test.sort_values("type", ascending=True, inplace=True)
+            test.set_index("idx", inplace=True)
+            i, j, z = tuple(test.index)
+
+            # i
+            # print(type(test))
+            # print("#"*50)
+            MOL.impropers_list.append((i, j, at, z))
+    # re.sub("CH\d", "CHn", tp1)
+    # exit()
+
+    MOL.dfimp["list"] = MOL.impropers_list
+
+    MOL.dfimp["types"] = MOL.dfimp["list"].apply(
+        lambda x: (
+            MOL.dftypes.loc[x[0], "type"],  # re.sub("c\w", "X", MOL.dftypes.loc[x[0], "type"]),
+            MOL.dftypes.loc[x[1], "type"],  # re.sub("c\w", "X", MOL.dftypes.loc[x[1], "type"]),
+            MOL.dftypes.loc[x[2], "type"],
+            MOL.dftypes.loc[x[3], "type"])
+        )
+
+    # print(MOL.dfimp)
+    # print("Estamos aqui")
+    # exit()
 
     # print("Natoms:", connect.number_of_nodes())
     # print("Bonds:\n", MOL.bonds_list)
@@ -219,6 +286,9 @@ def assinging_at_type(atom):
         elif atom.hyb == "sp3" and atom.atoms_connect.count("H") == 2:
             return "c3"
 
+        elif atom.hyb == "sp2" and atom.atoms_connect.count("Csp2") >= 2:
+            return "ca"
+
         else:
             raise ForceFieldError(error)
 
@@ -227,6 +297,8 @@ def assinging_at_type(atom):
         if atom.atoms_connect == "Csp3":
             return "hc"
 
+        elif atom.atoms_connect == "Csp2":
+            return "ha"
     else:
         raise ForceFieldError(error)
 
@@ -267,14 +339,16 @@ def get_atoms_types(MOL, ff):
         else:
             raise ForceFieldError(_errorMessages[2].format(coord.atsb[i]))
 
-    print(coord)
+    # print(coord)
     MOL.dftypes = coord
+
 
 def get_ffparameters(MOL, ff):
     dftypes = MOL.dftypes
     dfbonds = MOL.dfbonds
     dfangles = MOL.dfangles
     dfdih = MOL.dfdih
+    dfimp = MOL.dfimp
 
     # VDW
     dbase = database(ff)
@@ -344,3 +418,21 @@ def get_ffparameters(MOL, ff):
                 It was not possible to assign a angle type:{}
                 \033[m""".format(not_found))
     print(dfdih)
+
+    # IMPROPERS
+    improperspar = dbase["impropers"]
+    try:
+        dfimp["Vn"] = dfimp["types"].apply(lambda x: improperspar[x][0])
+        dfimp["phi"] = dfimp["types"].apply(lambda x: improperspar[x][1])
+        dfimp["n"] = dfimp["types"].apply(lambda x: improperspar[x][2])
+    except KeyError:
+        # Exist angles not found
+        imp = set(dfimp.types.values)
+        not_found = []
+        for d in imp:
+            if d not in improperspar:
+                not_found.append(d)
+        raise ForceFieldError("""\033[1;31m
+                It was not possible to assign a angle type:{}
+                \033[m""".format(not_found))
+    print(dfimp)

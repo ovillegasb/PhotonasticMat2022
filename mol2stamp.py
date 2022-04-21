@@ -196,6 +196,7 @@ class fatomes:
         self.btypes = []
         self.angtypes = []
         self.dihtypes = []
+        self.imptypes = []
         self.dftypes = []
 
     def write_atominfo(self, MOL, **kwargs):
@@ -287,7 +288,7 @@ class fatomes:
             for i in MOL.dfdih.index:
                 dtype = MOL.dfdih.loc[i, "types"]
                 if dtype not in self.dihtypes and atype[::-1] not in self.dihtypes:
-                    lines_ffintra += "{}{:>7}{:>4}{:>4}{:>4} {:>8.2f} kcal/mol {:>8d}- {:>8d}- {:>8.2f} deg\n".format(
+                    lines_ffintra += "{}{:>7}{:>4}{:>4}{:>4} {:>8.2f} kcal/mol {:>8d} - {:>8d} - {:>8.2f} deg\n".format(
                         "torsion_gaff",
                         dtype[0],
                         dtype[1],
@@ -300,6 +301,21 @@ class fatomes:
                     )
                     self.dihtypes.append(dtype)
                     self.dihtypes.append(dtype[::-1])
+                    self.n_parintra += 1
+        # IMPROPERS
+        if "types" in MOL.dfimp:
+            for i in MOL.dfimp.index:
+                itype = MOL.dfimp.loc[i, "types"]
+                if itype not in self.imptypes:
+                    lines_ffintra += "{}{:>7}{:>4}{:>4}{:>4} {:>8.2f} kcal/mol\n".format(
+                        "impropre_gaff",
+                        itype[2],  # For stamp, cetral atom is the first
+                        itype[0],
+                        itype[1],
+                        itype[3],
+                        MOL.dfimp.loc[i, "Vn"]
+                    )
+                    self.imptypes.append(itype)
                     self.n_parintra += 1
 
         self._lines1 += lines
