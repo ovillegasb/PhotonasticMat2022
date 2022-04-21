@@ -299,6 +299,7 @@ class fatomes:
                         MOL.dfdih.loc[i, "phi"]
                     )
                     self.dihtypes.append(dtype)
+                    self.dihtypes.append(dtype[::-1])
                     self.n_parintra += 1
 
         self._lines1 += lines
