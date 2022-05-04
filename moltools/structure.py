@@ -1,4 +1,5 @@
 
+import re
 import pandas as pd
 import numpy as np
 import networkx as nx
@@ -166,6 +167,9 @@ class MOL:
         if file.endswith("xyz"):
             MOL.dfatoms = _load_xyz(file)
 
+        elif file.endswith("out") or file.endswith("log"):
+            MOL.dfatoms = _load_gaus(file)
+
         else:
             raise MoleculeDefintionError(_errorMessages[0])
 
@@ -326,4 +330,106 @@ def _load_xyz(file):
     coord["num"] = coord["atsb"].apply(lambda at: Elements[at]["num"])
     # This file has no partial charges .
     coord["charge"] = 0.0
+    return coord
+
+
+def _load_gaus(file):
+    """Obtains the optimized geometry and partial charges of the system from
+    output file gaussian."""
+
+    bond = re.compile(r"""
+            ^\s!\sR\d+\s+
+            R\((?P<at1>\d+),(?P<at2>\d+)\)\s+   # bond list
+            """, re.X)
+
+    coord = re.compile(r"""
+            \s+
+            (?P<atid>\d+)\s+           # Atom id.
+            (?P<atnum>\d+)\s+          # Atomic number.
+            \d+\s+
+            (?P<x>[+-]?\d+\.\d+)\s+    # Orthogonal coordinates for X.
+            (?P<y>[+-]?\d+\.\d+)\s+    # Orthogonal coordinates for Y.
+            (?P<z>[+-]?\d+\.\d+)\s+    # Orthogonal coordinates for Z.
+            """, re.X)
+
+    charge = re.compile(r"""
+            \s+
+            (?P<atid>\d+)\s+               # Atom id.
+            (?P<atsb>\w+)\s+               # Atomic number.
+            (?P<charge>[+-]?\d+\.\d+)\s+   # Partial charges
+            """, re.X)
+
+    IGaus = list()
+    data1 = list()
+    data2 = list()
+    data3 = list()
+
+    with open(file, 'r') as INPUT:
+        for line in INPUT:
+            IGaus.append(line)
+    IGaus = dict(enumerate(IGaus))
+
+    for n in IGaus:
+        """ Parametre Optimized """
+        if 'Optimized Parameters' in IGaus[n]:
+            for a in IGaus:
+                if a > n:
+                    """ Bonds list"""
+                    if bond.match(IGaus[a]):
+                        m = bond.match(IGaus[a])
+                        a1 = int(m.groupdict()['at1'])
+                        a2 = int(m.groupdict()['at2'])
+                        data2.append((a1, a2))
+
+                    """ Coordinates """
+                    if 'Standard orientation:' in IGaus[a]:
+                        for b in IGaus:
+                            if b > a:
+                                if coord.match(IGaus[b]):
+                                    m = coord.match(IGaus[b])
+                                    data1.append(m.groupdict())
+
+                    if 'ESP charges:' in IGaus[a]:
+                        for c in IGaus:
+                            if c > a + 1:
+                                if charge.match(IGaus[c]):
+                                    m = charge.match(IGaus[c])
+                                    data3.append(m.groupdict())
+                                else:
+                                    break
+
+    coord = pd.DataFrame(data1)
+    atcharges = pd.DataFrame(data3)
+    coord['atsb'] = atcharges['atsb']
+    coord['charge'] = atcharges['charge']
+
+    """ Formating """
+    coord = coord.astype({
+        'atid': np.int,
+        'num': np.int,
+        'x': np.float,
+        'y': np.float,
+        'z': np.float,
+        'charge': np.float})
+    coord = coord.set_index('atid')
+
+    coord["mass"] = coord["atsb"].apply(lambda at: Elements[at]["mass"])
+
+    """ Listing bond, angle """
+    # bond_list = set(data2)
+
+    """ connectivity"""
+    # connect = get_connectivity(dfatoms, bond_list)
+
+    """ angles """
+    # angle_list = get_angles_list(len(dfatoms), bond_list)
+
+    """ dihedrals and pairs """
+    # dihedral_list, pair_list = get_dihedral_pairs_list(len(dfatoms), bond_list)
+
+    """ impropers """
+    # improper_list = get_improper_list(len(dfatoms), bond_list)
+
+    # return dfatoms, bond_list, angle_list, dihedral_list, improper_list, pair_list, connect
+
     return coord
