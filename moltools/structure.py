@@ -167,6 +167,9 @@ class MOL:
         if file.endswith("xyz"):
             MOL.dfatoms = _load_xyz(file)
 
+        elif file.endswith("mol2"):
+            MOL.dfatoms = _load_mol2(file)
+
         elif file.endswith("out") or file.endswith("log"):
             MOL.dfatoms = _load_gaus(file)
 
@@ -433,3 +436,52 @@ def _load_gaus(file):
     # return dfatoms, bond_list, angle_list, dihedral_list, improper_list, pair_list, connect
 
     return coord
+
+def _load_mol2(file):
+    """
+    Obtains the geometry, connectivity as
+    partial charges from mol2 file.
+
+    Parameters:
+    -----------
+
+        file : str
+            Input file name
+
+    """
+    atoms = re.compile(r"""
+        ^\s+(?P<atid>\d+)\s+              # Atom serial number.
+        (?P<atsb>[A-Za-z]+)\d?\d?\s+      # Atom name.
+        (?P<x>[+-]?\d+\.\d+)\s+           # Orthogonal coordinates for X.
+        (?P<y>[+-]?\d+\.\d+)\s+           # Orthogonal coordinates for Y.
+        (?P<z>[+-]?\d+\.\d+)\s+           # Orthogonal coordinates for Z.
+        \w+\s+\d\s+\w+\s+
+        (?P<charge>[+-]?\d+\.\d+)         # Charges
+        """, re.X)
+
+    dat = list()
+    with open(file, "r", encoding="utf-8") as f:
+        for line in f:
+            if atoms.match(line):
+                m = atoms.match(line)
+                dat.append(m.groupdict())
+
+
+    dfatoms = pd.DataFrame(dat)
+
+    dfatoms = dfatoms.astype({
+        "x": np.float,
+        "y": np.float,
+        "z": np.float,
+        "charge": np.float,
+        "atid": np.integer})
+
+    # dfatoms = dfatoms.set_index('atid')
+
+    """ Adding mass """
+    dfatoms["mass"] = dfatoms["atsb"].apply(lambda at: Elements[at]["mass"])
+
+    """ Adding atnum """
+    dfatoms["num"] = dfatoms["atsb"].apply(lambda at: Elements[at]["num"])
+
+    return dfatoms
