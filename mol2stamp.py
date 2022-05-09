@@ -264,7 +264,7 @@ class fatomes:
                         btypes[0],
                         btypes[1],
                         MOL.dfbonds.loc[i, "b0"],
-                        MOL.dfbonds.loc[i, "kb"] * 2
+                        MOL.dfbonds.loc[i, "kb"]
                     )
                     self.btypes.append(btypes)
                     self.n_parintra += 1
@@ -279,7 +279,7 @@ class fatomes:
                         atype[1],
                         atype[2],
                         MOL.dfangles.loc[i, "th0"],
-                        MOL.dfangles.loc[i, "kth"] * 2
+                        MOL.dfangles.loc[i, "kth"]
                     )
                     self.angtypes.append(atype)
                     self.n_parintra += 1
