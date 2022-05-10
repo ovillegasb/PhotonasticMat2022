@@ -1,14 +1,18 @@
 GAFF - General Amber Force Field (2004)
+From file gaff2.dat AmberTools22
 
 Atom Types
 ----------
 
 Atype     sigma (Angstrom)      depth (kcal/mol)   Description
 ---------------------------------------------------------------------------------
+c3        1.9069                0.1078             sp3 carbon
+hc        1.4593                0.0208             hygrogen on aliphatic carbon
+
+
 c         1.9080                0.0860             sp2 carbon in C=O, C=S
 c1        1.9080                0.2100             sp1 carbon
 c2        1.9080                0.0860             sp2 carbon, aliphatic
-c3        1.9080                0.1094             sp3 carbon
 ca        1.9080                0.0860             sp2 carbon, aromatic
 n         1.8240                0.1700             sp2 nitrogen in amides
 n1        1.8240                0.1700             sp1 nitrogen
@@ -20,7 +24,6 @@ o         1.6612                0.2100             sp2 oxygen in C=O, COO-
 oh        1.7210                0.2104             sp3 oxygen in hydroxyl groups
 os        1.6837                0.1700             sp3 oxygen in ethers and esters
 s2        2.0000                0.2500             sp2 sulfur (p=S, C=S)
-hc        1.4870                0.0157             hygrogen on aliphatic carbon
 ha        1.4590                0.0150             hydrogen on aromatic carbon
 hn        0.6000                0.0157             hydrogen on nitrogen
 ho        0.0000                0.0000             hydrogen on oxygen
@@ -32,7 +35,7 @@ Bonds Types
 
 Btype        kb (kcal/mol ang2)  b0 (Angstrom)
 ---------------------------------------------------------------------------------
-c3 - hc      330.6               1.0969
+c3 - hc      375.9               1.0970
 c3 - c3      300.9               1.5375
 ow-hw  553.0    0.9572
 hw-hw  553.0    1.5136
@@ -969,9 +972,9 @@ Angles Types
 
 Atype           kth (kcal/mol rad2)     theta0 (degree)
 ---------------------------------------------------------------------------------
-hc - c3 - hc    39.4                 107.58
-c3 - c3 - hc    46.3                 109.80
-c3 - c3 - c3    62.9                 111.51
+hc - c3 - hc    39.0                    107.58
+c3-c3-hc    46.3      109.80
+c3-c3-c3    62.9      111.51
 hw-ow-hw   100.0      104.52
 hw-hw-ow     0.0      127.74
 br-c1-br    57.8      180.00
