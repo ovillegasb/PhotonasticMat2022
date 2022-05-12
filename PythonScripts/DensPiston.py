@@ -77,12 +77,12 @@ print("Number od atoms in file XYZ:", Natoms)
 print("Box dimensions")
 print(box)
 
-print("ATOMS types and Mass (Kg/mol)")
+print("ATOMS types and Mass [Kg/mol]")
 print(atomsM)
 
 tabXYZ["mass"] = tabXYZ["atsb"].apply(lambda x: atomsM[x])
 MassTOT = tabXYZ["mass"].sum() / N_A
-print("Total system mass (kg):", MassTOT)
+print("Total system mass [kg]:", MassTOT)
 
 Lx = box[0] * 1e-10
 Ly = box[1] * 1e-10
@@ -91,29 +91,28 @@ Lz = box[2] * 1e-10
 x_0 = box[0]
 
 Vol_0 = Lx * Ly * Lz
-print("Volume initial (m^3):", Vol_0)
+print("Volume initial [m^3]:", Vol_0)
 
 dens_0 = MassTOT / Vol_0
-print("Density initial (kg/m^3):", dens_0)
+print("Density initial [kg/m^3]:", dens_0)
 
 print("Enter the desired density")
 dens_f = np.float64(input("(in kg/m^3): "))
 
 Vol_f = MassTOT / dens_f
-print("Volume final (m^3):", Vol_f)
+print("Volume final [m^3]:", Vol_f)
 
 x_f = box[0]*1e-10 + (Vol_f - Vol_0) / (box[1]*box[2]*1e-20)
 x_f *= 1e10
-print("Using the x component (ang):", x_f)
-print("This is the final x-dimension of the box")
+print("The final x-dimension of the box Using the x component [ang]:", x_f)
 
-print("El cambio en la componente es:", x_f - x_0)
-print(r"5 % del cambio:", (x_f - x_0) * 5 / 100)
+print("The change of x-component is:", x_f - x_0)
+print(r"5 % of change:", (x_f - x_0) * 5 / 100)
 
 steps= 5000
 dt = 1 # fs, 1e-15
 time = steps * dt
-# 0.01 ang / fs
-print("The velocity obtained is [0.01 angs / fs = m / s]: %e" % (0.01 * (x_f - x_0) / time))
-print("Divided for each direction (<-->) [m / s]: %e" % (0.01 * (x_f - x_0) / time / 2))
-print("The total number of steps required (for each step of 1fs) is:", steps*100/5)
+# 1e-5 ang / fs
+print("The velocity obtained is [1e5 angs / fs = m / s]: %e" % (1e5 * (x_f - x_0) / time))
+print("Divided for each direction (<-->) [m / s]: %e" % (1e5 * (x_f - x_0) / time / 2))
+print("The total number of steps required (for each step of 1fs) is: %d" % int(steps*100/5))
