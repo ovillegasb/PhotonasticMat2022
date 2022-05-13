@@ -8,6 +8,7 @@ Script used to convert STAMP xyz files to GROMACS gro files.
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+// #include <math.h>
 
 /*
 
@@ -103,6 +104,8 @@ int main(int argc, char **argv)
 	int ires = 1;
 	int ires_added = 0;
 
+	double newX, newY, newZ;
+
 	for (int n = 0; n < nres; ++n){
 		//printf("%d\n", n);
 		strcpy(res, argv[3*n+3]);
@@ -117,7 +120,10 @@ int main(int argc, char **argv)
 	 		for (int i = 1; i <= natomsr; ++i){
 	 			fgets(line, 256, XYZ);
 	 			sscanf(line, "%s %lf %lf %lf", atsb, &X, &Y, &Z);
-	 			fprintf(GRO, "%5d%-5s%5s%5d%8.3f%8.3f%8.3f\n", ires, res, atsb, at, X/10 + Lx/20, Y/10 + Ly/20, Z/10 + Lz/20);
+	 			newX = X/10 + Lx/20;
+	 			newY = Y/10 + Ly/20;
+	 			newZ = Z/10 + Lz/20;
+	 			fprintf(GRO, "%5d%-5s%5s%5d%8.3f%8.3f%8.3f\n", ires, res, atsb, at, newX, newY, newZ);
 	 			at += 1;
 	 		}
 	 		ires += 1;
