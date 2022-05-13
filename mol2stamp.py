@@ -81,6 +81,7 @@ def write_run(**kwargs):
         "ConditionY": "Periodique",
         "ConditionZ": "Periodique",
         "drVerlet": "2.e-10",
+        "DtAdapt":0,
         "Protection": 10,
         "ProtectionExaStamp": "1",  # config
         "Reprise": "0",  # config
@@ -126,8 +127,13 @@ def write_run(**kwargs):
     lines += "*\n"
     lines += "drVerlet           {:>20}\n".format(options["drVerlet"])
     lines += "*\n"
+    lines += "DtAdapt           {:>20}\n".format(options["DtAdapt"])
+    lines += "* DtAdaptbase                  2\n"
+    lines += "* DtAdaptdr                    0.01e-10\n"
+    lines += "*\n"
     lines += "Protection         {:>20d}\n".format(options["Protection"])
     lines += "ProtectionExaStamp {:>20}\n".format(options["ProtectionExaStamp"])
+    lines += "Protection_Catalogue            ./PROTS\n"
     lines += "Reprise            {:>20}\n".format(options["Reprise"])
     lines += "*\n"
     lines += "TransfertDesForces {:>20}\n".format(options["TransfertDesForces"])
@@ -139,12 +145,15 @@ def write_run(**kwargs):
     lines += "XyzSortie          {:>20}\n".format(options["XyzSortie"])
     lines += "XyzFrequence       {:>20d}\n".format(options["XyzFrequence"])
     lines += "XyzOrdonnee        {:>20}\n".format(options["XyzOrdonnee"])
+    lines += "XyzCatalogue                    ./XYZ\n"
     lines += "*\n"
     lines += "Molecule                     {:>20d}\n".format(options["Molecule"])
     lines += "Molecule_CalculIntra         {:>20d}\n".format(options["Molecule_CalculIntra"])
     lines += "Molecule_ContribVdwIntra12   {:>20d}\n".format(options["Molecule_ContribVdwIntra12"])
     lines += "Molecule_ContribVdwIntra13   {:>20d}\n".format(options["Molecule_ContribVdwIntra13"])
     lines += "Molecule_ContribVdwIntra14   {:>20d}\n".format(options["Molecule_ContribVdwIntra14"])
+    lines += "*\n"
+    lines += "FichierThermo                   Stamp.dat\n"
 
     # writing all
     with open("DONNEES.in", "w") as f:
@@ -525,6 +534,7 @@ def main():
             # 5) write all information.
             print_steps("5) write all information.")
             Fatomes.write_topol()
+            print(np.around(mol.dftypes["charge"].sum(), decimals=4))
         else:
             print("No file found")
 

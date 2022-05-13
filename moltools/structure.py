@@ -181,6 +181,41 @@ class MOL:
 
         MOL.atoms_count.update(dict(MOL.dfatoms["atsb"].value_counts()))
 
+        MOL.dfatoms["charge"] = MOL.dfatoms["charge"].round(decimals=3)
+        # Correction charges
+        if MOL.dfatoms["charge"].sum() != 0.0:
+            ch0 = MOL.dfatoms["charge"].sum()
+            ch0 = np.around(ch0, decimals=3)
+            print("Net charge:", ch0)
+            print("The net charge of the molecule is not zero.")
+            # print(MOL.dfatoms["charge"])
+            # sign
+            # while ch0 != 0.0
+            #while np.isclose(ch0, 0.0, atol=1e-4):
+            while ch0 != 0.0:
+                if ch0 < 0:
+                    # atoms test
+                    at = MOL.dfatoms["charge"][(MOL.dfatoms["atsb"] != "H") & (MOL.dfatoms["charge"] < 0)]
+                    # print(at)
+                    # print(at.value_counts())
+                    # print(at.value_counts().idxmin())
+                    # Solo hay un atomo con este valor?
+                    if at.value_counts().min() == 1:
+                        # print("SOlo hay un atomo con este valor")
+                        # print("DOnde esta?")
+                        # print(MOL.dfatoms["charge"][MOL.dfatoms["charge"] == at.value_counts().idxmin()])
+                        # MOL.dfatoms["charge"][MOL.dfatoms["charge"] == at.value_counts().idxmin()] += 0.001
+                        MOL.dfatoms.loc[MOL.dfatoms["charge"] == at.value_counts().idxmin(), "charge"] += 0.001
+                        ch0 += 0.001
+                print("New net charge:", ch0)
+
+
+            # print(MOL.dfatoms["charge"])
+            # print(MOL.dfatoms["charge"][MOL.dfatoms["charge"] < 0])
+            # print(MOL.dfatoms["charge"][MOL.dfatoms["charge"] > 0])
+            # print(MOL.dfatoms["charge"][MOL.dfatoms["atsb"] != "H"])
+        # print(MOL.dfatoms["charge"])
+
     def search_connectivity(self):
         """Search connectivity from a dfatoms and stores it in an object
         variable connect."""
