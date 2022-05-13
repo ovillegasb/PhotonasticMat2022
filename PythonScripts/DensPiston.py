@@ -102,17 +102,19 @@ dens_f = np.float64(input("(in kg/m^3): "))
 Vol_f = MassTOT / dens_f
 print("Volume final [m^3]:", Vol_f)
 
-x_f = box[0]*1e-10 + (Vol_f - Vol_0) / (box[1]*box[2]*1e-20)
-x_f *= 1e10
+x_f = Lx + (Vol_f - Vol_0) / (Ly*Lz) # in m
+x_f *= 1e10 # to angs
 print("The final x-dimension of the box Using the x component [ang]:", x_f)
 
 print("The change of x-component is:", x_f - x_0)
 print(r"5 % of change:", (x_f - x_0) * 5 / 100)
 
-steps= 5000
 dt = 1 # fs, 1e-15
+steps= 5000 # for 5ps for steps from piston
 time = steps * dt
 # 1e-5 ang / fs
-print("The velocity obtained is [1e5 angs / fs = m / s]: %e" % (1e5 * (x_f - x_0) / time))
-print("Divided for each direction (<-->) [m / s]: %e" % (1e5 * (x_f - x_0) / time / 2))
-print("The total number of steps required (for each step of 1fs) is: %d" % int(steps*100/5))
+vel = 1e5 * (x_f - x_0) * 5 / 100 / time
+print("The velocity obtained is [1e-5 angs / fs = m / s]: %e" % vel)
+
+print("Divided for each direction (<-->) [m / s]: %e" % (vel / 2))
+print("The total number of steps required (for each step of 1fs) is: %d" % int((x_f - x_0)/(1e-5*vel)))
