@@ -299,6 +299,13 @@ def assinging_at_type(atom):
 
         elif atom.atoms_connect == "Csp2":
             return "ha"
+
+    elif atom.atsb == "N":
+        """ NYTROGEN """
+        if atom.hyb == "sp2" and atom.atoms_connect.count("Csp2") < 2:
+            # o ne?
+            return "n2"
+
     else:
         raise ForceFieldError(error)
 
@@ -335,6 +342,11 @@ def get_atoms_types(MOL, ff):
             """ HYDROGEN """
             H = ATOM("H", i)
             coord.loc[H.n, "type"] = assinging_at_type(H)
+
+        elif coord.atsb[i] == "N":
+            """ NYTROGEN """
+            N = ATOM("N", i)
+            coord.loc[N.n, "type"] = assinging_at_type(N)
 
         else:
             raise ForceFieldError(_errorMessages[2].format(coord.atsb[i]))

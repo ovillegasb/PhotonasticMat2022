@@ -1,11 +1,55 @@
-
 """
-Topology builder for gromacs - MKITPGMX
+Module created to generate input files to GROMACS.
+
+Author: Orlando VILLEGAS
+Date: 2022
+\033[1;36m
+  __  __ _  _______ _______ _____   _____ __  ____   __
+ |  \\/  | |/ /_   _|__   __|  __ \\ / ____|  \\/  \\ \\ / /
+ | \\  / | ' /  | |    | |  | |__) | |  __| \\  / |\\ V / 
+ | |\\/| |  <   | |    | |  |  ___/| | |_ | |\\/| | > <  
+ | |  | | . \\ _| |_   | |  | |    | |__| | |  | |/ . \\ 
+ |_|  |_|_|\\_\\_____|  |_|  |_|     \\_____|_|  |_/_/ \\_\\
+                                                       
+\033[m
+Module created to generate input files to STAMP.
+
+Author: Orlando VILLEGAS
+Date: 2022
+
+###############################################################
 
 """
 
 import time
+import argparse
+from moltools.structure import MOL, ATOM
+from moltools.ffield import get_atoms_types, get_ffparameters, get_interactions_list
 
+TITLE = """
+Module created to generate input files to GROMACS.
+
+Author: Orlando VILLEGAS
+Date: 2022
+\033[1;36m
+  __  __ _  _______ _______ _____   _____ __  ____   __
+ |  \\/  | |/ /_   _|__   __|  __ \\ / ____|  \\/  \\ \\ / /
+ | \\  / | ' /  | |    | |  | |__) | |  __| \\  / |\\ V / 
+ | |\\/| |  <   | |    | |  |  ___/| | |_ | |\\/| | > <  
+ | |  | | . \\ _| |_   | |  | |    | |__| | |  | |/ . \\ 
+ |_|  |_|_|\\_\\_____|  |_|  |_|     \\_____|_|  |_/_/ \\_\\
+                                                       
+\033[m
+Topology builder for gromacs - MKITPGMX
+Author: Orlando VILLEGAS
+Date: 2022
+
+###############################################################
+
+References:
+
+Docs:
+"""
 
 def save_gro(table, res="RES"):
     """Save coordinate to file *.gro from dataframe with x, y, z."""
@@ -19,7 +63,7 @@ def save_gro(table, res="RES"):
         GRO.write("{:>8}{:>7}{:5d}{:8.3f}{:8.3f}{:8.3f}\n".format(
             "1" + res,
             table.loc[i, "atsb"],
-            i,
+            i + 1,
             table.loc[i, "x"] * 0.1,
             table.loc[i, "y"] * 0.1,
             table.loc[i, "z"] * 0.1)
@@ -30,7 +74,7 @@ def save_gro(table, res="RES"):
         table.z.max() + 0.00001))
 
     GRO.close()
-    print("Saved gro file: " + gro)
+    print("\nSaved gro file: \033[1;36m%s\033[m writed\n" % gro)
 
 
 functFF = {
@@ -97,12 +141,12 @@ def save_itp(MOL, ff, res="RES"):
     lines += ';   nr     type  resnr  residu    atom    cgnr  charge     mass\n'
     for n in table.index:
         lines += '{:6d}{:>10}{:5d}{:>8}{:>8}{:5d}{:8.3f}{:10.3f}\n'.format(
-            n,
+            n + 1,
             table.loc[n, 'type'],  # re.sub("CR1", "C", table.loc[n, 'type']),
             1,
             res,
             table.loc[n, 'atsb'],
-            n,
+            n + 1,
             table.loc[n, 'charge'],
             table.loc[n, 'mass'])
     lines += "; Total charge: %.3f \n" % MOL.totq
@@ -114,8 +158,8 @@ def save_itp(MOL, ff, res="RES"):
         for i in bonds.index:
             # 1: Harmonic potential
             # 2: GROMOS bonds
-            iat = bonds.loc[i, 'list'][0]
-            jat = bonds.loc[i, 'list'][1]
+            iat = bonds.loc[i, 'list'][0] + 1
+            jat = bonds.loc[i, 'list'][1] + 1
             # if ff == "oplsaa":
             lines += '{:5d}{:5d}{:5d}{:10.4f}{:12.3f}\n'.format(
                 iat,
@@ -131,9 +175,9 @@ def save_itp(MOL, ff, res="RES"):
         for i in angles.index:
             # 1: Harmonic angle potential
             # 2: GROMOS angles
-            iat = angles.loc[i, 'list'][0]
-            jat = angles.loc[i, 'list'][1]
-            kat = angles.loc[i, 'list'][2]
+            iat = angles.loc[i, 'list'][0] + 1
+            jat = angles.loc[i, 'list'][1] + 1
+            kat = angles.loc[i, 'list'][2] + 1
             # if ff == "oplsaa":
             lines += '{:5d}{:5d}{:5d}{:5d}{:10.3f}{:10.3f}\n'.format(
                 iat,
@@ -147,4 +191,92 @@ def save_itp(MOL, ff, res="RES"):
     with open(itp, "w") as f:
         f.write(lines)
 
-    print('Saved itp file: ' + itp)
+    print("\nSaved itp file: \033[1;36m%s\033[m writed\n" % itp)
+
+
+def options():
+    """Generate command line interface."""
+
+    parser = argparse.ArgumentParser(
+        prog="MKITPGMX",
+        usage="%(prog)s [-option] value",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Enjoy the program!"  #, description=__doc__
+    )
+
+    fileinput = parser.add_argument_group(
+        "\033[1;36mCoordinate file\033[m")
+
+    fileinput.add_argument(
+        "-f", "--files",
+        help="Specifies a coordinates files in series that you want to load",
+        default=None
+    )
+
+    # Force file
+    fileinput.add_argument(
+        "-ff", "--forcefield",
+        help="Force field family",
+        default="gaff",
+        type=str,
+        choices=["gaff", "oplsaa", "gromos"]
+    )
+
+    # Resname
+    fileinput.add_argument(
+        "-res", "--resname",
+        help="Choose a 3 letter residue name",
+        default="RES",
+        type=str
+    )
+
+    return vars(parser.parse_args())
+
+
+def print_steps(message):
+    print("\033[1;35m%s\033[m" % message)
+
+
+def main():
+    """
+    Central core of program execution.
+
+    """
+
+    print(TITLE)
+
+    args = options()
+    
+    if args["files"]:
+        # 0) The molecule class is initialized.
+        mol = MOL()
+
+        # 1) Read all entry files.
+        print_steps("0) Read all entry files.")
+        print("files:", args["files"])
+        mol.load_file(args["files"])
+        print("DATA:\n", mol.dfatoms)
+
+        # 2) Search connectivity from geometry.
+        print_steps("2) Search connectivity from geometry.")
+        mol.search_connectivity()
+
+        # 3) Atom types are assigned.
+        print_steps("3) Atom types are assigned.")
+        get_atoms_types(mol, args["forcefield"])
+
+        # 4) The force field parameters are assigned.
+        print_steps("4) The force field parameters are assigned.")
+        get_interactions_list(mol)
+        get_ffparameters(mol, args["forcefield"])
+
+
+        # Save files gromacs
+        save_gro(mol.dftypes, res=mol.res)
+        save_itp(mol, args["forcefield"], res=mol.res)
+
+
+if __name__ == "__main__":
+    # RUN
+
+    main()

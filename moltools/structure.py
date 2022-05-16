@@ -35,6 +35,7 @@ _errorMessages = {
 Elements = {  # g/mol
     'H': {'mass': 1.0080, 'num': 1},
     'C': {'mass': 12.011, 'num': 6},
+    'N': {'mass': 14.0067, 'num': 7}
 }
 
 
@@ -312,7 +313,7 @@ class ATOM(MOL):
                 """ H, aliphatic hydrogen """
                 hyb_atoms_connect += "Csp3"
 
-        elif self.atsb == "C":
+        elif self.atsb in ["C", "N"]:
             # CARBON
             # atoms bonded to carbon
             for at_i in MOL.connect.neighbors(self.n):
@@ -325,17 +326,21 @@ class ATOM(MOL):
                 elif sb == "C" and nbonds == 4:
                     hyb_atoms_connect += "Csp3"
 
+                elif sb == "N" and nbonds == 2:
+                    hyb_atoms_connect += "Nsp2"
+
                 elif sb == "H":
                     hyb_atoms_connect = "H" + hyb_atoms_connect
         else:
-            raise MoleculeDefintionError(_errorMessages[2].format(sb))
+            raise MoleculeDefintionError(_errorMessages[2].format(MOL.dfatoms.loc[self.n, "atsb"]))
 
         return hyb_atoms_connect
 
     @property
     def hyb(self):
         atms_hyb = {
-            "C": {4: "sp3", 3: "sp2"}
+            "C": {4: "sp3", 3: "sp2"},
+            "N": {2: "sp2", 3: "sp3"}
         }
         try:
             return atms_hyb[self.atsb][len(self.connect[self.n])]
