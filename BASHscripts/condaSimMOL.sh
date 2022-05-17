@@ -5,6 +5,9 @@ conda activate SimMOL
 conda install --channel conda-forge pymatgen
 conda install nglview -c conda-forge
 
+conda config --add channels conda-forge
+conda install mdanalysis
+
 # Others
 sudo dnf install pandoc
 conda install -c conda-forge nodejs
