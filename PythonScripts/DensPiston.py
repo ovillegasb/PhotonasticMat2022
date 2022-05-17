@@ -1,21 +1,28 @@
+#!/bin/env python
 
 """
 Script used to estimate the time to reach a density using a piston in Stamp.
 
-Two input files FAtomes and PasDeCalcul_Iteration_XXXXXXX.xyz are required.
+An input file is required, FAtomes.in, there are two optional arguments, the
+DONNEES.in file and the number of steps.
 
 Orlando Villegas
 2022.05.11
 
-Steps
------
 
-1. The dimensions of the box are read from the xyz file. This version assumes a
-rectangular box.
+To receive help use execute:
 
-2. The volume of the box is calculated.
+    python DensPiston.py -h
 
-3. Read the types of atoms, the masses.
+Examples:
+
+    python DensPiston.py FAtomes.in
+
+    python DensPiston.py FAtomes.in -d DONNEES.in
+
+    python DensPiston.py FAtomes.in -d DONNEES_NPT.in -n 300000
+
+    python DensPiston.py FATOMES/FAtomes_000100000.in -n 200000
 
 """
 
@@ -23,47 +30,118 @@ from sys import argv
 import numpy as np
 import pandas as pd
 from scipy.constants import N_A
+import argparse
+import re
 
-xyz = argv[1]
-fatoms = argv[2]
 
-print(f"XYZ file: {xyz}")
+def print_mess(message, **kwargs):
+    """Print message in color"""
+    print("\033[1;36m%s\033[m" % message, **kwargs)
+
+"""Generate command line interface."""
+parser = argparse.ArgumentParser(
+        prog="DensPiston",
+        usage="%(prog)s FAtomes.in [DONNEE.in optional] [-nsteps] value",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Enjoy the program!"  #, description=__doc__
+    )
+
+# FAtomes.in file
+parser.add_argument(
+    "fatoms",
+    help="FAtomes.in file",
+    default="",
+    type=str
+)
+
+# DONNEES.in file
+parser.add_argument(
+    "-d", "--donnees",
+    help="DONNEES.in file, is optional",
+    type=str
+)
+
+# Nsteps
+parser.add_argument(
+    "-n", "--nsteps",
+    help="Number of steps for piston",
+    default=100000,
+    type=int
+)
+
+args = vars(parser.parse_args())
+
+""" Regular expression that extracts matrix XYZ """
+atoms = re.compile(r"""
+        ^\s+
+        (?P<atsb>[A-Za-z]+\d?\d?)\s+      # Atom name.
+        (?P<x>[+-]?\d+\.\d+)\s+           # Orthogonal coordinates for X.
+        (?P<y>[+-]?\d+\.\d+)\s+           # Orthogonal coordinates for Y.
+        (?P<z>[+-]?\d+\.\d+)\s+           # Orthogonal coordinates for Z.
+        """, re.X)
+
+fatoms = args["fatoms"]
+donnees = args["donnees"]
+nsteps = args["nsteps"]
+decoupage = np.array([1, 1, 1])
+
 print(f"FAtomes file: {fatoms}")
+print(f"Nsteps: {nsteps}")
 
-with open(xyz, "r") as XYZ:
-    # for line in XYZ:
+if donnees:
+    print(f"DONNEES file: {donnees}")
+    with open(donnees) as DAT:
+        for line in DAT:
+            if "Decoupage" in line:
+                decoupage = np.array(line.split()[1:4]).astype(np.int64)
+                break
 
-    # First line
-    # number of atoms
-    Natoms = int(XYZ.readline())
-
-    box = np.array(XYZ.readline().split()[:3]).astype(np.float64)
-
+"""READ Fatomes"""
 natypes = 0
 atomsM = {}
+xyz = []
 with open(fatoms, "r") as FATM:
-    # lines = FATM.readlines()
     for line in FATM:
         if "NbTypesAtomes" in line:
-            natypes += int(line.split()[1])
+            line = line.split()
+            natypes += int(line[1])
+            continue
+
+        if "nom" in line:
+            line = line.split()
+            nom = line[1]
             continue
             
-        if natypes != 0:
+        if "masse" in line:
             line = line.split()
-            if "nom" in line:
-                nom = line[1]
-                atomsM
-            elif "masse" in line:
-                mass = np.float64(line[1])
-                atomsM[nom] = mass
+            mass = np.float64(line[1])
+            atomsM[nom] = mass
+            continue
 
-tabXYZ = pd.read_csv(
-    xyz,
-    sep=r"\s+",
-    header=None,
-    skiprows=2,
-    names=["atsb", "x", "y", "z", "0", "1"]
-)
+        if "maille_long" in line:
+            line = line.split()
+            box = np.array(line[1:4]).astype(np.float64)
+            continue
+
+        if "PositionDesAtomesCart" in line:
+            Natoms = int(FATM.readline())
+            continue
+
+        if atoms.match(line):
+            m = atoms.match(line)
+            xyz.append(m.groupdict())
+        
+
+print("Number of atoms in XYZ matrix:", Natoms)
+
+print_mess("ATOMS types and Mass [Kg/mol]")
+print(atomsM)
+
+box *= decoupage
+print_mess("Box dimensions [angs]:")
+print(box)
+
+tabXYZ = pd.DataFrame(xyz)
 
 tabXYZ.astype({
     "x": np.float64,
@@ -71,50 +149,48 @@ tabXYZ.astype({
     "z": np.float64
 })
 
-
-print("Number od atoms in file XYZ:", Natoms)
-
-print("Box dimensions")
-print(box)
-
-print("ATOMS types and Mass [Kg/mol]")
-print(atomsM)
-
 tabXYZ["mass"] = tabXYZ["atsb"].apply(lambda x: atomsM[x])
-MassTOT = tabXYZ["mass"].sum() / N_A
-print("Total system mass [kg]:", MassTOT)
 
+MassTOT = tabXYZ["mass"].sum() / N_A
+MassTOT = MassTOT * decoupage[0] * decoupage[1] * decoupage[2]
+print_mess("Total system mass [kg]:", end=" ")
+print(MassTOT)
+
+# Box length
 Lx = box[0] * 1e-10
 Ly = box[1] * 1e-10
 Lz = box[2] * 1e-10
 
 x_0 = box[0]
 
+# System volume initial
 Vol_0 = Lx * Ly * Lz
-print("Volume initial [m^3]:", Vol_0)
+
+print_mess("Volume initial [m^3]:", end=" ")
+print(Vol_0)
 
 dens_0 = MassTOT / Vol_0
-print("Density initial [kg/m^3]:", dens_0)
+print_mess("Density initial [kg/m^3]:", end=" ")
+print(dens_0)
 
-print("Enter the desired density")
+print("\033[1;33mEnter the desired densitys\033[m")
 dens_f = np.float64(input("(in kg/m^3): "))
 
 Vol_f = MassTOT / dens_f
-print("Volume final [m^3]:", Vol_f)
+print_mess("Volume final [m^3]:", end=" ")
+print(Vol_f)
 
 x_f = Lx + (Vol_f - Vol_0) / (Ly*Lz) # in m
 x_f *= 1e10 # to angs
 print("The final x-dimension of the box Using the x component [ang]:", x_f)
 
 print("The change of x-component is:", x_f - x_0)
-print(r"5 % of change:", (x_f - x_0) * 5 / 100)
 
 dt = 1 # fs, 1e-15
-steps= 5000 # for 5ps for steps from piston
-time = steps * dt
+time = nsteps * dt
+
 # 1e-5 ang / fs
-vel = 1e5 * (x_f - x_0) * 5 / 100 / time
-print("The velocity obtained is [1e-5 angs / fs = m / s]: %e" % vel)
+vel = 1e5 * (x_f - x_0) / time
+print_mess("The velocity obtained is [1e-5 angs / fs = m / s]: %e" % vel)
 
 print("Divided for each direction (<-->) [m / s]: %e" % (vel / 2))
-print("The total number of steps required (for each step of 1fs) is: %d" % int((x_f - x_0)/(1e-5*vel)))
