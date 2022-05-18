@@ -222,12 +222,23 @@ def get_interactions_list(MOL):
     MOL.dfdih["list"] = MOL.dihedrals_list
 
     MOL.dfdih["types"] = MOL.dfdih["list"].apply(
-        lambda x: (
+        lambda x: [
             MOL.dftypes.loc[x[0], "type"],
             MOL.dftypes.loc[x[1], "type"],
             MOL.dftypes.loc[x[2], "type"],
-            MOL.dftypes.loc[x[3], "type"])
+            MOL.dftypes.loc[x[3], "type"]]
         )
+
+    # Look for dihedrals with -ca-ca-.
+    for i in MOL.dfdih.index:
+        (at1, at2, at3, at4) = MOL.dfdih.loc[i, "types"]
+        if (at2, at3) == ("ca", "ca"):
+            at1 = re.sub("[h][a]|[c][a]", "X", at1)
+            at4 = re.sub("[h][a]|[c][a]", "X", at4)
+            MOL.dfdih.loc[i, "types"][0] = at1
+            MOL.dfdih.loc[i, "types"][3] = at4
+
+    MOL.dfdih["types"] = MOL.dfdih["types"].apply(lambda x: tuple(x))
 
     # OUT-OF-PLANE, IMPROPER, list
     for at in MOL.dftypes.index:
@@ -250,21 +261,27 @@ def get_interactions_list(MOL):
             # print("#"*50)
             MOL.impropers_list.append((i, j, at, z))
     # re.sub("CH\d", "CHn", tp1)
-    # exit()
 
     MOL.dfimp["list"] = MOL.impropers_list
 
     MOL.dfimp["types"] = MOL.dfimp["list"].apply(
-        lambda x: (
+        lambda x: [
             MOL.dftypes.loc[x[0], "type"],  # re.sub("c\w", "X", MOL.dftypes.loc[x[0], "type"]),
             MOL.dftypes.loc[x[1], "type"],  # re.sub("c\w", "X", MOL.dftypes.loc[x[1], "type"]),
             MOL.dftypes.loc[x[2], "type"],
-            MOL.dftypes.loc[x[3], "type"])
+            MOL.dftypes.loc[x[3], "type"]]
         )
 
-    # print(MOL.dfimp)
-    # print("Estamos aqui")
-    # exit()
+    # Look for dihedrals with -ca-ca-.
+    for i in MOL.dfimp.index:
+        (at1, at2, at3, at4) = MOL.dfimp.loc[i, "types"]
+        if (at3, at4) == ("ca", "ha"):
+            at1 = re.sub("[h][a]|[c][a]", "X", at1)
+            at2 = re.sub("[h][a]|[c][a]", "X", at2)
+            MOL.dfimp.loc[i, "types"][0] = at1
+            MOL.dfimp.loc[i, "types"][1] = at2
+
+    MOL.dfimp["types"] = MOL.dfimp["types"].apply(lambda x: tuple(x))
 
     # print("Natoms:", connect.number_of_nodes())
     # print("Bonds:\n", MOL.bonds_list)
@@ -365,6 +382,7 @@ def get_ffparameters(MOL, ff):
 
     # VDW
     dbase = database(ff)
+
     vdwpar = dbase["vdw"]
     try:
         dftypes["sigma"] = dftypes["type"].apply(lambda x: vdwpar[x][0])
@@ -415,8 +433,6 @@ def get_ffparameters(MOL, ff):
 
     # DIHEDRALS
     dihedralspar = dbase["dihedrals"]
-    print(dfdih)
-    exit()
     try:
         dfdih["divider"] = dfdih["types"].apply(lambda x: dihedralspar[x][0])
         dfdih["Vn"] = dfdih["types"].apply(lambda x: dihedralspar[x][1])

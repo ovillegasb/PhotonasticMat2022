@@ -243,7 +243,7 @@ class fatomes:
                     self.natypes,
                     MOL.dftypes.loc[i, "epsilon"],       # kcal/mol
                     self.options["rc"],                  # nanometers
-                    MOL.dftypes.loc[i, "sigma"]          # angstrom
+                    MOL.dftypes.loc[i, "sigma"] * 2**(-1/6) # angstrom, 2**(-1/6) RE --> sigma
                 )
 
                 self.natypes += 1
@@ -351,7 +351,7 @@ class fatomes:
                 j,
                 epsilon_ij,          # kcal/mol
                 self.options["rc"],  # nanometers
-                sigma_ij             # ang
+                sigma_ij * 2**(-1/6) # angstrom, 2**(-1/6) RE --> sigma
                 )
 
         self._lines_pot += lines_pot

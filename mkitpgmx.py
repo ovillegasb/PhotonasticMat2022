@@ -81,11 +81,23 @@ def save_gro(table, res="RES"):
 """
 Function for GROMACS
 
-bonds: 1 - Harmonic.
+for GAFF in gromacs:
+    bonds: 1 - Harmonic potential.
+    angle: 1 - Harmonic angle potential.
+    dihedral: 1 - proper periodic type.
+    improper: 1 - proper periodic type.
+
+    GAFF dihedrals include 4 terms, but in gromacs, the divider terms are
+    included in the force constant.
 
 """
 functFF = {
-    "gaff": {"bonds": 1, "angles": 1}
+    "gaff": {
+        "bonds": 1, 
+        "angles": 1,
+        "dihedral": 1,
+        "improper": 1
+    }
 }
 
 
@@ -95,8 +107,8 @@ def save_itp(MOL, ff, res="RES"):
     table = MOL.dftypes
     bonds = MOL.dfbonds
     angles = MOL.dfangles
-    # dihedrals = MOL.dfdihedrals
-    # impropers = MOL.dfimpropers
+    dihedrals = MOL.dfdih
+    impropers = MOL.dfimp
     itp = res.lower() + ".itp"
 
     # header of file
@@ -131,7 +143,7 @@ def save_itp(MOL, ff, res="RES"):
                 table.loc[i, 'mass'],
                 0.000,
                 "A",
-                table.loc[i, 'sigma'] * 0.1,  # angtroms --> 0.1 nm
+                table.loc[i, 'sigma'] * 0.1 * 2**(-1/6),  # angtroms --> 0.1 nm; 2**(-1/6) RE --> sigma
                 table.loc[i, 'epsilon'] * 4.184)  # kcal/mol --> 4.184 kJ
 
             atypes.append(table.loc[i, "atsb"])
@@ -192,6 +204,41 @@ def save_itp(MOL, ff, res="RES"):
                 functFF[ff]["angles"],
                 angles.loc[i, 'th0'],
                 angles.loc[i, 'kth'] * 4.184)  # kcal/mol/rad2 --> kJ/mol/rad2
+
+    # dihedrals parameters
+    if len(dihedrals) > 0 or len(dihedrals) > 0:
+        lines += '\n[ dihedrals ]\n'
+        lines += ';  ai    aj    ak    al    funct     phi    kdih    multiplicity\n'
+
+    if len(dihedrals) > 0:
+        for i in dihedrals.index:
+            # 1: Proper dihedral
+            lines += '{:5d}{:5d}{:5d}{:5d}{:5d}{:10.1f}{:10.2f}{:5d}\n'.format(
+                dihedrals.loc[i, 'list'][0] + 1,
+                dihedrals.loc[i, 'list'][1] + 1,
+                dihedrals.loc[i, 'list'][2] + 1,
+                dihedrals.loc[i, 'list'][3] + 1,
+                functFF[ff]["dihedral"],
+                dihedrals.loc[i, "phi"],
+                dihedrals.loc[i, "Vn"] * 4.184 / dihedrals.loc[i, "divider"],
+                dihedrals.loc[i, "n"]
+            )
+
+    if len(impropers) > 0:
+        for i in impropers.index:
+            # 1: Proper dihedral
+            lines += '{:5d}{:5d}{:5d}{:5d}{:5d}{:10.1f}{:10.2f}{:5d}\n'.format(
+                impropers.loc[i, 'list'][0] + 1,
+                impropers.loc[i, 'list'][1] + 1,
+                impropers.loc[i, 'list'][2] + 1,
+                impropers.loc[i, 'list'][3] + 1,
+                functFF[ff]["improper"],
+                impropers.loc[i, "phi"],
+                impropers.loc[i, "Vn"] * 4.184,
+                impropers.loc[i, "n"]
+            )
+
+
 
     # writing all
     with open(itp, "w") as f:
@@ -271,7 +318,7 @@ def main():
         print_steps("4) The force field parameters are assigned.")
         get_interactions_list(mol)
         get_ffparameters(mol, args["forcefield"])
-        exit()
+
         # Save files gromacs
         save_gro(mol.dftypes, res=mol.res)
         save_itp(mol, args["forcefield"], res=mol.res)
