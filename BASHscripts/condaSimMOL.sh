@@ -16,3 +16,8 @@ conda install -c conda-forge/label/cf201901 nodejs
 conda install -c conda-forge/label/cf202003 nodejs
 conda install -n base -c conda-forge jupyterlab_widgets
 conda install -n SimMOL -c conda-forge ipywidgets
+
+# Enviroment AmberTools
+conda create --name AmberTools22
+conda activate AmberTools22
+conda install -c conda-forge ambertools=22 compilers
