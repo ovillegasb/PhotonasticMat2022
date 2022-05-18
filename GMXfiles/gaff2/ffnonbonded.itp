@@ -1,0 +1,13 @@
+[ atomtypes ]
+; full atom descriptions are available in ffoplsaa.atp
+; name  bond_type    mass    charge   ptype          sigma      epsilon
+; hc   H   1       1.00800     0.000       A     1.4593e-01  8.70272e-02
+; c3   C   6      12.01100     0.000       A     1.9069e-01  4.51035e-01
+; ca   C   6      12.01100     0.000       A     1.8606e-01  4.13379e-01
+; ha   H   1       1.00800     0.000       A     1.4735e-01  6.73624e-02
+; ; ca       C   6      12.0110      0.000       A   1.6576e-01      4.133792e-01
+; ; ha       H   1       1.0080      0.000       A   1.3127e-01      6.736240e-02
+
+;name   bond_type     mass     charge   ptype   sigma         epsilon       Amb
+ c3       c3          0.00000  0.00000   A     3.39771e-01   4.51035e-01 ; 1.91  0.1078
+ hc       hc          0.00000  0.00000   A     2.60018e-01   8.70272e-02 ; 1.46  0.0208
