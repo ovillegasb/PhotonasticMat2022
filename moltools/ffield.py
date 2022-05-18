@@ -215,8 +215,10 @@ def get_interactions_list(MOL):
     dihedrals_list = [tuple(p) for p in all_paths if len(set(p)) == 4]
     for iat, jat, kat, lat in dihedrals_list:
         if iat < lat:
-            if MOL.dftypes.loc[jat, "type"] != "ca" and MOL.dftypes.loc[kat, "type"] != "ca":
-                MOL.dihedrals_list.append((iat, jat, kat, lat))
+            # Remove dihedrals -ca-ca-
+            # if MOL.dftypes.loc[jat, "type"] != "ca" and MOL.dftypes.loc[kat, "type"] != "ca":
+            #    MOL.dihedrals_list.append((iat, jat, kat, lat))
+            MOL.dihedrals_list.append((iat, jat, kat, lat))
     MOL.dfdih["list"] = MOL.dihedrals_list
 
     MOL.dfdih["types"] = MOL.dfdih["list"].apply(
@@ -312,7 +314,6 @@ def assinging_at_type(atom):
 
 def get_atoms_types(MOL, ff):
     """Assigns the atom timpos for the indicated force field."""
-
     if ff == "gromos":
         print("\033[1;35mForce field: GROMOS\033[m")
         # GROMOS.Get_ATypes(MOL, ffdata(ff))
@@ -414,6 +415,8 @@ def get_ffparameters(MOL, ff):
 
     # DIHEDRALS
     dihedralspar = dbase["dihedrals"]
+    print(dfdih)
+    exit()
     try:
         dfdih["divider"] = dfdih["types"].apply(lambda x: dihedralspar[x][0])
         dfdih["Vn"] = dfdih["types"].apply(lambda x: dihedralspar[x][1])
@@ -427,7 +430,7 @@ def get_ffparameters(MOL, ff):
             if d not in dihedralspar:
                 not_found.append(d)
         raise ForceFieldError("""\033[1;31m
-                It was not possible to assign a angle type:{}
+                It was not possible to assign a dihedral type:{}
                 \033[m""".format(not_found))
     print(dfdih)
 
@@ -445,6 +448,6 @@ def get_ffparameters(MOL, ff):
             if d not in improperspar:
                 not_found.append(d)
         raise ForceFieldError("""\033[1;31m
-                It was not possible to assign a angle type:{}
+                It was not possible to assign a improper dihedral type:{}
                 \033[m""".format(not_found))
     print(dfimp)

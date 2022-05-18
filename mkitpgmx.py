@@ -1,4 +1,4 @@
-"""
+r"""
 Module created to generate input files to GROMACS.
 
 Author: Orlando VILLEGAS
@@ -6,11 +6,11 @@ Date: 2022
 \033[1;36m
   __  __ _  _______ _______ _____   _____ __  ____   __
  |  \\/  | |/ /_   _|__   __|  __ \\ / ____|  \\/  \\ \\ / /
- | \\  / | ' /  | |    | |  | |__) | |  __| \\  / |\\ V / 
- | |\\/| |  <   | |    | |  |  ___/| | |_ | |\\/| | > <  
- | |  | | . \\ _| |_   | |  | |    | |__| | |  | |/ . \\ 
+ | \\  / | ' /  | |    | |  | |__) | |  __| \\  / |\\ V /
+ | |\\/| |  <   | |    | |  |  ___/| | |_ | |\\/| | > <
+ | |  | | . \\ _| |_   | |  | |    | |__| | |  | |/ . \\
  |_|  |_|_|\\_\\_____|  |_|  |_|     \\_____|_|  |_/_/ \\_\\
-                                                       
+
 \033[m
 Module created to generate input files to STAMP.
 
@@ -23,7 +23,7 @@ Date: 2022
 
 import time
 import argparse
-from moltools.structure import MOL, ATOM
+from moltools.structure import MOL
 from moltools.ffield import get_atoms_types, get_ffparameters, get_interactions_list
 
 TITLE = """
@@ -34,11 +34,11 @@ Date: 2022
 \033[1;36m
   __  __ _  _______ _______ _____   _____ __  ____   __
  |  \\/  | |/ /_   _|__   __|  __ \\ / ____|  \\/  \\ \\ / /
- | \\  / | ' /  | |    | |  | |__) | |  __| \\  / |\\ V / 
- | |\\/| |  <   | |    | |  |  ___/| | |_ | |\\/| | > <  
- | |  | | . \\ _| |_   | |  | |    | |__| | |  | |/ . \\ 
+ | \\  / | ' /  | |    | |  | |__) | |  __| \\  / |\\ V /
+ | |\\/| |  <   | |    | |  |  ___/| | |_ | |\\/| | > <
+ | |  | | . \\ _| |_   | |  | |    | |__| | |  | |/ . \\
  |_|  |_|_|\\_\\_____|  |_|  |_|     \\_____|_|  |_/_/ \\_\\
-                                                       
+
 \033[m
 Topology builder for gromacs - MKITPGMX
 Author: Orlando VILLEGAS
@@ -50,6 +50,7 @@ References:
 
 Docs:
 """
+
 
 def save_gro(table, res="RES"):
     """Save coordinate to file *.gro from dataframe with x, y, z."""
@@ -77,6 +78,12 @@ def save_gro(table, res="RES"):
     print("\nSaved gro file: \033[1;36m%s\033[m writed\n" % gro)
 
 
+"""
+Function for GROMACS
+
+bonds: 1 - Harmonic.
+
+"""
 functFF = {
     "gaff": {"bonds": 1, "angles": 1}
 }
@@ -84,7 +91,6 @@ functFF = {
 
 def save_itp(MOL, ff, res="RES"):
     """Save a file .itp with the system topology."""
-
     res = MOL.res
     table = MOL.dftypes
     bonds = MOL.dfbonds
@@ -196,7 +202,6 @@ def save_itp(MOL, ff, res="RES"):
 
 def options():
     """Generate command line interface."""
-
     parser = argparse.ArgumentParser(
         prog="MKITPGMX",
         usage="%(prog)s [-option] value",
@@ -222,31 +227,28 @@ def options():
         choices=["gaff", "oplsaa", "gromos"]
     )
 
-    # Resname
-    fileinput.add_argument(
-        "-res", "--resname",
-        help="Choose a 3 letter residue name",
-        default="RES",
-        type=str
-    )
+    # # Resname
+    # fileinput.add_argument(
+    #    "-res", "--resname",
+    #    help="Choose a 3 letter residue name",
+    #    default="RES",
+    #    type=str
+    # )
 
     return vars(parser.parse_args())
 
 
 def print_steps(message):
+    """Print message with color."""
     print("\033[1;35m%s\033[m" % message)
 
 
 def main():
-    """
-    Central core of program execution.
-
-    """
-
+    """Central core of program execution."""
     print(TITLE)
 
     args = options()
-    
+
     if args["files"]:
         # 0) The molecule class is initialized.
         mol = MOL()
@@ -269,8 +271,7 @@ def main():
         print_steps("4) The force field parameters are assigned.")
         get_interactions_list(mol)
         get_ffparameters(mol, args["forcefield"])
-
-
+        exit()
         # Save files gromacs
         save_gro(mol.dftypes, res=mol.res)
         save_itp(mol, args["forcefield"], res=mol.res)

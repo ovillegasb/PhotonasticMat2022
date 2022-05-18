@@ -41,12 +41,12 @@ Elements = {  # g/mol
 
 class connectivity(nx.DiGraph):
     """Building a class connectivity from directed graphs."""
+
     def __init__(self):
         super().__init__()
 
     def get_connectivity(self, coord):
         """Build connectivity from coordinates using nodes like atoms."""
-
         # Add nodes using atoms andsymbols and coordinates
         for i in coord.index:
             self.add_node(
@@ -66,8 +66,7 @@ class connectivity(nx.DiGraph):
             self.edges[j, i]['dist'] = m[i, j]
 
     def _neighboring_pairs(self, coord):
-        """Return neighboring pairs"""
-
+        """Return neighboring pairs."""
         xyz = coord.loc[:, ['x', 'y', 'z']].values.astype(np.float64)
         # atoms = xyz = coord.loc[:, ['atsb']].values
         # compute distance

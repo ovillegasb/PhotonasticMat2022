@@ -7,6 +7,7 @@ conda install nglview -c conda-forge
 
 conda config --add channels conda-forge
 conda install mdanalysis
+conda install -c anaconda networkx
 
 # Others
 sudo dnf install pandoc
