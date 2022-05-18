@@ -22,3 +22,5 @@ conda install -n SimMOL -c conda-forge ipywidgets
 conda create --name AmberTools22
 conda activate AmberTools22
 conda install -c conda-forge ambertools=22 compilers
+conda install -c conda-forge acpype
+# acpype -i test/mol2/hpt.mol2 -a gaff2 -o gmx
