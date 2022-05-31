@@ -26,7 +26,6 @@ Examples:
 
 """
 
-from sys import argv
 import numpy as np
 import pandas as pd
 from scipy.constants import N_A
@@ -102,6 +101,10 @@ atomsM = {}
 xyz = []
 with open(fatoms, "r") as FATM:
     for line in FATM:
+
+        if "*" == line[0]:
+            continue
+
         if "NbTypesAtomes" in line:
             line = line.split()
             natypes += int(line[1])
