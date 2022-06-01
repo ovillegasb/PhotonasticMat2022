@@ -127,6 +127,12 @@ class connectivity(nx.DiGraph):
         return df
 
 
+class BULK:
+    """Class representing a molecular system."""
+    
+    pass
+
+
 class MOL:
     """
     Class used to represent a molecule.
