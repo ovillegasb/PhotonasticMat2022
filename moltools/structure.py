@@ -5,6 +5,7 @@ import numpy as np
 import networkx as nx
 from scipy.spatial.distance import cdist
 from scipy.constants import e
+import itertools as it
 
 
 class MoleculeDefintionError(Exception):
@@ -125,6 +126,31 @@ class connectivity(nx.DiGraph):
         df = pd.DataFrame(rows, index=indexs)
 
         return df
+
+    def read_dict(self, connect):
+        """Read connectivity from a dictionary."""
+        # Add edges like bonds
+        for i in connect:
+            for ai, aj in it.product([i], connect[i]):
+                self.add_edge(ai, aj)
+                self.add_edge(aj, ai)
+                pos_i = self.nodes[ai]['xyz']
+                pos_j = self.nodes[aj]['xyz']
+
+                # save distance ij
+                m = np.linalg.norm(pos_j - pos_i)
+                
+                self.edges[ai, aj]['dist'] = m
+                self.edges[aj, ai]['dist'] = m
+
+    def define_atoms(self, coord):
+        """Define the atoms of the system like nodes."""
+        for i in coord.index:
+            self.add_node(
+                i,
+                xyz=coord.loc[i, ['x', 'y', 'z']].values,
+                atsb=coord.loc[i, 'atsb']
+            )
 
 
 class BULK:
