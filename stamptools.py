@@ -25,6 +25,7 @@ def read_fatomes(file):
     natypes = 0
     atomsM = {}
     xyz = []
+    connects = dict()
     with open(file, "r") as FATM:
         for line in FATM:
             if "*" == line[0]:
@@ -60,6 +61,15 @@ def read_fatomes(file):
                 m = atoms.match(line)
                 xyz.append(m.groupdict())
 
+            elif "Zmatrice" in line:
+                N = int(FATM.readline())
+                print("N conectivity:", N)
+                for _ in range(N):
+                    zline = FATM.readline()
+                    zline = zline.split()
+                    zline = [int(i) for i in zline]
+                    connects[zline[0]] = zline[1:]
+
     print("Number of atoms in XYZ matrix:", Natoms)
 
     print("ATOMS types and Mass [Kg/mol]")
@@ -78,7 +88,7 @@ def read_fatomes(file):
 
     tabXYZ["mass"] = tabXYZ["atsb"].apply(lambda x: atomsM[x])
 
-    return tabXYZ, box
+    return tabXYZ, box, connects
 
 
 def save_gro(table, box, name="coord.gro"):
