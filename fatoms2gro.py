@@ -33,7 +33,7 @@ def main():
     fatoms = args["fatoms"]
     print(f"FAtomes file: {fatoms}")
 
-    dfatoms, box = read_fatomes(fatoms)
+    dfatoms, box, _ = read_fatomes(fatoms)
     dfatoms["resid"] = 0
     dfatoms["resname"] = "UKN"
 
