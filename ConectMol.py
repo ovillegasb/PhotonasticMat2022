@@ -6,9 +6,32 @@ from stamptools import read_fatomes
 from moltools.structure import connectivity
 import networkx as nx
 import json
+import argparse
 
 
-fatoms = "FAtomes_000125000.in"
+def options():
+    """Generate command line interface."""
+    parser = argparse.ArgumentParser(
+        prog="ConectMol",
+        usage="%(prog)s FAtomes.in [-options]",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Enjoy the program!"
+    )
+
+    # FAtomes.in file
+    parser.add_argument(
+        "fatoms",
+        help="FAtomes.in file",
+        default="",
+        type=str
+    )
+
+    return vars(parser.parse_args())
+
+
+args = options()
+
+fatoms = args["fatoms"]
 print(f"FAtomes file: {fatoms}")
 
 dfatoms, box, connects = read_fatomes(fatoms)
@@ -61,7 +84,7 @@ print(select)
 #
 
 with open("polysystem.json", "w") as f:
-    json.dump(bulk, f, indent=0)
+    json.dump(bulk, f, indent=0, sort_keys=True)
 
 # print(bulk)
 
