@@ -27,6 +27,8 @@ for {set i 0} {$i < $Nxyz} {incr i} {
     # Load new molecule
     puts "File: $ifile"
     mol new $ifile
+    # OR
+    # mol addfile $ifile type {xyz} first 0 last -1 step 1 waitfor 1 0
 
     # Graine : name Br
     # for show only
