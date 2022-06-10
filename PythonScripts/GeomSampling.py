@@ -47,10 +47,10 @@ for iframe in range(traj.n_frames):
         functional="B3LYP",
         basis_set="Def2SVP",
         route_parameters={
-            "SCR": "Tight",
+            "SCF": "Tight",
             "TD": "(NStates=3)"
         },
         link0_parameters={
-            "%chk": "azoT_%d.chk" % iframe
+            "%chk": "azoC_%d.chk" % iframe
         }
-    ).write_file("gaussinputs/azoT_%d.com" % iframe)
+    ).write_file("gaussinputs/azoC_%d.com" % iframe)

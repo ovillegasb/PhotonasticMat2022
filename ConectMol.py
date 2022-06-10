@@ -2,7 +2,7 @@
 
 """Script to generate a system molecule from connectivity."""
 
-from stamptools import read_fatomes
+from stamptools.analysis import read_fatomes
 from moltools.structure import connectivity
 import networkx as nx
 import json
