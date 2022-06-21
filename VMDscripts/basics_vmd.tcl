@@ -144,3 +144,6 @@ graphics top delete ID
 set atoms [atomselect 0 "all"]
 set q "-1.2 -1.2 0.4 0.4 0.4 0.4 0.4 0.4"
 $atoms set charge $q
+
+# Changing coordinates for an atom
+$atom set {x y z} {{1.6 0 0}}
