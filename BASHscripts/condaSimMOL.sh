@@ -11,6 +11,7 @@ conda install -c anaconda networkx
 
 # Others
 sudo dnf install pandoc
+conda install ipympl  # %matplotlib widget
 conda install -c conda-forge nodejs
 conda install -c conda-forge/label/gcc7 nodejs
 conda install -c conda-forge/label/cf201901 nodejs
