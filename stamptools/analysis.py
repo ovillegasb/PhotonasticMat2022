@@ -83,3 +83,22 @@ def read_fatomes(file):
     tabXYZ["mass"] = tabXYZ["atsb"].apply(lambda x: atomsM[x])
 
     return tabXYZ, box, connects
+
+
+def traj_analysis(ndx_mol, top, traj):
+    """
+    Analyze properties during a simulation.
+
+    Parameters
+    ----------
+    ndx_mol : dict
+        Dictionary with the indexes of each molecule to be analyzed.
+
+    top : DataFrame
+        File with the system topology.
+
+    traj : list(DataFrame)
+        Defines the trajectory of the system in a list of Dataframes.
+
+    """
+    pass
