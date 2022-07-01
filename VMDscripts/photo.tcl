@@ -15,7 +15,7 @@ display projection Orthographic
 display shadows on
 display ambientocclusion on
 
-pbc box off
+pbc box -off
 
 # Meterials
 #material add copy AOEdgy
