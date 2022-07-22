@@ -1,0 +1,7 @@
+xtick.labelsize: 12
+ytick.labelsize: 12
+axes.labelsize: 12
+font.size: 14
+text.usetex : True
+axes.titlesize: 14
+figure.dpi: 200.0
