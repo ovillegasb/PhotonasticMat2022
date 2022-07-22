@@ -15,15 +15,34 @@ atoms = re.compile(r"""
         (?P<z>[+-]?\d+\.\d+)\s+           # Orthogonal coordinates for Z.
         """, re.X)
 
+noms = re.compile(r"""
+    nom\s+(?P<nom>\w+)               # Atom name
+    """, re.X)
+
+masses = re.compile(r"""
+    masse\s+(?P<mass>\d+\.\w+[+-]?\d+)               # Atom name
+    """, re.X)
+
 
 def read_fatomes(file):
     """Read Fatomes file."""
     natypes = 0
     atomsM = {}
     xyz = []
+    lnom = []
+    lmass = []
     connects = dict()
     with open(file, "r") as FATM:
         for line in FATM:
+
+            if noms.match(line):
+                m = noms.match(line)
+                lnom.append(m.groupdict())
+
+            if masses.match(line):
+                m = masses.match(line)
+                lmass.append(m.groupdict())
+
             if "*" == line[0]:
                 # ignore lines with the * symbol
                 continue
@@ -31,17 +50,6 @@ def read_fatomes(file):
             elif "NbTypesAtomes" in line:
                 line = line.split()
                 natypes += int(line[1])
-                continue
-
-            elif "nom" in line:
-                line = line.split()
-                nom = line[1]
-                continue
-
-            elif "masse" in line:
-                line = line.split()
-                mass = np.float64(line[1])
-                atomsM[nom] = mass
                 continue
 
             elif "maille_long" in line:
@@ -66,6 +74,21 @@ def read_fatomes(file):
                     zline = [int(i) for i in zline]
                     connects[zline[0]] = zline[1:]
 
+    atomsM = dict()
+    print("Atoms names:", lnom, len(lnom))
+
+    print("Atoms masses:", lmass, len(lmass))
+
+    print(list(range(len(lnom))))
+
+    if len(lmass) == len(lnom):
+        # print("Esta bien, son iguales")
+        for i in range(len(lnom)):
+            atomsM[lnom[i]["nom"]] = np.float64(lmass[i]["mass"])
+    else:
+        print("ERROR, no; and masses dont similar")
+        exit()
+
     print("Number of atoms in XYZ matrix:", Natoms)
 
     print("ATOMS types and Mass [Kg/mol]")
@@ -82,7 +105,13 @@ def read_fatomes(file):
         "z": np.float64
     })
 
-    tabXYZ["mass"] = tabXYZ["atsb"].apply(lambda x: atomsM[x])
+    try:
+        tabXYZ["mass"] = tabXYZ["atsb"].apply(lambda x: atomsM[x])
+    except KeyError:
+        print(atomsM)
+        print(tabXYZ.loc[0:26, :])
+        print("ERROR")
+        exit()
 
     return tabXYZ, box, connects
 
