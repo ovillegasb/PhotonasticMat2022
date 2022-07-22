@@ -13,3 +13,7 @@ color Display Background white
 animate speed 0.78
 animate goto 0
 
+# Color Labels
+color Labels Bonds black
+color Labels Angles orange
+color Labels Dihedrals red3
