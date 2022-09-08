@@ -115,3 +115,16 @@ def save_gro(table, box, name="coord.gro"):
 
     GRO.close()
     print("\nSaved gro file: \033[1;36m%s\033[m writed\n" % gro)
+
+
+def read_donnees(file):
+    """Read DONNEES file."""
+    parameters = {}
+    with open(file, "r") as D:
+        for line in D:
+            if not line.startswith("*"):
+                line = line.replace("\n", "")
+                line = line.split()[0:2]
+                parameters[line[0]] = line[1]
+
+    return parameters

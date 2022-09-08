@@ -5,6 +5,10 @@ import time
 import numpy as np
 import pandas as pd
 from scipy.constants import N_A
+import pickle
+import matplotlib.pyplot as plt
+import glob
+
 
 """ Regular expression that extracts matrix XYZ """
 atoms = re.compile(r"""
@@ -190,7 +194,7 @@ def traj_analysis(ndx_mol, top, traj, box, connectivity, GyrationTensor):
     return pd.DataFrame(data)
 
 
-def load_data(file, t="NVT"):
+def load_data(file, t="LNVT"):
     """
     Load data from Stamp.dat.
 
@@ -204,7 +208,7 @@ def load_data(file, t="NVT"):
 
     """
     names = {
-        "NVT": [
+        "LNVT": [
             "I",
             "Etot", "Epot", "Epot_intra", "Epot_inter", "Ekin",
             "T", "Tx", "Ty", "Tz",
@@ -230,4 +234,44 @@ def load_data(file, t="NVT"):
         comment="#"
                       )
     data["Etot"] = data["Etot"] * N_A / 1000  # to kJ/mol
+    data["I"] = data["I"] * 1e12  # to ps
+    data["P"] = data["P"] * 1e-5  # to bar
+
     return data
+
+
+def save_system(obj, file="system.chk"):
+    """Save the status of an object stamp."""
+    with open(file, "wb") as CHK:
+        pickle.dump(obj, CHK)
+
+    print("Saved system status.")
+
+
+def load_system(obj, file="system.chk"):
+    """Load the status of an objecto stamp."""
+    with open(file, "rb") as CHK:
+        system = pickle.load(CHK)
+
+    return system
+
+
+def save_plot(x, y, name, color="b", xlb="", ylb=""):
+    """Save plots."""
+    fig, ax = plt.subplots()
+
+    ax.plot(x, y, color=color, alpha=0.8)
+    # ax.hist(y, bins=100, orientation='horizontal', alpha=0.4, color=color)
+
+    ax.set_xlabel(xlb)
+    ax.set_ylabel(ylb)
+
+    ax.set_title("Mean {:.3f} - std {:.3f}".format(y.mean(), y.std()))
+
+    plt.savefig(f"{name}.png", dpi=300)
+    plt.close()
+
+
+def get_density(XYSs):
+    """Return density of system using xyz stamp files."""
+    pass
