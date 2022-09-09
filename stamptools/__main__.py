@@ -22,9 +22,14 @@ Stamp: v4.220721
 
 Usage:
 
+    Create object
     python -m stamptools -d DONNEES.in
 
+    Thermo:
     python -m stamptools -l -p T P Etot
+
+    Save traj mol 0
+    python -m stamptools -l --mol 0
 
     On server:
     python -um stamptools -l > log &
@@ -76,12 +81,19 @@ def options():
         default=None
     )
 
+    analysis.add_argument(
+        "--mol",
+        help="Analyze trajectory of a particular molecule, use resid.",
+        type=int,
+        default=None
+    )
+
     return vars(parser.parse_args())
 
 
 print(TITLE)
 args = options()
-print(args)
+# print(args)
 
 if not args["load"] and args["donnees"]:
     system = STAMP(donnees=args["donnees"], data=args["dataStamp"])
@@ -96,10 +108,14 @@ elif args["load"]:
     # print(system.connectivity)
     # print(system.atoms_per_mol)
 
-    system.get_poly_info()
+    # system.get_poly_info()
 
     if args["plots"]:
         system.save_plots(args["plots"])
+
+    if isinstance(args["mol"], int):
+        print("Resid:", args["mol"])
+        system.mol_traj_analysis(args["mol"])
 
 else:
     print("No option has been indicated.")

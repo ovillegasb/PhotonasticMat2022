@@ -3,6 +3,7 @@
 """Module to define the STAMP class."""
 
 import glob
+import os
 import numpy as np
 from scipy.constants import N_A
 from stamptools.stamptools import read_donnees
@@ -23,6 +24,22 @@ setplots = {
         "name": "etot", "color": "b"
         }
 }
+
+
+def change_atsb(x):
+    if x in ["ca", "cb", "CT", "CM"]:
+        return "C"
+    elif x in ["ha", "ho", "HT", "HM"]:
+        return "H"
+    elif x in ["nf", "ne"]:
+        return "N"
+    elif x in ["oh"]:
+        return "O"
+
+
+def center_of_mass(coords, masses):
+    """Compute the center of mass, the mass weighterd barycenter."""
+    return np.sum(coords * masses[:, np.newaxis], axis=0) / masses.sum()
 
 
 class STAMP:
@@ -131,3 +148,38 @@ class STAMP:
         # save information in file
         dfpoly.to_csv("datapolyP.csv")
         print("file datapolyP saved.")
+
+    def mol_traj_analysis(self, index):
+        """Analyze trajectory of a particular molecule."""
+        mol_ndx = self.atoms_per_mol[index]
+        mol_conn = self.connectivity.sub_connect(mol_ndx["index"])
+        masses = self.topology["mass"].values[mol_ndx["index"]]
+
+        i = 0
+        for xyz in self.traj:
+            name = "mol_%d_%005d" % (index, i)
+
+            mol_xyz = xyz.loc[mol_ndx["index"], :]
+            # update coordinates
+            mol_conn.update_coordinates(mol_xyz)
+
+            # remove PBC
+            mol_conn.noPBC(self.box)
+            new_mol_xyz = mol_conn.get_df()
+            new_mol_xyz["atsb"] = new_mol_xyz["atsb"].apply(change_atsb)
+
+            cm = center_of_mass(
+                new_mol_xyz.loc[:, ["x", "y", "z"]].values,
+                masses
+            )
+
+            new_mol_xyz["x"] -= cm[0]
+            new_mol_xyz["y"] -= cm[1]
+            new_mol_xyz["z"] -= cm[2]
+
+            structure.save_xyz(new_mol_xyz, name=name)
+            i += 1
+
+        os.system(f"cat mol_{index}_0* > mol_{index}_traj.xyz")
+        os.system(f"rm mol_{index}_0*")
+        print(f"Saved trajectory mol {index} in mol_{index}_traj.xyz")
