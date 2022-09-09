@@ -120,6 +120,11 @@ def read_fatomes(file):
     return tabXYZ, box, connects
 
 
+def progress(p):
+    bar = int(p * 40 / 100)
+    return bar*"=" + (40-bar)*" "
+
+
 def traj_analysis(ndx_mol, top, traj, box, connectivity, GyrationTensor):
     """
     Analyze properties during a simulation.
@@ -146,20 +151,22 @@ def traj_analysis(ndx_mol, top, traj, box, connectivity, GyrationTensor):
 
 
     """
+    print("Polymer analysis")
     t0 = time.time()
-    # Processing bar
-    Ntotal = len(traj)
-    dframe = int(round(Ntotal / 100))
-    state = dict()
-    for p in range(0, 100):
-        bar = int(p * 20 / 100)
-        state[p * dframe] = [
-            f"{p*dframe*100/Ntotal:.2f} %",
-            bar*"*"+(20-bar)*"_"]
 
-    print("Starting analysis:")
-    data = []
+    # Number of frames read
+    Nframes = len(traj)
+    print(f"Number of frames: {Nframes}")
+
+    out = open("polymers.csv", "w")
+    out.write(",frame,idx,Natoms,Rg,k2,dmax\n")
+    out.close()
+
+    index = 0
+
     for i, frame in enumerate(traj):
+        porcent = i * 100 / Nframes
+        print(f"{porcent:5.2f} % |{progress(porcent)}|")
         for mol in ndx_mol:
             masses = top.loc[ndx_mol[mol]["index"], "mass"].values
             dfcoord = frame.loc[ndx_mol[mol]["index"], :]
@@ -177,21 +184,25 @@ def traj_analysis(ndx_mol, top, traj, box, connectivity, GyrationTensor):
             coord = newdfcoord.loc[:, ["x", "y", "z"]].values
 
             G = GyrationTensor(coord, masses, box, pbc=False)
-            data.append({
-                "frame": i,
-                "idx": mol,
-                "Nres": int(ndx_mol[mol]["Natoms"] / 10),
-                "Rg": G.iso_w_rg,
-                "k2": G.shape_anisotropy,
-                "dmax": G.max_distance
-            })
 
-        if i in state:
-            print(f"{state[i][0]} | {state[i][1]} | {time.time()-t0}")
+            line = ""
+            line += f"{index},"
+            line += f"{i},"
+            line += f"{mol},"
+            line += "{},".format(int(ndx_mol[mol]["Natoms"]))
+            line += f"{G.iso_w_rg:.2f},"
+            line += f"{G.shape_anisotropy:.3f},"
+            line += f"{G.max_distance:.2f}"
+            line += "\n"
+            # print(line)
+
+            with open("polymers.csv", "a") as out:
+                out.write(line)
+            
+            index += 1
 
     tf = time.time()
-    print(f"Total time: {tf-t0:.2f} sec")
-    return pd.DataFrame(data)
+    print(f"Analysis time: {tf-t0:.2f} s")
 
 
 def load_data(file, t="LNVT"):

@@ -31,6 +31,9 @@ Usage:
     Save traj mol 0
     python -m stamptools -l --mol 0
 
+    Save poly information
+    python -m stamptools -l --poly
+
     On server:
     python -um stamptools -l > log &
 
@@ -88,6 +91,12 @@ def options():
         default=None
     )
 
+    analysis.add_argument(
+        "--poly",
+        help="Analyze the shape and size of the polymers present.",
+        action="store_true"
+    )
+
     return vars(parser.parse_args())
 
 
@@ -97,8 +106,6 @@ args = options()
 
 if not args["load"] and args["donnees"]:
     system = STAMP(donnees=args["donnees"], data=args["dataStamp"])
-
-    # print(system.data)
     save_system(system)
 
 elif args["load"]:
@@ -108,14 +115,15 @@ elif args["load"]:
     # print(system.connectivity)
     # print(system.atoms_per_mol)
 
-    # system.get_poly_info()
-
     if args["plots"]:
         system.save_plots(args["plots"])
 
     if isinstance(args["mol"], int):
         print("Resid:", args["mol"])
         system.mol_traj_analysis(args["mol"])
+
+    if args["poly"]:
+        system.get_poly_info()
 
 else:
     print("No option has been indicated.")

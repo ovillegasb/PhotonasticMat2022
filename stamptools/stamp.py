@@ -136,7 +136,7 @@ class STAMP:
 
     def get_poly_info(self):
         """Save file information for size mol."""
-        dfpoly = traj_analysis(
+        traj_analysis(
             self.atoms_per_mol,
             self.topology, 
             self.traj,
@@ -146,7 +146,7 @@ class STAMP:
         )
 
         # save information in file
-        dfpoly.to_csv("datapolyP.csv")
+        ## dfpoly.to_csv("datapolyP.csv")
         print("file datapolyP saved.")
 
     def mol_traj_analysis(self, index):
