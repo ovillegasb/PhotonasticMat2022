@@ -78,8 +78,7 @@ def options():
         help="""Saves graphs of thermodynamic parameters.
 
         Thermodynamic parameters: T, P or Etot, Several can be chosen
-        at the same time.
-        """,  # action="store_true"
+        at the same time.""",  # action="store_true"
         nargs="+",
         default=None
     )
@@ -95,6 +94,24 @@ def options():
         "--poly",
         help="Analyze the shape and size of the polymers present.",
         action="store_true"
+    )
+
+    analysis.add_argument(
+        "--mol_dist",
+        help="""Analysis of distances between one reference molecule and the
+        others.
+
+        The first number is the Resid of the reference molecule, the following
+        are the study molecules:
+
+        --mol_dist 0 1 2 3
+
+        or
+
+        --mol_dist 0 all, The option all excludes the one used as reference.
+        """,
+        nargs="+",
+        default=None
     )
 
     return vars(parser.parse_args())
@@ -124,6 +141,9 @@ elif args["load"]:
 
     if args["poly"]:
         system.get_poly_info()
+
+    if args["mol_dist"]:
+        print(args["mol_dist"])
 
 else:
     print("No option has been indicated.")

@@ -27,6 +27,7 @@ setplots = {
 
 
 def change_atsb(x):
+    """Change the FAtomes atom types to atoms from XYZ files."""
     if x in ["ca", "cb", "CT", "CM"]:
         return "C"
     elif x in ["ha", "ho", "HT", "HM"]:
@@ -146,8 +147,7 @@ class STAMP:
         )
 
         # save information in file
-        ## dfpoly.to_csv("datapolyP.csv")
-        print("file datapolyP saved.")
+        print("file polymers.csv saved.")
 
     def mol_traj_analysis(self, index):
         """Analyze trajectory of a particular molecule."""

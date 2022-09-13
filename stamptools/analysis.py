@@ -121,6 +121,7 @@ def read_fatomes(file):
 
 
 def progress(p):
+    """Indicate on a bar the progress of the analysis."""
     bar = int(p * 40 / 100)
     return bar*"=" + (40-bar)*" "
 
@@ -259,7 +260,7 @@ def save_system(obj, file="system.chk"):
     print("Saved system status.")
 
 
-def load_system(obj, file="system.chk"):
+def load_system(file):
     """Load the status of an objecto stamp."""
     with open(file, "rb") as CHK:
         system = pickle.load(CHK)
