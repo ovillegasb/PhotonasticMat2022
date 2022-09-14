@@ -147,3 +147,7 @@ $atoms set charge $q
 
 # Changing coordinates for an atom
 $atom set {x y z} {{1.6 0 0}}
+
+# Change color resname
+color Resname A14 tan
+color change rgb 5 tan 0.390000 0.500000 0.200000
