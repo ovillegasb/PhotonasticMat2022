@@ -68,8 +68,6 @@ atoms_MOL = nx.weakly_connected_components(conn)
 # First molecule
 # print(next(atoms_MOL))
 
-size = 10  # esto se tiene que cambiar
-
 # searching most big polymer
 atoms = 0
 indexs = []
@@ -86,9 +84,9 @@ for mol in atoms_MOL:
     m = sorted(mol)
     groups = group_runs(m)
 
-    # print(list(groups))
 
-    ndx = " ".join(["%d to %d" % (lm[0], lm[-1]) for lm in groups])
+    # ndx = " ".join(["%d to %d" % (lm[0], lm[-1]) for lm in groups])
+    ndx = " ".join(["%d" % lm for lm in list(groups)[0]])
     bulk[ipol]["index"] = ndx
     # bulk[ipol]["index"] = " ".join([str(i) for i in mol])
     ipol += 1
