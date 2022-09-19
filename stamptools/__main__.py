@@ -4,7 +4,7 @@
 
 import argparse
 from stamptools.stamp import STAMP
-from stamptools.analysis import save_system, load_system
+from stamptools.analysis import save_system, load_system, traj_center_mass, get_distances_from
 
 TITLE = """\033[1;36m
    _____ _______       __  __ _____ _______ ____   ____  _       _____ 
@@ -97,6 +97,19 @@ def options():
     )
 
     analysis.add_argument(
+        "--centerm",
+        help="Analyze the of center of mass from molecules present.",
+        action="store_true"
+    )
+
+    analysis.add_argument(
+        "--mref",
+        help="Analyze center of mass distance from a referece, use resid.",
+        type=int,
+        default=None
+    )
+
+    analysis.add_argument(
         "--mol_dist",
         help="""Analysis of distances between one reference molecule and the
         others.
@@ -145,5 +158,21 @@ elif args["load"]:
     if args["mol_dist"]:
         print(args["mol_dist"])
 
+    if args["centerm"]:
+        """
+        traj_center_mass(
+            system.traj,
+            system.atoms_per_mol,
+            system.topology,
+            system.box,
+            system.connectivity
+        )
+        """
+        # save information in file
+        print("file mol_cmass.csv saved.")
+        if isinstance(args["mref"], int):
+            print("Resid:", args["mref"])
+            get_distances_from(args["mref"], system.box)
+            print("file mol_dist_from_{}.csv saved.".format(args["mref"]))
 else:
     print("No option has been indicated.")

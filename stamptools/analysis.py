@@ -126,6 +126,11 @@ def progress(p):
     return bar*"=" + (40-bar)*" "
 
 
+def center_of_mass(coords, masses):
+    """Compute the center of mass, the mass weighterd barycenter."""
+    return np.sum(coords * masses[:, np.newaxis], axis=0) / masses.sum()
+
+
 def traj_analysis(ndx_mol, top, traj, box, connectivity, GyrationTensor):
     """
     Analyze properties during a simulation.
@@ -287,3 +292,110 @@ def save_plot(x, y, name, color="b", xlb="", ylb=""):
 def get_density(XYSs):
     """Return density of system using xyz stamp files."""
     pass
+
+
+def traj_center_mass(traj, ndx_mol, top, box, connectivity):
+    """Return the center of mass of each molecule over time."""
+    print("Center of mass analysis")
+    t0 = time.time()
+
+    # Number of frames read
+    Nframes = len(traj)
+    print(f"Number of frames: {Nframes}")
+
+    out = open("mol_cmass.csv", "w")
+    out.write(",frame,idx,Natoms,x,y,z\n")
+    out.close()
+
+    tf = time.time()
+    print(f"Analysis time: {tf-t0:.2f} s")
+
+    index = 0
+    for i, frame in enumerate(traj):
+        porcent = i * 100 / Nframes
+        print(f"{porcent:5.2f} % |{progress(porcent)}|")
+        for mol in ndx_mol:
+            masses = top.loc[ndx_mol[mol]["index"], "mass"].values
+            dfcoord = frame.loc[ndx_mol[mol]["index"], :]
+
+            # Connectivity in the molecule
+            connect = connectivity.sub_connect(ndx_mol[mol]["index"])
+
+            # update coordinates
+            connect.update_coordinates(dfcoord)
+
+            # remove PBC
+            connect.noPBC(box)
+
+            # extract new coordinates
+            newdfcoord = connect.get_df()
+            coord = newdfcoord.loc[:, ["x", "y", "z"]].values
+
+            mol_cm = center_of_mass(coord, masses)
+
+            line = ""
+            line += f"{index},"
+            line += f"{i},"
+            line += f"{mol},"
+            line += "{},".format(int(ndx_mol[mol]["Natoms"]))
+            line += f"{mol_cm[0]:.3f},"
+            line += f"{mol_cm[1]:.3f},"
+            line += f"{mol_cm[2]:.3f}"
+            line += "\n"
+            # print(line)
+
+            with open("mol_cmass.csv", "a") as out:
+                out.write(line)
+            
+            index += 1
+
+
+def minImagenC(q1, q2, L):
+    dq = q2 - q1
+    if dq > L * 0.5:
+        dq -= L
+    
+    if dq <= -L * 0.5:
+        dq += L
+    
+    return dq
+
+
+def get_distances_from(mref, box, file="mol_cmass.csv"):
+    # file cm trajectory
+    traj_mol_cm = pd.read_csv(file, index_col=0, header=0)
+
+    # cm trajectory from ref
+    traj_mref = traj_mol_cm[traj_mol_cm["idx"] == 0]
+
+    # cm trajectory from others
+    traj_not_mref = traj_mol_cm[traj_mol_cm["idx"] != 0]
+
+    out = open(f"mol_dist_from_{mref}.csv", "w")
+    out.write("frame,idx,distance\n")
+    out.close()
+    
+    for frame in traj_mref["frame"]:
+        print("frame", frame)
+        mref_xyz = traj_mref[traj_mref["frame"] == 0].loc[:, ["x", "y", "z"]].values[0]
+        # print(mref_xyz)
+        not_mref_xyz = traj_not_mref[traj_not_mref["frame"] == 0].loc[:, ["idx", "x", "y", "z"]].values
+        for mol in not_mref_xyz:
+            pol_id = int(mol[0])
+            #  print("Polimer id", pol_id)
+            mol = mol[1:]
+            dist = []
+            for i in range(3):
+                ndist = minImagenC(mref_xyz[i], mol[i], box[i])
+                # ndist = mol[i] - mref_xyz[i]
+                dist.append(ndist)
+            dist = np.linalg.norm(dist)
+            #print("distance", dist)
+            line = ""
+            line += f"{frame},"
+            line += f"{pol_id},"
+            line += f"{dist:.3f}"
+            line += "\n"
+            
+            with open(f"mol_dist_from_{mref}.csv", "a") as out:
+                out.write(line)

@@ -147,7 +147,7 @@ class STAMP:
         )
 
         # save information in file
-        print("file polymers.csv saved.")
+        print("file mol_cmass.csv saved.")
 
     def mol_traj_analysis(self, index):
         """Analyze trajectory of a particular molecule."""
