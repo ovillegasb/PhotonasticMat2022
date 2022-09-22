@@ -4,7 +4,11 @@
 
 import argparse
 from stamptools.stamp import STAMP
-from stamptools.analysis import save_system, load_system, traj_center_mass, get_distances_from
+from stamptools.analysis import save_system, load_system
+from stamptools.analysis import traj_center_mass, get_distances_from
+from stamptools.analysis import gen_centered_traj
+import pandas as pd
+
 
 TITLE = """\033[1;36m
    _____ _______       __  __ _____ _______ ____   ____  _       _____ 
@@ -33,6 +37,9 @@ Usage:
 
     Save poly information
     python -m stamptools -l --poly
+
+    System center from a reference
+    python -m stamptools -l --centered_traj --rcutoff 1.0 --mref 0
 
     On server:
     python -um stamptools -l > log &
@@ -127,6 +134,19 @@ def options():
         default=None
     )
 
+    analysis.add_argument(
+        "--centered_traj",
+        help="Generates a trajectory using a reference molecule.",
+        action="store_true"
+    )
+
+    analysis.add_argument(
+        "--rcutoff",
+        help="Cut-off distance with respect to the reference molecule.",
+        type=float,
+        default=1.0
+    )
+
     return vars(parser.parse_args())
 
 
@@ -159,7 +179,6 @@ elif args["load"]:
         print(args["mol_dist"])
 
     if args["centerm"]:
-        """
         traj_center_mass(
             system.traj,
             system.atoms_per_mol,
@@ -167,12 +186,27 @@ elif args["load"]:
             system.box,
             system.connectivity
         )
-        """
         # save information in file
         print("file mol_cmass.csv saved.")
         if isinstance(args["mref"], int):
             print("Resid:", args["mref"])
             get_distances_from(args["mref"], system.box)
             print("file mol_dist_from_{}.csv saved.".format(args["mref"]))
+
+    if args["centered_traj"]:
+        # distances file
+        mol_dist = pd.read_csv("mol_dist_from_0.csv")
+        mol_dist["distance"] = mol_dist["distance"] * 0.1  # to nm
+
+        # load center of mass file
+        c_mass = pd.read_csv("mol_cmass.csv", index_col=0)
+
+        gen_centered_traj(
+            system,
+            mol_dist,
+            c_mass,
+            rcutoff=args["rcutoff"],
+            ref=args["mref"])
+
 else:
     print("No option has been indicated.")

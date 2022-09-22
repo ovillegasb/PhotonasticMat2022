@@ -7,7 +7,8 @@ import pandas as pd
 from scipy.constants import N_A
 import pickle
 import matplotlib.pyplot as plt
-import glob
+import os
+from molcraft.structure import save_xyz
 
 
 """ Regular expression that extracts matrix XYZ """
@@ -377,9 +378,9 @@ def get_distances_from(mref, box, file="mol_cmass.csv"):
     
     for frame in traj_mref["frame"]:
         print("frame", frame)
-        mref_xyz = traj_mref[traj_mref["frame"] == 0].loc[:, ["x", "y", "z"]].values[0]
+        mref_xyz = traj_mref[traj_mref["frame"] == frame].loc[:, ["x", "y", "z"]].values[0]
         # print(mref_xyz)
-        not_mref_xyz = traj_not_mref[traj_not_mref["frame"] == 0].loc[:, ["idx", "x", "y", "z"]].values
+        not_mref_xyz = traj_not_mref[traj_not_mref["frame"] == frame].loc[:, ["idx", "x", "y", "z"]].values
         for mol in not_mref_xyz:
             pol_id = int(mol[0])
             #  print("Polimer id", pol_id)
@@ -399,3 +400,69 @@ def get_distances_from(mref, box, file="mol_cmass.csv"):
             
             with open(f"mol_dist_from_{mref}.csv", "a") as out:
                 out.write(line)
+
+
+def translate_to(coord, center, box):
+    """Translate coordinates using a reference center."""
+    newcoord = np.zeros(coord.shape)
+    for i, atom in enumerate(coord):
+        for j, q in enumerate(atom):
+            newcoord[i, j] = minImagenC(center[j], q, box[j])
+    
+    return newcoord
+
+
+def change_atsb(x):
+    """Change the FAtomes atom types to atoms from XYZ files."""
+    if x in ["ca", "cb", "CT", "CM"]:
+        return "C"
+    elif x in ["ha", "ho", "HT", "HM"]:
+        return "H"
+    elif x in ["nf", "ne"]:
+        return "N"
+    elif x in ["oh"]:
+        return "O"
+
+
+def gen_centered_traj(mol, mol_dist, c_mass, rcutoff=1.5, ref=0, out_folder="centered_traj"):
+    """Generate a trajectory of the system using a reference center."""
+    traj = mol.traj
+    traj_resid_in_r = mol_dist[mol_dist["distance"] < rcutoff]
+    traj_center_ref = c_mass[c_mass["idx"] == ref].loc[:, ["x", "y", "z"]].values
+    
+    atoms_per_mol = mol.atoms_per_mol
+    connectivity = mol.connectivity
+    box = mol.box
+    
+    # Output folder
+    try:
+        os.mkdir(out_folder)
+    except FileExistsError:
+        print("The output foler was already created")
+        
+    for frame, coord in enumerate(traj):
+        name = "centered_mol_%04d" % frame
+        
+        resid = [ref] + list(traj_resid_in_r["idx"][traj_resid_in_r["frame"] == frame].values)
+        center = traj_center_ref[frame]
+        
+        connects = connectivity.copy()
+        atoms_ndx = []
+        for res in resid:
+            atoms = atoms_per_mol[res]["index"]
+            mol_conn = connects.sub_connect(atoms)
+            df = coord.loc[atoms, :]
+            # Translate to a center of reference
+            df.loc[:, ["x", "y", "z"]] = translate_to(df.loc[:, ["x", "y", "z"]].values, center, box)
+            mol_conn.update_coordinates(df)
+            mol_conn.noPBC(box)
+            ndf = mol_conn.get_df()
+            connects.update_coordinates(ndf)
+            atoms_ndx += atoms
+        ####
+        sys_conn = connects.sub_connect(atoms_ndx)
+        # new df
+        ndf = sys_conn.get_df()
+        ndf["atsb"] = ndf["atsb"].apply(change_atsb).values.astype(str)
+        
+        save_xyz(ndf, name=f"{out_folder}/{name}")
