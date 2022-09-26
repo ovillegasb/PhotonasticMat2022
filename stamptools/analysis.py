@@ -427,7 +427,7 @@ def change_atsb(x):
 def gen_centered_traj(mol, mol_dist, c_mass, rcutoff=1.5, ref=0, out_folder="centered_traj"):
     """Generate a trajectory of the system using a reference center."""
     traj = mol.traj
-    traj_resid_in_r = mol_dist[mol_dist["distance"] < rcutoff]
+    traj_resid_in_r = mol_dist[mol_dist["distance"] <= rcutoff]
     traj_center_ref = c_mass[c_mass["idx"] == ref].loc[:, ["x", "y", "z"]].values
     
     atoms_per_mol = mol.atoms_per_mol
@@ -455,7 +455,7 @@ def gen_centered_traj(mol, mol_dist, c_mass, rcutoff=1.5, ref=0, out_folder="cen
             # Translate to a center of reference
             df.loc[:, ["x", "y", "z"]] = translate_to(df.loc[:, ["x", "y", "z"]].values, center, box)
             mol_conn.update_coordinates(df)
-            mol_conn.noPBC(box)
+            mol_conn.noPBC(box, center=np.zeros(3))
             ndf = mol_conn.get_df()
             connects.update_coordinates(ndf)
             atoms_ndx += atoms

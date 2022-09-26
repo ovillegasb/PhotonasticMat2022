@@ -26,23 +26,30 @@ Stamp: v4.220721
 
 Usage:
 
-    Create object
+    Create object:
     python -m stamptools -d DONNEES.in
 
     Thermo:
     python -m stamptools -l -p T P Etot
 
-    Save traj mol 0
+    Save traj mol 0:
     python -m stamptools -l --mol 0
 
-    Save poly information
-    python -m stamptools -l --poly
+    Save poly information:
+    python -um stamptools -l --poly > pol.log &
 
-    System center from a reference
+    Analysis of distances with respect to a resid:
+    python -um stamptools -l --centerm --mref 0 > dist.log &
+
+    System center from a reference:
     python -m stamptools -l --centered_traj --rcutoff 1.0 --mref 0
 
     On server:
     python -um stamptools -l > log &
+
+    Combined analysis:
+    python -m stamptools -l --centered_traj --rcutoff 1.0 --mref 0\
+    --out_ctraj test0 --centerm
 
 """
 
@@ -117,24 +124,6 @@ def options():
     )
 
     analysis.add_argument(
-        "--mol_dist",
-        help="""Analysis of distances between one reference molecule and the
-        others.
-
-        The first number is the Resid of the reference molecule, the following
-        are the study molecules:
-
-        --mol_dist 0 1 2 3
-
-        or
-
-        --mol_dist 0 all, The option all excludes the one used as reference.
-        """,
-        nargs="+",
-        default=None
-    )
-
-    analysis.add_argument(
         "--centered_traj",
         help="Generates a trajectory using a reference molecule.",
         action="store_true"
@@ -145,6 +134,13 @@ def options():
         help="Cut-off distance with respect to the reference molecule.",
         type=float,
         default=1.0
+    )
+
+    analysis.add_argument(
+        "--out_ctraj",
+        help="Name of the output directory.",
+        type=str,
+        default="centered_traj"
     )
 
     return vars(parser.parse_args())
@@ -175,9 +171,6 @@ elif args["load"]:
     if args["poly"]:
         system.get_poly_info()
 
-    if args["mol_dist"]:
-        print(args["mol_dist"])
-
     if args["centerm"]:
         traj_center_mass(
             system.traj,
@@ -206,7 +199,8 @@ elif args["load"]:
             mol_dist,
             c_mass,
             rcutoff=args["rcutoff"],
-            ref=args["mref"])
+            ref=args["mref"],
+            out_folder=args["out_ctraj"])
 
 else:
     print("No option has been indicated.")
