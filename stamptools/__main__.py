@@ -49,7 +49,9 @@ Usage:
 
     Combined analysis:
     python -m stamptools -l --centered_traj --rcutoff 1.0 --mref 0\
-    --out_ctraj test0 --centerm
+--out_ctraj test0 --centerm
+
+    python -m stamptools -l --poly --centerm --mref 0
 
 """
 

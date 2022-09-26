@@ -185,7 +185,7 @@ def traj_analysis(ndx_mol, top, traj, box, connectivity, GyrationTensor):
             connect.update_coordinates(dfcoord)
 
             # remove PBC
-            connect.noPBC(box)
+            connect.noPBC(box, center=np.zeros(3))
 
             newdfcoord = connect.get_df()
             coord = newdfcoord.loc[:, ["x", "y", "z"]].values
@@ -326,7 +326,7 @@ def traj_center_mass(traj, ndx_mol, top, box, connectivity):
             connect.update_coordinates(dfcoord)
 
             # remove PBC
-            connect.noPBC(box)
+            connect.noPBC(box, center=np.zeros(3))
 
             # extract new coordinates
             newdfcoord = connect.get_df()
@@ -375,7 +375,7 @@ def get_distances_from(mref, box, file="mol_cmass.csv"):
     out = open(f"mol_dist_from_{mref}.csv", "w")
     out.write("frame,idx,distance\n")
     out.close()
-    
+
     for frame in traj_mref["frame"]:
         print("frame", frame)
         mref_xyz = traj_mref[traj_mref["frame"] == frame].loc[:, ["x", "y", "z"]].values[0]
