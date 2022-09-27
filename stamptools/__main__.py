@@ -6,7 +6,7 @@ import argparse
 from stamptools.stamp import STAMP
 from stamptools.analysis import save_system, load_system
 from stamptools.analysis import traj_center_mass, get_distances_from
-from stamptools.analysis import gen_centered_traj
+from stamptools.analysis import gen_centered_traj, mol_traj_analysis
 import pandas as pd
 
 
@@ -49,7 +49,7 @@ Usage:
 
     Combined analysis:
     python -m stamptools -l --centered_traj --rcutoff 1.0 --mref 0\
---out_ctraj test0 --centerm
+ --out_ctraj test0 --centerm
 
     python -m stamptools -l --poly --centerm --mref 0
 
@@ -160,49 +160,58 @@ elif args["load"]:
     print("The system status will be loaded")
     system = load_system("system.chk")
 
-    # print(system.connectivity)
-    # print(system.atoms_per_mol)
-
-    if args["plots"]:
-        system.save_plots(args["plots"])
-
-    if isinstance(args["mol"], int):
-        print("Resid:", args["mol"])
-        system.mol_traj_analysis(args["mol"])
-
-    if args["poly"]:
-        system.get_poly_info()
-
-    if args["centerm"]:
-        traj_center_mass(
-            system.traj,
-            system.atoms_per_mol,
-            system.topology,
-            system.box,
-            system.connectivity
-        )
-        # save information in file
-        print("file mol_cmass.csv saved.")
-        if isinstance(args["mref"], int):
-            print("Resid:", args["mref"])
-            get_distances_from(args["mref"], system.box)
-            print("file mol_dist_from_{}.csv saved.".format(args["mref"]))
-
-    if args["centered_traj"]:
-        # distances file
-        mol_dist = pd.read_csv("mol_dist_from_0.csv")
-        mol_dist["distance"] = mol_dist["distance"] * 0.1  # to nm
-
-        # load center of mass file
-        c_mass = pd.read_csv("mol_cmass.csv", index_col=0)
-
-        gen_centered_traj(
-            system,
-            mol_dist,
-            c_mass,
-            rcutoff=args["rcutoff"],
-            ref=args["mref"],
-            out_folder=args["out_ctraj"])
-
 else:
-    print("No option has been indicated.")
+    print("The state of the system must be defined.")
+    exit()
+
+
+# Others options:
+
+if args["plots"]:
+    system.save_plots(args["plots"])
+
+if isinstance(args["mol"], int):
+    resid = args["mol"]
+    print("Resid:", resid)
+    mol_ndx = system.atoms_per_mol[resid]
+    mol_traj_analysis(
+        resid,
+        mol_ndx,
+        system.connectivity.sub_connect(mol_ndx["index"]),
+        system.traj,
+        system.box
+    )
+
+if args["poly"]:
+    system.get_poly_info()
+
+if args["centerm"]:
+    traj_center_mass(
+        system.traj,
+        system.atoms_per_mol,
+        system.topology,
+        system.box,
+        system.connectivity
+    )
+    # save information in file
+    print("file mol_cmass.csv saved.")
+    if isinstance(args["mref"], int):
+        print("Resid:", args["mref"])
+        get_distances_from(args["mref"], system.box)
+        print("file mol_dist_from_{}.csv saved.".format(args["mref"]))
+
+if args["centered_traj"]:
+    # distances file
+    mol_dist = pd.read_csv("mol_dist_from_0.csv")
+    mol_dist["distance"] = mol_dist["distance"] * 0.1  # to nm
+
+    # load center of mass file
+    c_mass = pd.read_csv("mol_cmass.csv", index_col=0)
+
+    gen_centered_traj(
+        system,
+        mol_dist,
+        c_mass,
+        rcutoff=args["rcutoff"],
+        ref=args["mref"],
+        out_folder=args["out_ctraj"])

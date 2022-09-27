@@ -446,23 +446,72 @@ def gen_centered_traj(mol, mol_dist, c_mass, rcutoff=1.5, ref=0, out_folder="cen
         resid = [ref] + list(traj_resid_in_r["idx"][traj_resid_in_r["frame"] == frame].values)
         center = traj_center_ref[frame]
         
-        connects = connectivity.copy()
         atoms_ndx = []
+        ncoords = []
         for res in resid:
             atoms = atoms_per_mol[res]["index"]
-            mol_conn = connects.sub_connect(atoms)
+            mol_conn = connectivity.sub_connect(atoms)
             df = coord.loc[atoms, :]
             # Translate to a center of reference
             df.loc[:, ["x", "y", "z"]] = translate_to(df.loc[:, ["x", "y", "z"]].values, center, box)
+            # update coordinates
             mol_conn.update_coordinates(df)
+            # remove PBC
             mol_conn.noPBC(box, center=np.zeros(3))
-            ndf = mol_conn.get_df()
-            connects.update_coordinates(ndf)
-            atoms_ndx += atoms
+            # Reset index and symbols, and add mass
+            mol_conn = mol_conn.reset_nodes()
+            mol_conn.simple_at_symbols()
+
+            # Search and add hydrogen to vacant atoms
+            mol_conn.add_hydrogen(box, type_add="terminal")
+            new_mol_xyz = mol_conn.get_df()
+            ncoords.append(new_mol_xyz)
+            # ndf = mol_conn.get_df()
+            # connects.update_coordinates(ndf)
+            # atoms_ndx += atoms
         ####
-        sys_conn = connects.sub_connect(atoms_ndx)
+        # sys_conn = connects.sub_connect(atoms_ndx)
         # new df
-        ndf = sys_conn.get_df()
-        ndf["atsb"] = ndf["atsb"].apply(change_atsb).values.astype(str)
+        # ndf = sys_conn.get_df()
+        # ndf["atsb"] = ndf["atsb"].apply(change_atsb).values.astype(str)
+        ncoords = pd.concat(ncoords, ignore_index=True)
         
-        save_xyz(ndf, name=f"{out_folder}/{name}")
+        save_xyz(ncoords, name=f"{out_folder}/{name}")
+
+
+def mol_traj_analysis(index, mol_ndx, mol_conn, traj, box):
+    """Analyze trajectory of a particular molecule."""
+    i = 0
+    for xyz in traj:
+        name = "mol_%d_%005d" % (index, i)
+
+        mol_xyz = xyz.loc[mol_ndx["index"], :]
+        # update coordinates
+        mol_conn.update_coordinates(mol_xyz)
+
+        # remove PBC
+        mol_conn.noPBC(box, center=np.zeros(3))
+
+        # Reset index and symbols, and add mass
+        mol_conn = mol_conn.reset_nodes()
+        mol_conn.simple_at_symbols(add_mass=True)
+
+        # Search and add hydrogen to vacant atoms
+        mol_conn.add_hydrogen(box, type_add="terminal")
+        new_mol_xyz = mol_conn.get_df()
+
+        cm = center_of_mass(
+            new_mol_xyz.loc[:, ["x", "y", "z"]].values,
+            new_mol_xyz.loc[:, "mass"].values
+        )
+
+        new_mol_xyz["x"] -= cm[0]
+        new_mol_xyz["y"] -= cm[1]
+        new_mol_xyz["z"] -= cm[2]
+
+        save_xyz(new_mol_xyz, name=name)
+        i += 1
+
+    os.system(f"cat mol_{index}_0* > mol_{index}_traj.xyz")
+    os.system(f"rm mol_{index}_0*")
+    print(f"Saved trajectory mol {index} in mol_{index}_traj.xyz")
