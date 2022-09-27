@@ -479,13 +479,14 @@ def gen_centered_traj(mol, mol_dist, c_mass, rcutoff=1.5, ref=0, out_folder="cen
         save_xyz(ncoords, name=f"{out_folder}/{name}")
 
 
-def mol_traj_analysis(index, mol_ndx, mol_conn, traj, box):
+def mol_traj_analysis(index, mol_ndx, connectivity, traj, box):
     """Analyze trajectory of a particular molecule."""
     i = 0
     for xyz in traj:
         name = "mol_%d_%005d" % (index, i)
 
         mol_xyz = xyz.loc[mol_ndx["index"], :]
+        mol_conn = connectivity.sub_connect(mol_ndx["index"])
         # update coordinates
         mol_conn.update_coordinates(mol_xyz)
 

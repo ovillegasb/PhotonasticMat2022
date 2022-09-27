@@ -177,7 +177,7 @@ if isinstance(args["mol"], int):
     mol_traj_analysis(
         resid,
         mol_ndx,
-        system.connectivity.sub_connect(mol_ndx["index"]),
+        system.connectivity,
         system.traj,
         system.box
     )
