@@ -3,12 +3,12 @@
 """Module to define the STAMP class."""
 
 import glob
-import os
+import time
 import numpy as np
 from scipy.constants import N_A
 from stamptools.stamptools import read_donnees
-from stamptools.analysis import load_data, read_fatomes, save_plot, traj_analysis
-from molcraft import structure, clusters
+from stamptools.analysis import load_data, read_fatomes, save_plot, load_log
+from molcraft import structure
 
 setplots = {
     "T": {
@@ -24,23 +24,6 @@ setplots = {
         "name": "etot", "color": "b"
         }
 }
-
-
-def change_atsb(x):
-    """Change the FAtomes atom types to atoms from XYZ files."""
-    if x in ["ca", "cb", "CT", "CM"]:
-        return "C"
-    elif x in ["ha", "ho", "HT", "HM"]:
-        return "H"
-    elif x in ["nf", "ne"]:
-        return "N"
-    elif x in ["oh"]:
-        return "O"
-
-
-def center_of_mass(coords, masses):
-    """Compute the center of mass, the mass weighterd barycenter."""
-    return np.sum(coords * masses[:, np.newaxis], axis=0) / masses.sum()
 
 
 class STAMP:
@@ -60,6 +43,9 @@ class STAMP:
         # Load results from Stamp.dat
         self.data = load_data(data)
 
+        # Load log information
+        self.time_per_frame = load_log()
+
         # Reading FAtome
         topology, box, connects = read_fatomes(self.fatomes)
         self.topology = topology
@@ -68,12 +54,9 @@ class STAMP:
 
         self.connectivity = self._get_connectivity()
 
-        # print(self.topology)
-        # print(self.box)
-        # print(self.connects)
-
         # Files xyz
-        self.XYZs = sorted(glob.glob("./XYZ/PasDeCalcul_Iteration*.xyz"))
+        self.XYZs = self._xyz_list()
+        self._load_traj()
 
     def save_plots(self, args):
         """Save plot for parameters."""
@@ -111,16 +94,33 @@ class STAMP:
 
         return massT / vol
 
-    @property
-    def traj(self):
-        """Trajectory of system."""
+    def _xyz_list(self):
+        """Load list of file xyz."""
+        return sorted(glob.glob("./XYZ/PasDeCalcul_Iteration*.xyz"))
+
+    def update_xyz(self):
+        """Reload list of file xyz and traj."""
+        self.XYZs = self._xyz_list()
+        self._load_traj()
+
+    def _load_traj(self):
+        """Load trajectory system."""
         traj = list()
+        t0 = time.time()
+        print("Loading the system trajectory", end=": ")
 
         for file in self.XYZs:
             xyz = structure.load_xyz(file, warning=False)
             traj.append(xyz)
 
-        return traj
+        self._traj = traj
+        tf = time.time()
+        print(f"done in {tf-t0:.2f} s")
+
+    @property
+    def traj(self):
+        """Trajectory of system."""
+        return self._traj        
 
     def _get_connectivity(self):
         """Brings system connectivity."""
@@ -134,17 +134,3 @@ class STAMP:
     def atoms_per_mol(self):
         """List atoms per molecule."""
         return self.connectivity.atomsMOL
-
-    def get_poly_info(self):
-        """Save file information for size mol."""
-        traj_analysis(
-            self.atoms_per_mol,
-            self.topology, 
-            self.traj,
-            self.box,
-            self.connectivity,
-            clusters.GyrationTensor
-        )
-
-        # save information in file
-        print("file polymers.csv saved.")

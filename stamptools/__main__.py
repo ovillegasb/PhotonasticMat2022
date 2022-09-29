@@ -3,10 +3,13 @@
 """Using stamptools directly in terminal."""
 
 import argparse
+import os
 from stamptools.stamp import STAMP
 from stamptools.analysis import save_system, load_system
+from stamptools.analysis import traj_analysis
 from stamptools.analysis import traj_center_mass, get_distances_from
 from stamptools.analysis import gen_centered_traj, mol_traj_analysis
+from molcraft import clusters
 import pandas as pd
 
 
@@ -145,6 +148,12 @@ def options():
         default="centered_traj"
     )
 
+    analysis.add_argument(
+        "--reset",
+        help="Re-collect data.",
+        action="store_true"
+    )
+
     return vars(parser.parse_args())
 
 
@@ -183,22 +192,88 @@ if isinstance(args["mol"], int):
     )
 
 if args["poly"]:
-    system.get_poly_info()
+    # begin frame
+    b = 0
+    if args["reset"]:
+        os.remove("polymers.csv")
+        print("File polymers.csv removed.")
+
+    if os.path.exists("polymers.csv"):
+        dat = pd.read_csv("polymers.csv")
+        frames_readed = list(pd.unique(dat["frame"]))
+        # update file list
+        system.update_xyz()
+
+        if len(frames_readed) == len(system.XYZs):
+            print("The number of XYZ files is equal to the number of "\
+                  "frames analyzed.")
+            b = len(frames_readed)
+
+        elif len(frames_readed) < len(system.XYZs):
+            print("The number of XYZ files is greater than the number of "\
+                  "files analyzed.")
+            b = len(frames_readed)
+            save_system(system)
+
+    if b == 0 and not args["reset"]:
+        args["reset"] = True
+
+    traj_analysis(
+        system.atoms_per_mol,
+        system.topology, 
+        system.traj,
+        system.box,
+        system.connectivity,
+        clusters.GyrationTensor,
+        b,
+        args["reset"]
+    )
+    # save information in file
+    print("file polymers.csv saved.")
 
 if args["centerm"]:
+    # begin frame
+    b = 0
+    if args["reset"]:
+        os.remove("mol_cmass.csv")
+        print("File mol_cmass.csv removed.")
+
+    if os.path.exists("mol_cmass.csv"):
+        dat = pd.read_csv("mol_cmass.csv")
+        frames_readed = list(pd.unique(dat["frame"]))
+        # update file list
+        system.update_xyz()
+
+        if len(frames_readed) == len(system.XYZs):
+            print("The number of XYZ files is equal to the number of "\
+                  "frames analyzed.")
+            b = len(frames_readed)
+
+        elif len(frames_readed) < len(system.XYZs):
+            print("The number of XYZ files is greater than the number of "\
+                  "files analyzed.")
+            b = len(frames_readed)
+            save_system(system)
+
+    if b == 0 and not args["reset"]:
+        args["reset"] = True
+
     traj_center_mass(
         system.traj,
         system.atoms_per_mol,
         system.topology,
         system.box,
-        system.connectivity
+        system.connectivity,
+        b,
+        args["reset"]
     )
     # save information in file
     print("file mol_cmass.csv saved.")
-    if isinstance(args["mref"], int):
-        print("Resid:", args["mref"])
-        get_distances_from(args["mref"], system.box)
-        print("file mol_dist_from_{}.csv saved.".format(args["mref"]))
+
+if isinstance(args["mref"], int):
+    print("Resid:", args["mref"])
+    get_distances_from(args["mref"], system.box)
+    print("file mol_dist_from_{}.csv saved.".format(args["mref"]))
 
 if args["centered_traj"]:
     # distances file

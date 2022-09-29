@@ -37,5 +37,5 @@
 
 graphics top materials on
 graphics top material Transparent
-graphics top color gray
-graphics top sphere {0.0 0.0 0} radius 40.0 resolution 30
+graphics top color silver
+graphics top sphere {0.0 0.0 0} radius 15.0 resolution 30
