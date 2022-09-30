@@ -128,3 +128,17 @@ def read_donnees(file):
                 parameters[line[0]] = line[1]
 
     return parameters
+
+
+def clean_data(df):
+    """Clean data by removing possible incomplete row."""
+    df = df.copy()
+    df.drop_duplicates(inplace=True)
+    mframe = df.groupby("frame").count()
+    try:
+        frame_from_rm = list(mframe[mframe["idx"] < mframe.loc[0, "idx"]].index)[0]
+        df.drop(df[df["frame"] >= frame_from_rm].index, inplace=True)
+    except IndexError:
+        pass
+
+    return df

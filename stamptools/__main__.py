@@ -10,6 +10,7 @@ from stamptools.analysis import traj_analysis
 from stamptools.analysis import traj_center_mass, get_distances_from
 from stamptools.analysis import gen_centered_traj, mol_traj_analysis
 from molcraft import clusters
+from stamptools.stamptools import clean_data
 import pandas as pd
 
 
@@ -200,6 +201,8 @@ if args["poly"]:
 
     if os.path.exists("polymers.csv"):
         dat = pd.read_csv("polymers.csv")
+        dat = clean_data(dat)
+        dat.to_csv("polymers.csv", index=False)
         frames_readed = list(pd.unique(dat["frame"]))
         # update file list
         system.update_xyz()
@@ -240,6 +243,8 @@ if args["centerm"]:
 
     if os.path.exists("mol_cmass.csv"):
         dat = pd.read_csv("mol_cmass.csv")
+        dat = clean_data(dat)
+        dat.to_csv("mol_cmass.csv", index=False)
         frames_readed = list(pd.unique(dat["frame"]))
         # update file list
         system.update_xyz()

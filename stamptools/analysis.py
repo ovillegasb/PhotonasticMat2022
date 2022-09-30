@@ -315,7 +315,6 @@ def load_log(file="Stamp.log"):
         {"frame": np.int64, "time": np.float64}
     )
     out_frame["time"] = out_frame["time"] * 1e12  # to ps
-
     return out_frame
 
 

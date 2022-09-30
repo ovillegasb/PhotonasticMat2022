@@ -44,7 +44,10 @@ class STAMP:
         self.data = load_data(data)
 
         # Load log information
-        self.time_per_frame = load_log()
+        try:
+            self.time_per_frame = load_log()
+        except FileNotFoundError:
+            self.time_per_frame = None
 
         # Reading FAtome
         topology, box, connects = read_fatomes(self.fatomes)
