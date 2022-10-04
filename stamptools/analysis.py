@@ -310,7 +310,7 @@ def load_log(file="Stamp.log"):
     out_frame = pd.DataFrame(out_frame)
     out_frame.drop_duplicates(inplace=True)
 
-    out_frame["time"] = out_g.loc[out_frame["frame"], "time"].values
+    out_frame["time"] = out_g.loc[out_frame["frame"].values, "time"].unique()
     out_frame = out_frame.astype(
         {"frame": np.int64, "time": np.float64}
     )
@@ -424,7 +424,7 @@ def minImagenC(q1, q2, L):
 
 def get_distances_from(mref, box, file="mol_cmass.csv"):
     # file cm trajectory
-    traj_mol_cm = pd.read_csv(file, index_col=0, header=0)
+    traj_mol_cm = pd.read_csv(file)
 
     # cm trajectory from ref
     traj_mref = traj_mol_cm[traj_mol_cm["idx"] == 0]
@@ -576,6 +576,36 @@ def mol_traj_analysis(index, mol_ndx, connectivity, traj, box):
     os.system(f"cat mol_{index}_0* > mol_{index}_traj.xyz")
     os.system(f"rm mol_{index}_0*")
     print(f"Saved trajectory mol {index} in mol_{index}_traj.xyz")
+
+
+def rdf_from_dist(df, box, rmin=0.0, rmax=6.0, binwidth=0.002):
+    """Return rdf data and binned function."""
+    def binned_distance(x):
+        bins = np.arange(rmin, rmax, binwidth)
+        index = np.digitize(x, bins)
+        try:
+            return bins[index]
+        except IndexError:
+            return np.NaN
+        
+    df["bin"] = df["distance"].apply(binned_distance)
+
+    frames = df["frame"].unique()
+    n_frames = len(frames)
+    n_mol = df["distance"].count() / n_frames
+
+    # Box in nanometers
+    vol_per_com = box[0] * box[1] * box[2] / n_mol
+    
+    rdf = df.groupby("bin").count()
+    rdf.reset_index(inplace=True)
+    
+    rdf["vshell"] = 4 * np.pi * ((binwidth + rdf["bin"])**3 - rdf["bin"]**3) / 3
+    
+    rdf["gr"] = rdf["distance"] * vol_per_com / rdf["vshell"] / n_frames
+    rdf["weihts"] = vol_per_com / rdf["vshell"] / n_frames
+    
+    return rdf, binned_distance
 
 
 """ PLOTS FUNCTIONS """
@@ -847,7 +877,7 @@ def dist_plots_general(data_prop):
 
 
 def dist_plots_temporal(data):
-    
+    """Distances analysis in time."""
     label = list(data["time"].unique())
     
     fig, axs = plt.subplots(nrows=len(label), ncols=3, figsize=(12, 2*len(label)))
@@ -931,7 +961,162 @@ def dist_plots_temporal(data):
     return fig, axs
 
 
-def GenPlots(home, pc,  step, replica, isomer, name, out, t_min=500, t_max=2500, t_step=500):
+def rdf_plots_general(data_prop):
+    """Distance analysis using rdf normalization."""
+    fig, axs = plt.subplots(ncols=3, figsize=(12, 4))
+    
+    (ax1, ax2, ax3) = axs
+    
+    sns.lineplot(
+        data=data_prop,
+        x="distance",
+        y="gr",
+        ax=ax1,
+        color="#9c89e8"
+    )
+    ax1.axhline(y=1.0, ls="--", color="gray")
+    ax1.axvline(x=1.7, ls="--", color="black")
+    ax1.set_xlabel("r (nm)")
+    ax1.set_ylabel("g (r)")
+    ax1.set_xlim(0, 3)
+    
+    sns.histplot(
+        data=data_prop,
+        x="distance",
+        y="Rg",
+        binwidth=[0.1, 0.5],
+        weights="w",
+        ax=ax2,
+        color="#537f6b"
+    )
+    ax2.set_xlim(0, 3)
+    ax2.set_ylim(7, 25)
+    ax2.set_xlabel("r (nm)")
+    ax2.set_ylabel("Radius of gyration ($\AA$)")
+    
+    ax2.axhline(y=data_prop["Rg"].mean(), ls="--", color="#537f6b", lw=2.0, alpha=1.0)
+    ax2.axvline(x=1.7, ls="--", color="black")
+    
+    sns.histplot(
+        data=data_prop,
+        x="distance",
+        y="k2",
+        binwidth=[0.1, 0.05],
+        weights="w",
+        ax=ax3,
+        color="#5d3954"
+    )
+    ax3.set_xlim(0, 3)
+    ax3.set_ylim(0, 1)
+    ax3.set_xlabel("r (nm)")
+    ax3.set_ylabel("Shape anisotropy")
+    ax3.axhline(y=data_prop["k2"].mean(), ls="--", color="#5d3954", lw=2.0, alpha=1.0)
+    ax3.axvline(x=1.7, ls="--", color="black")
+
+    return fig, axs
+
+
+def rdf_plots_temporal(data, L):
+    """Distances rdf analysis in time."""
+    label = list(data["time"].unique())
+    
+    fig, axs = plt.subplots(nrows=len(label), ncols=3, figsize=(12, 2*len(label)))
+    fig.subplots_adjust(hspace=0.1, wspace=0.2)
+    
+    box = {
+        "facecolor": "0.85",
+        "edgecolor": "k",
+        "boxstyle": "round"
+    }
+    
+    Analysis = {
+        "Rg": {"color": "#2a90a6", "binw": 0.5, "xlim": [7, 22], "title": "Radius of gyration ($\AA$)"},
+        "dmax": {"color": "#5b557b", "binw": 2.0, "xlim": [20, 80], "title": "Max. distance ($\AA$)"},
+        "k2": {"color": "#fea6ad", "binw": 0.05, "xlim": [0, 1], "title": "Shape anisotropy"}
+    }
+
+    for i, t in enumerate(label):
+        subdata = data[data["time"] == t].copy()
+        rdf, binned_distance = rdf_from_dist(subdata.copy(), L * 0.1, rmax=3.1, binwidth=0.01)
+        rdf.set_index("bin", inplace=True)
+        subdata.loc[:, "distance"] = subdata["distance"].apply(binned_distance)
+        subdata.dropna(axis=0, inplace=True)
+
+        subdata.loc[:, "gr"] = subdata["distance"].apply(lambda x: rdf.loc[x, "gr"])
+        subdata.loc[:, "w"] = subdata["distance"].apply(lambda x: rdf.loc[x, "weihts"])
+
+        for j, anl in enumerate(Analysis):
+            if j == 0:
+                """RDF"""
+                sns.lineplot(
+                    data=subdata,
+                    x="distance",
+                    y="gr",
+                    ax=axs[i, j],
+                    color="#9c89e8"
+                )
+                axs[i, j].axhline(y=1.0, ls="--", color="gray")
+                axs[i, j].axvline(x=1.7, ls="--", color="black")
+                axs[i, j].set_xlabel("r (nm)")
+                axs[i, j].set_ylabel("g (r)")
+                axs[i, j].set_xlim(0, 3)
+
+            elif j == 1:
+                """Rg vs distance"""
+                sns.histplot(
+                    data=subdata,
+                    x="distance",
+                    y="Rg",
+                    binwidth=[0.1, 0.5],
+                    weights="w",
+                    ax=axs[i, j],
+                    color="#537f6b"
+                )
+                axs[i, j].set_xlim(0, 3)
+                axs[i, j].set_ylim(7, 25)
+                axs[i, j].set_xlabel("r (nm)")
+                axs[i, j].set_ylabel("Radius of gyration ($\AA$)")
+    
+                axs[i, j].axhline(y=subdata["Rg"].mean(), ls="--", color="#537f6b", lw=2.0, alpha=1.0)
+                axs[i, j].axvline(x=1.7, ls="--", color="black")
+
+            elif j == 2:
+                """shape anisotrope"""
+                sns.histplot(
+                    data=subdata,
+                    x="distance",
+                    y="k2",
+                    binwidth=[0.1, 0.05],
+                    weights="w",
+                    ax=axs[i, j],
+                    color="#5d3954"
+                )
+                axs[i, j].set_xlim(0, 3)
+                axs[i, j].set_ylim(0, 1)
+                axs[i, j].set_xlabel("r (nm)")
+                axs[i, j].set_ylabel("Shape anisotropy")
+                axs[i, j].axhline(y=subdata["k2"].mean(), ls="--", color="#5d3954", lw=2.0, alpha=1.0)
+                axs[i, j].axvline(x=1.7, ls="--", color="black")
+
+            if i != 4:
+                axs[i, j].get_xaxis().set_visible(False)
+
+        axs[i, 0].text(
+            0.85, 0.8,
+            "{}".format(t),
+            transform=axs[i, 0].transAxes,
+            bbox=box,
+            ha="center"
+        )
+
+    return fig, axs
+
+
+def GenPlots(
+    home, pc,  step, replica, isomer, name, out, t_min=500, t_max=2500,
+    t_step=500, thermo=True, dihedrals=True, polymer=True, distances=True,
+    rdfs=True
+):
     """Graph and save all analyses."""
     sys = load_system(f"{home}/{pc}_procedure/{step}_prod_{replica}/system.chk")
     lims = np.arange(t_min, t_max + t_step, t_step)
@@ -944,40 +1129,48 @@ def GenPlots(home, pc,  step, replica, isomer, name, out, t_min=500, t_max=2500,
             return np.NaN
 
     """Termodynamics."""
-    fig, axs = thermo_plots(sys)
-    fig.suptitle(
-        f"Thermodynamic properties - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-    plt.tight_layout()
-    plt.savefig(f"{out}/{name}_thermo_s{step}r{replica}.png", dpi=300)
+    if thermo:
+        fig, axs = thermo_plots(sys)
+        fig.suptitle(
+            f"Thermodynamic properties - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
+        plt.tight_layout()
+        plt.savefig(f"{out}/{name}_thermo_s{step}r{replica}.png", dpi=300)
 
     """Dihedrals."""
-    sys_dih = pd.read_csv(f"{home}/{pc}_procedure/{step}_prod_{replica}/dihedrals.dat", sep="\s+", header=None, index_col=0, names=["torsion"])
-    sys_dih["t"] = sys.data["I"][::10].values[1:]
-    sys_dih["abs"] = sys_dih["torsion"].abs()
+    if dihedrals:
+        sys_dih = pd.read_csv(f"{home}/{pc}_procedure/{step}_prod_{replica}/dihedrals.dat", sep="\s+", header=None, index_col=0, names=["torsion"])
+        # print(sys.time_per_frame)
+        # print(sys_dih)
+        # exit()
+        # sys_dih["t"] = sys.data["I"][::10].values[1:]
+        sys_dih["t"] = sys.time_per_frame["time"]
+        sys_dih["abs"] = sys_dih["torsion"].abs()
 
-    fig, axs = dih_plots(sys_dih, isomer)
-    fig.suptitle(f"Torsion angles in polymer matrix - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-    plt.tight_layout()
-    plt.savefig(f"{out}/{name}_dihs_s{step}r{replica}.png", dpi=300)
+        fig, axs = dih_plots(sys_dih, isomer)
+        fig.suptitle(f"Torsion angles in polymer matrix - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
+        plt.tight_layout()
+        plt.savefig(f"{out}/{name}_dihs_s{step}r{replica}.png", dpi=300)
 
     """Polymers."""
-    sys_pol = pd.read_csv(f"{home}/{pc}_procedure/{step}_prod_{replica}/polymers.csv", index_col=0)
-    frame_to_time = dict(enumerate(sys.data["I"][::10].values[1:]))
+    sys_pol = pd.read_csv(f"{home}/{pc}_procedure/{step}_prod_{replica}/polymers.csv")
+    # frame_to_time = dict(enumerate(sys.data["I"][::10].values[1:]))
+    frame_to_time = {i: sys.time_per_frame.loc[i, "time"] for i in sys.time_per_frame.index}
     sys_pol["time"] = sys_pol["frame"].apply(lambda x: frame_to_time[x])
     pol_c = sys_pol[sys_pol["idx"] != 0].copy()
-    
-    fig, axs = poly_plots_general(pol_c)
-    fig.suptitle(f"Global analysis of the polymeric matrix - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-    plt.tight_layout()
-    plt.savefig(f"{out}/{name}_poly_g_s{step}r{replica}.png", dpi=300)
-
-    """Polymer by time."""
     pol_c["time"] = pol_c["time"].apply(binned_time)
     pol_t = pol_c.dropna(axis=0)
-    fig, axs = poly_plots_temporal(pol_t)
-    fig.suptitle(f"Polymeric analysis by time period - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-    plt.tight_layout()
-    plt.savefig(f"{out}/{name}_poly_t_s{step}r{replica}.png", dpi=300)
+
+    if polymer:
+        fig, axs = poly_plots_general(pol_c)
+        fig.suptitle(f"Global analysis of the polymeric matrix - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
+        plt.tight_layout()
+        plt.savefig(f"{out}/{name}_poly_g_s{step}r{replica}.png", dpi=300)
+
+        """Polymer by time."""
+        fig, axs = poly_plots_temporal(pol_t)
+        fig.suptitle(f"Polymeric analysis by time period - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
+        plt.tight_layout()
+        plt.savefig(f"{out}/{name}_poly_t_s{step}r{replica}.png", dpi=300)
 
     """Distances."""
     sys_dist = pd.read_csv(f"{home}/{pc}_procedure/{step}_prod_{replica}/mol_dist_from_0.csv")
@@ -991,13 +1184,47 @@ def GenPlots(home, pc,  step, replica, isomer, name, out, t_min=500, t_max=2500,
     })
     
     dprop.dropna(axis=0, inplace=True)
-    fig, axs = dist_plots_general(dprop)
-    fig.suptitle(f"Global analysis of the distances from the PC - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-    plt.tight_layout()
-    plt.savefig(f"{out}/{name}_dist_g_s{step}r{replica}.png", dpi=300)
+    if distances:
+        fig, axs = dist_plots_general(dprop)
+        fig.suptitle(f"Global analysis of the distances from the PC - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
+        plt.tight_layout()
+        plt.savefig(f"{out}/{name}_dist_g_s{step}r{replica}.png", dpi=300)
     
-    # Distance by time
-    fig, axs = dist_plots_temporal(dprop)
-    fig.suptitle(f"Distances analysis by time period - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-    plt.tight_layout()
-    plt.savefig(f"{out}/{name}_dist_t_s{step}r{replica}.png", dpi=300)
+        # Distance by time
+        fig, axs = dist_plots_temporal(dprop)
+        fig.suptitle(f"Distances analysis by time period - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
+        plt.tight_layout()
+        plt.savefig(f"{out}/{name}_dist_t_s{step}r{replica}.png", dpi=300)
+
+    """ RDF distances general."""
+    dprop = pd.DataFrame({
+        "distance": sys_dist["distance"].values,
+        "Rg": pol_c["Rg"].values,
+        "k2": pol_c["k2"].values,
+        "time": pol_c["time"].values,
+        "frame": pol_c["frame"].values
+    })
+
+    rdf, binned_distance = rdf_from_dist(sys_dist, sys.box * 0.1, rmax=3.1, binwidth=0.01)
+    rdf.set_index("bin", inplace=True)
+    dprop["distance"] = dprop["distance"].apply(binned_distance)
+    dprop.dropna(axis=0, inplace=True)
+    dprop["gr"] = dprop["distance"].apply(lambda x: rdf.loc[x, "gr"])
+    dprop["w"] = dprop["distance"].apply(lambda x: rdf.loc[x, "weihts"])
+    
+    if rdfs:
+        fig, axs = rdf_plots_general(dprop)
+        fig.suptitle(f"RDF analysis from the PC - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
+        plt.tight_layout()
+        plt.savefig(f"{out}/{name}_rdf_g_s{step}r{replica}.png", dpi=300)
+
+    sys_dist["time"] = sys_dist["frame"].apply(lambda x: frame_to_time[x])
+    sys_dist["time"] = sys_dist["time"].apply(binned_time)
+    sys_dist.dropna(axis=0, inplace=True)
+
+    if rdfs:
+        fig, axs = rdf_plots_temporal(dprop, sys.box)
+        fig.suptitle(f"RDF analysis of the distances by time period - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
+        plt.tight_layout()
+        plt.savefig(f"{out}/{name}_rdf_t_s{step}r{replica}.png", dpi=300)
+
