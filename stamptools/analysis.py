@@ -812,7 +812,7 @@ def poly_plots_temporal(data):
             axs[i, j].set_xlabel(Analysis[anl]["title"])
             axs[i, j].axvline(x=subdata[anl].mean(), color="k", ls="--", lw=2)
 
-            if i != 4:
+            if i != len(label)-1:
                 axs[i, j].get_xaxis().set_visible(False)
 
         axs[i, 0].text(
@@ -947,7 +947,7 @@ def dist_plots_temporal(data):
                 axs[i, j].set_xlim(0, 5)
                 axs[i, j].set_ylim(0, 1)
 
-            if i != 4:
+            if i != len(label)-1:
                 axs[i, j].get_xaxis().set_visible(False)
                 
         axs[i, 0].text(
@@ -1098,7 +1098,7 @@ def rdf_plots_temporal(data, L):
                 axs[i, j].axhline(y=subdata["k2"].mean(), ls="--", color="#5d3954", lw=2.0, alpha=1.0)
                 axs[i, j].axvline(x=1.7, ls="--", color="black")
 
-            if i != 4:
+            if i != len(label)-1:
                 axs[i, j].get_xaxis().set_visible(False)
 
         axs[i, 0].text(
