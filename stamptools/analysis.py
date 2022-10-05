@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 from molcraft.structure import save_xyz
+from scipy.stats import linregress
 
 
 """ Regular expression that extracts matrix XYZ """
@@ -648,7 +649,7 @@ def thermo_plots(obj):
             obj.data["Etot"].mean(),
             obj.data["Etot"].std())
         )
-    
+
     return fig, axs
 
 
@@ -688,7 +689,7 @@ def dih_plots(data, isomer):
     ax2.set_xlabel("count")
     ax2.set_ylim(ylim)
     ax2.legend()
-    
+
     sns.histplot(
         data=data,
         y="abs",
@@ -701,7 +702,7 @@ def dih_plots(data, isomer):
     ax3.set_ylabel("angle (degree)")
     ax3.set_xlabel("count")
     ax3.legend()
-    
+
     box = {
         "facecolor": "0.85",
         "edgecolor": "k",
@@ -715,7 +716,7 @@ def dih_plots(data, isomer):
         transform=ax2.transAxes,
         bbox=box,
         ha="center")
-    
+
     ax3.text(0.5, 0.2, r"{} - dih $=$ {:.2f} $\pm$ {:.2f} degre".format(
         isomer, data["abs"].mean(),
         data["abs"].std()
@@ -723,7 +724,7 @@ def dih_plots(data, isomer):
         transform=ax3.transAxes,
         bbox=box,
         ha="center")
-    
+
     return fig, axs
 
 
@@ -778,7 +779,7 @@ def poly_plots_general(data):
 def poly_plots_temporal(data):
     """Analysis of polymers in the time."""
     label = list(data["time"].unique())
-    
+
     fig, axs = plt.subplots(nrows=len(label), ncols=3, figsize=(12, 2*len(label)))
     fig.subplots_adjust(hspace=0.1, wspace=0.2)
 
@@ -787,13 +788,13 @@ def poly_plots_temporal(data):
         "edgecolor": "k",
         "boxstyle": "round"
     }
-    
+
     Analysis = {
         "Rg": {"color": "#2a90a6", "binw": 0.5, "xlim": [7, 22], "title": "Radius of gyration ($\AA$)"},
         "dmax": {"color": "#5b557b", "binw": 2.0, "xlim": [20, 80], "title": "Max. distance ($\AA$)"},
         "k2": {"color": "#fea6ad", "binw": 0.05, "xlim": [0, 1], "title": "Shape anisotropy"}
     }
-    
+
     for i, t in enumerate(label):
         subdata = data[data["time"] == t]
         for j, anl in enumerate(Analysis):
@@ -809,12 +810,11 @@ def poly_plots_temporal(data):
             )
             axs[i, j].set_xlim(Analysis[anl]["xlim"])
             axs[i, j].set_xlabel(Analysis[anl]["title"])
-            
             axs[i, j].axvline(x=subdata[anl].mean(), color="k", ls="--", lw=2)
-            
+
             if i != 4:
                 axs[i, j].get_xaxis().set_visible(False)
-                
+
         axs[i, 0].text(
             0.8, 0.8,
             "{}".format(t),
@@ -822,7 +822,7 @@ def poly_plots_temporal(data):
             bbox=box,
             ha="center"
         )
-    
+
     return fig, axs
 
 
@@ -872,7 +872,7 @@ def dist_plots_general(data_prop):
     ax3.set_ylabel("Shape anisotropy")
     ax3.set_xlim(0, 5)
     ax3.set_ylim(0, 1)
-    
+
     return fig, axs
 
 
@@ -1112,15 +1112,87 @@ def rdf_plots_temporal(data, L):
     return fig, axs
 
 
+def plots_mean_per_time(data):
+    """Means per time groups."""
+    fig, axs = plt.subplots(ncols=3, figsize=(12, 4))
+
+    box = {
+        "facecolor": "0.85",
+        "edgecolor": "k",
+        "boxstyle": "round"
+    }
+
+    (ax1, ax2, ax3) = axs
+
+    ax1.errorbar(
+        data["t"], data["Rg"]["mean"],
+        yerr=data["Rg"]["std"], fmt="o", capsize=4,
+        color="black", ecolor="#2a90a6"
+    )
+    regress = linregress(data["t"], y=data["Rg"]["mean"])
+    ax1.plot(data["t"], data["t"] * regress.slope + regress.intercept)
+    ax1.set_ylim(7, 25)
+    ax1.set_xlabel("time (ps)")
+    ax1.set_ylabel("Radius of gyration ($\AA$)")
+
+    ax1.text(
+        0.5, 0.8,
+        "{:.2f}x+{:.2f} - R2 = {:.3f}".format(regress.slope, regress.intercept, regress.rvalue**2),
+        transform=ax1.transAxes,
+        bbox=box,
+        ha="center"
+    )
+
+    ax2.errorbar(
+        data["t"], data["dmax"]["mean"],
+        yerr=data["dmax"]["std"], fmt="o", capsize=4,
+        color="black", ecolor="#5b557b"
+    )
+    regress = linregress(data["t"], y=data["dmax"]["mean"])
+    ax2.plot(data["t"], data["t"] * regress.slope + regress.intercept)
+    ax2.set_ylim(20, 90)
+    ax2.set_xlabel("time (ps)")
+    ax2.set_ylabel("Max. distance ($\AA$)")
+
+    ax2.text(
+        0.5, 0.8,
+        "{:.2f}x+{:.2f} - R2 = {:.3f}".format(regress.slope, regress.intercept, regress.rvalue**2),
+        transform=ax2.transAxes,
+        bbox=box,
+        ha="center"
+    )
+
+    ax3.errorbar(
+        data["t"], data["k2"]["mean"],
+        yerr=data["k2"]["std"], fmt="o", capsize=4,
+        color="black", ecolor="#5b557b"
+    )
+    regress = linregress(data["t"], y=data["k2"]["mean"])
+    ax3.plot(data["t"], data["t"] * regress.slope + regress.intercept)
+    ax3.set_ylim(0, 1)
+    ax3.set_xlabel("time (ps)")
+    ax3.set_ylabel("Shape anisotropy")
+
+    ax3.text(
+        0.5, 0.8,
+        "{:.2f}x+{:.2f} - R2 = {:.3f}".format(regress.slope, regress.intercept, regress.rvalue**2),
+        transform=ax3.transAxes,
+        bbox=box,
+        ha="center"
+    )
+
+    return fig, axs
+
+
 def GenPlots(
     home, pc,  step, replica, isomer, name, out, t_min=500, t_max=2500,
     t_step=500, thermo=True, dihedrals=True, polymer=True, distances=True,
-    rdfs=True
+    rdfs=True, means_t=True, return_data=False
 ):
     """Graph and save all analyses."""
     sys = load_system(f"{home}/{pc}_procedure/{step}_prod_{replica}/system.chk")
     lims = np.arange(t_min, t_max + t_step, t_step)
-    
+
     def binned_time(x):
         ind = np.digitize(x, lims)
         try:
@@ -1180,16 +1252,17 @@ def GenPlots(
         "distance": sys_dist["distance"].values,
         "Rg": pol_c["Rg"].values,
         "k2": pol_c["k2"].values,
+        "dmax": pol_c["dmax"].values,
         "time": pol_c["time"].values
     })
-    
+
     dprop.dropna(axis=0, inplace=True)
     if distances:
         fig, axs = dist_plots_general(dprop)
         fig.suptitle(f"Global analysis of the distances from the PC - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
         plt.tight_layout()
         plt.savefig(f"{out}/{name}_dist_g_s{step}r{replica}.png", dpi=300)
-    
+
         # Distance by time
         fig, axs = dist_plots_temporal(dprop)
         fig.suptitle(f"Distances analysis by time period - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
@@ -1201,6 +1274,7 @@ def GenPlots(
         "distance": sys_dist["distance"].values,
         "Rg": pol_c["Rg"].values,
         "k2": pol_c["k2"].values,
+        "dmax": pol_c["dmax"].values,
         "time": pol_c["time"].values,
         "frame": pol_c["frame"].values
     })
@@ -1211,7 +1285,7 @@ def GenPlots(
     dprop.dropna(axis=0, inplace=True)
     dprop["gr"] = dprop["distance"].apply(lambda x: rdf.loc[x, "gr"])
     dprop["w"] = dprop["distance"].apply(lambda x: rdf.loc[x, "weihts"])
-    
+
     if rdfs:
         fig, axs = rdf_plots_general(dprop)
         fig.suptitle(f"RDF analysis from the PC - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
@@ -1228,3 +1302,20 @@ def GenPlots(
         plt.tight_layout()
         plt.savefig(f"{out}/{name}_rdf_t_s{step}r{replica}.png", dpi=300)
 
+    aggregation = {
+        "Rg": ["mean", "std"],
+        "k2": ["mean", "std"],
+        "dmax": ["mean", "std"]
+    }
+
+    dprop_resume = dprop.groupby("time").agg(aggregation)
+    dprop_resume["t"] = [int(i.replace("ps", "")) for i in dprop_resume.index]
+
+    if means_t:
+        fig, axs = plots_mean_per_time(dprop_resume)
+        fig.suptitle(f"Mean analysis of polymer - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
+        plt.tight_layout()
+        plt.savefig(f"{out}/{name}_means_t_s{step}r{replica}.png", dpi=300)
+
+    if return_data:
+        return dprop
