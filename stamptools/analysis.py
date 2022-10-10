@@ -579,6 +579,12 @@ def mol_traj_analysis(index, mol_ndx, connectivity, traj, box):
     print(f"Saved trajectory mol {index} in mol_{index}_traj.xyz")
 
 
+def mol_traj_cut_distance(mol, mol_dist, connectivity, traj, box, rcutoff=1.5,
+ref=0, out_folder="centered_traj"):
+    """Extract the structure of mol around a reference mol using atom-atom distance."""
+    pass
+
+
 def rdf_from_dist(df, box, rmin=0.0, rmax=6.0, binwidth=0.002):
     """Return rdf data and binned function."""
     def binned_distance(x):
@@ -1037,7 +1043,7 @@ def rdf_plots_temporal(data, L):
 
     for i, t in enumerate(label):
         subdata = data[data["time"] == t].copy()
-        rdf, binned_distance = rdf_from_dist(subdata.copy(), L * 0.1, rmax=3.1, binwidth=0.01)
+        rdf, binned_distance = rdf_from_dist(subdata.copy(), L * 0.1, rmax=3.1, binwidth=0.05)
         rdf.set_index("bin", inplace=True)
         subdata.loc[:, "distance"] = subdata["distance"].apply(binned_distance)
         subdata.dropna(axis=0, inplace=True)
@@ -1279,7 +1285,7 @@ def GenPlots(
         "frame": pol_c["frame"].values
     })
 
-    rdf, binned_distance = rdf_from_dist(sys_dist, sys.box * 0.1, rmax=3.1, binwidth=0.01)
+    rdf, binned_distance = rdf_from_dist(sys_dist, sys.box * 0.1, rmax=3.1, binwidth=0.05)
     rdf.set_index("bin", inplace=True)
     dprop["distance"] = dprop["distance"].apply(binned_distance)
     dprop.dropna(axis=0, inplace=True)
@@ -1318,4 +1324,4 @@ def GenPlots(
         plt.savefig(f"{out}/{name}_means_t_s{step}r{replica}.png", dpi=300)
 
     if return_data:
-        return dprop
+        return dprop_resume

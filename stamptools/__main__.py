@@ -150,6 +150,12 @@ def options():
     )
 
     analysis.add_argument(
+        "--mol_distances",
+        help="Extract the structure of mol around a reference mol using atom-atom distance.",
+        action="store_true"
+    )
+
+    analysis.add_argument(
         "--reset",
         help="Re-collect data.",
         action="store_true"
@@ -275,6 +281,9 @@ if args["centerm"]:
     # save information in file
     print("file mol_cmass.csv saved.")
 
+if args["mol_distances"]:
+    print("RUN")
+
 if isinstance(args["mref"], int):
     print("Resid:", args["mref"])
     get_distances_from(args["mref"], system.box)
@@ -282,11 +291,11 @@ if isinstance(args["mref"], int):
 
 if args["centered_traj"]:
     # distances file
-    mol_dist = pd.read_csv("mol_dist_from_0.csv")
+    mol_dist = pd.read_csv("mol_dist_from_{}.csv".format(args["mref"]))
     mol_dist["distance"] = mol_dist["distance"] * 0.1  # to nm
 
     # load center of mass file
-    c_mass = pd.read_csv("mol_cmass.csv", index_col=0)
+    c_mass = pd.read_csv("mol_cmass.csv")
 
     gen_centered_traj(
         system,
