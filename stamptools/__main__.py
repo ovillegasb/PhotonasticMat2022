@@ -9,6 +9,7 @@ from stamptools.analysis import save_system, load_system
 from stamptools.analysis import traj_analysis
 from stamptools.analysis import traj_center_mass, get_distances_from
 from stamptools.analysis import gen_centered_traj, mol_traj_analysis
+from stamptools.analysis import mol_traj_cut_distance
 from molcraft import clusters
 from stamptools.stamptools import clean_data
 import pandas as pd
@@ -48,12 +49,15 @@ Usage:
     System center from a reference:
     python -m stamptools -l --centered_traj --rcutoff 1.0 --mref 0
 
+    Molecules around from a distance cut
+    python -m stamptools -l --mol_d_aa --mref 0 --out_folder distances --rcutoff 0.5
+
     On server:
     python -um stamptools -l > log &
 
     Combined analysis:
     python -m stamptools -l --centered_traj --rcutoff 1.0 --mref 0\
- --out_ctraj test0 --centerm
+ --out_folder test0 --centerm
 
     python -m stamptools -l --poly --centerm --mref 0
 
@@ -143,14 +147,14 @@ def options():
     )
 
     analysis.add_argument(
-        "--out_ctraj",
+        "--out_folder",
         help="Name of the output directory.",
         type=str,
         default="centered_traj"
     )
 
     analysis.add_argument(
-        "--mol_distances",
+        "--mol_d_aa",
         help="Extract the structure of mol around a reference mol using atom-atom distance.",
         action="store_true"
     )
@@ -281,13 +285,18 @@ if args["centerm"]:
     # save information in file
     print("file mol_cmass.csv saved.")
 
-if args["mol_distances"]:
-    print("RUN")
+if args["mol_d_aa"]:
+    mol_traj_cut_distance(
+        system,
+        ref=args["mref"],
+        rcutoff=args["rcutoff"],
+        out_folder=args["out_folder"]
+    )
 
-if isinstance(args["mref"], int):
-    print("Resid:", args["mref"])
-    get_distances_from(args["mref"], system.box)
-    print("file mol_dist_from_{}.csv saved.".format(args["mref"]))
+#if isinstance(args["mref"], int):
+#    print("Resid:", args["mref"])
+#    get_distances_from(args["mref"], system.box)
+#    print("file mol_dist_from_{}.csv saved.".format(args["mref"]))
 
 if args["centered_traj"]:
     # distances file
@@ -303,4 +312,4 @@ if args["centered_traj"]:
         c_mass,
         rcutoff=args["rcutoff"],
         ref=args["mref"],
-        out_folder=args["out_ctraj"])
+        out_folder=args["out_folder"])

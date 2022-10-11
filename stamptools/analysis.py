@@ -579,10 +579,96 @@ def mol_traj_analysis(index, mol_ndx, connectivity, traj, box):
     print(f"Saved trajectory mol {index} in mol_{index}_traj.xyz")
 
 
-def mol_traj_cut_distance(mol, mol_dist, connectivity, traj, box, rcutoff=1.5,
-ref=0, out_folder="centered_traj"):
+def PBC_distance(vref, v2, box):
+    dist = []
+    for i in range(3):
+        ndist = minImagenC(vref[i], v2[i], box[i])
+        dist.append(ndist)
+    
+    return np.linalg.norm(np.array(dist))
+
+
+def mol_traj_cut_distance(system, ref, rcutoff=0.5, out_folder="mol_distances"):
+    #(index, mol_dist, connectivity, traj, box, rcutoff=1.5,
+    #ref=0, out_folder="centered_traj"):
     """Extract the structure of mol around a reference mol using atom-atom distance."""
-    pass
+    traj = system.traj
+    atoms_per_mol = system.atoms_per_mol
+    connectivity = system.connectivity
+    top = system.topology
+    box = system.box
+    print(f"Extract the structure of molecules around a reference mol, resid {ref},")
+    print(f"using atom-atom from a distance cut: {rcutoff:.2f} nm.")
+
+    out_folder = out_folder + f"_{rcutoff}"
+    rcutoff *= 10.
+    masses = top.loc[atoms_per_mol[ref]["index"], "mass"].values
+
+    # Output folder
+    try:
+        os.mkdir(out_folder)
+    except FileExistsError:
+        print("The output foler was already created")
+
+    for frame, coord in enumerate(traj):
+        name = "mol_around_%04d" % frame
+        atoms_ref = atoms_per_mol[ref]["index"]
+        mol_conn = connectivity.sub_connect(atoms_ref)
+        mol_ref = coord.loc[atoms_ref, :]
+        mol_xyz = mol_ref.loc[:, ["x", "y", "z"]].values
+
+        mols_around = []
+        for j in atoms_per_mol:
+            if j != ref:
+                # print(j)
+                atoms_near = atoms_per_mol[j]["index"]
+                mol_conn_near = connectivity.sub_connect(atoms_near)
+                mol_ref_near = coord.loc[atoms_near, :]
+                mol_xyz_near = mol_ref_near.loc[:, ["x", "y", "z"]].values
+                # print(mol_xyz_near)
+                ##### DISTANCE Search
+                for v_ref in mol_xyz:
+                    new_mol = False
+                    for v_near in mol_xyz_near:
+                        r = PBC_distance(v_ref, v_near, box)
+                        if r <= rcutoff:
+                            mols_around.append(j)
+                            new_mol = True
+                            break
+                    if new_mol:
+                        break
+                #####
+
+        # update coordinates
+        mol_conn.update_coordinates(mol_ref)
+        # remove PBC
+        mol_conn.noPBC(box, center=np.zeros(3))
+        mol_coord = mol_conn.get_df()
+        co = mol_coord.loc[:, ["x", "y", "z"]].values
+        center = center_of_mass(co, masses)
+        resids = [ref] + mols_around
+        ncoords = []
+        for res in resids:
+            atoms = atoms_per_mol[res]["index"]
+            mol_conn = connectivity.sub_connect(atoms)
+            df = coord.loc[atoms, :]
+            # Translate to a center of reference
+            df.loc[:, ["x", "y", "z"]] = translate_to(df.loc[:, ["x", "y", "z"]].values, center, box)
+            # update coordinates
+            mol_conn.update_coordinates(df)
+            # remove PBC
+            mol_conn.noPBC(box, center=np.zeros(3))
+            # Reset index and symbols, and add mass
+            mol_conn = mol_conn.reset_nodes()
+            mol_conn.simple_at_symbols()
+
+            # Search and add hydrogen to vacant atoms
+            mol_conn.add_hydrogen(box, type_add="terminal")
+            new_mol_xyz = mol_conn.get_df()
+            ncoords.append(new_mol_xyz)
+            
+        ncoords = pd.concat(ncoords, ignore_index=True)
+        save_xyz(ncoords, name=f"{out_folder}/{name}")
 
 
 def rdf_from_dist(df, box, rmin=0.0, rmax=6.0, binwidth=0.002):

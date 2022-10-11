@@ -38,4 +38,4 @@
 graphics top materials on
 graphics top material Transparent
 graphics top color silver
-graphics top sphere {0.0 0.0 0} radius 15.0 resolution 30
+graphics top sphere {0.0 0.0 0} radius 5.0 resolution 30
