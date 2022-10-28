@@ -305,11 +305,11 @@ def load_log(file="Stamp.log"):
                 out_frame.append(m.groupdict())
 
     out_g = pd.DataFrame(out_g)
-    out_g.drop_duplicates(inplace=True)
+    out_g.drop_duplicates(inplace=True, ignore_index=True)
     out_g.set_index("frame", inplace=True)
 
     out_frame = pd.DataFrame(out_frame)
-    out_frame.drop_duplicates(inplace=True)
+    out_frame.drop_duplicates(inplace=True, ignore_index=True)
 
     out_frame["time"] = out_g.loc[out_frame["frame"].values, "time"].unique()
     out_frame = out_frame.astype(
@@ -460,6 +460,94 @@ def get_distances_from(mref, box, file="mol_cmass.csv"):
             line += "\n"
             
             with open(f"mol_dist_from_{mref}.csv", "a") as out:
+                out.write(line)
+
+
+def get_angles_distance(mref, atref, box, traj, file="mol_cmass"):
+
+    def vecPBC(r1, r2, L):
+        nr2 = np.zeros(3)
+        for i in range(3):
+            nr2[i] = minImagenC(r1[i], r2[i], L[i]) + r1[i]
+
+        return nr2
+
+    def VecNormal(atoms):
+        # at1 is the reference atom
+        at1 = atoms[0, :]
+        at2 = atoms[1, :]
+        at3 = atoms[2, :]
+
+        #######
+        # center
+        nat2 = vecPBC(at1, at2, box)
+        nat3 = vecPBC(at1, at3, box)
+
+        #######
+        # at1 --> natn
+        #
+        #            nat2
+        #           /
+        # at1      /
+        #    \nat3/
+        #
+        v12 = nat2 - at1
+        v13 = nat3 - at1
+
+        return np.cross(v13, v12)
+
+    # file cm trajectory
+    traj_mol_cm = pd.read_csv(file)
+
+    # cm trajectory from ref
+    traj_mref = traj_mol_cm[traj_mol_cm["idx"] == mref]
+
+    # cm trajectory from others
+    traj_not_mref = traj_mol_cm[traj_mol_cm["idx"] != mref]
+
+    out = open(f"mol_angles_d_{mref}.csv", "w")
+    out.write("frame,idx,angles,cos,distance\n")
+    out.close()
+
+    for frame in traj_mref["frame"]:
+        print("frame", frame)
+        coord = traj[frame]
+        # print(coord)
+        cm_ref = traj_mref[traj_mref["frame"] == frame].loc[:, ["x", "y", "z"]].values[0]
+        # print("center of mass mol ref", cm_ref)
+
+        atxyz = coord.loc[atref, ["x", "y", "z"]].values
+
+        vnorm = VecNormal(atxyz)
+        # print("Vector normal", vnorm)
+        # c_vnorm = vnorm + cm_ref
+
+        not_mref_xyz = traj_not_mref[traj_not_mref["frame"] == frame].loc[:, ["idx", "x", "y", "z"]].values
+        for mol in not_mref_xyz:
+            mol_id = int(mol[0])
+            # print("molecule id", mol_id)
+
+            mol_xyz = mol[1:]
+
+            new_mol_xyz = vecPBC(cm_ref, mol_xyz, box)
+
+            cm_ref_new_mol_xyz = new_mol_xyz - cm_ref
+
+            distance_cm_mol = np.linalg.norm(cm_ref_new_mol_xyz)
+
+            cos_th = np.dot(cm_ref_new_mol_xyz, vnorm) / np.linalg.norm(cm_ref_new_mol_xyz) / np.linalg.norm(vnorm)
+
+            theta = np.arccos(cos_th) * 180.0 / np.pi
+
+            line = ""
+            line += f"{frame},"
+            line += f"{mol_id},"
+            line += f"{distance_cm_mol:.3f},"
+            line += f"{cos_th:.2f},"
+            line += f"{theta:.2f}"
+            line += "\n"
+
+            with open(f"mol_angles_d_{mref}.csv", "a") as out:
                 out.write(line)
 
 
@@ -1276,14 +1364,41 @@ def plots_mean_per_time(data):
     return fig, axs
 
 
+def plots_mean_per_dist(data):
+    """Means per distance groups."""
+    fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(12, 4))
+
+    cols = {
+        "Rg": {"label": "Radius of gyration ($\AA$)"},
+        "dmax": {"label": "Max. distance ($\AA$)"},
+        "k2": {"label": "Shape anisotropy"}
+    }
+
+    for i, name in enumerate(cols):
+        axs[i].errorbar(
+            data["d"],
+            y=data[name]["mean"],
+            yerr=data[name]["std"],
+            fmt="o",
+            capsize=4,
+            color="black",
+            ecolor="#fd9283"
+        )
+        axs[i].set_ylabel(cols[name]["label"])
+        axs[i].set_xlabel("distance (nm)")
+
+    return fig, axs
+
+
 def GenPlots(
     home, pc,  step, replica, isomer, name, out, t_min=500, t_max=2500,
-    t_step=500, thermo=True, dihedrals=True, polymer=True, distances=True,
-    rdfs=True, means_t=True, return_data=False
+    t_step=500, rmin=0, rmax=3.1, binwidth=0.5, thermo=True, dihedrals=True, polymer=True, distances=True,
+    rdfs=True, means=True, not_plots=False, return_data=False
 ):
     """Graph and save all analyses."""
     sys = load_system(f"{home}/{pc}_procedure/{step}_prod_{replica}/system.chk")
     lims = np.arange(t_min, t_max + t_step, t_step)
+    alldata = {}
 
     def binned_time(x):
         ind = np.digitize(x, lims)
@@ -1292,8 +1407,17 @@ def GenPlots(
         except IndexError:
             return np.NaN
 
+    def binned_distance(x):
+        bins = np.arange(rmin, rmax, binwidth)
+        index = np.digitize(x, bins)
+        try:
+            return bins[index]
+        except IndexError:
+            return np.NaN
+
     """Termodynamics."""
-    if thermo:
+    alldata["thermo"] = sys.data
+    if thermo and not not_plots:
         fig, axs = thermo_plots(sys)
         fig.suptitle(
             f"Thermodynamic properties - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
@@ -1301,15 +1425,11 @@ def GenPlots(
         plt.savefig(f"{out}/{name}_thermo_s{step}r{replica}.png", dpi=300)
 
     """Dihedrals."""
-    if dihedrals:
-        sys_dih = pd.read_csv(f"{home}/{pc}_procedure/{step}_prod_{replica}/dihedrals.dat", sep="\s+", header=None, index_col=0, names=["torsion"])
-        # print(sys.time_per_frame)
-        # print(sys_dih)
-        # exit()
-        # sys_dih["t"] = sys.data["I"][::10].values[1:]
-        sys_dih["t"] = sys.time_per_frame["time"]
-        sys_dih["abs"] = sys_dih["torsion"].abs()
-
+    sys_dih = pd.read_csv(f"{home}/{pc}_procedure/{step}_prod_{replica}/dihedrals.dat", sep="\s+", header=None, index_col=0, names=["torsion"])
+    sys_dih["t"] = sys.time_per_frame["time"]
+    sys_dih["abs"] = sys_dih["torsion"].abs()
+    alldata["dihedral"] = sys_dih
+    if dihedrals and not not_plots:
         fig, axs = dih_plots(sys_dih, isomer)
         fig.suptitle(f"Torsion angles in polymer matrix - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
         plt.tight_layout()
@@ -1323,8 +1443,10 @@ def GenPlots(
     pol_c = sys_pol[sys_pol["idx"] != 0].copy()
     pol_c["time"] = pol_c["time"].apply(binned_time)
     pol_t = pol_c.dropna(axis=0)
+    alldata["pol_g"] = pol_c
+    alldata["pol_t"] = pol_t
 
-    if polymer:
+    if polymer and not not_plots:
         fig, axs = poly_plots_general(pol_c)
         fig.suptitle(f"Global analysis of the polymeric matrix - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
         plt.tight_layout()
@@ -1349,7 +1471,8 @@ def GenPlots(
     })
 
     dprop.dropna(axis=0, inplace=True)
-    if distances:
+    alldata["distance"] = dprop
+    if distances and not not_plots:
         fig, axs = dist_plots_general(dprop)
         fig.suptitle(f"Global analysis of the distances from the PC - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
         plt.tight_layout()
@@ -1371,24 +1494,25 @@ def GenPlots(
         "frame": pol_c["frame"].values
     })
 
-    rdf, binned_distance = rdf_from_dist(sys_dist, sys.box * 0.1, rmax=3.1, binwidth=0.05)
+    rdf, bindistance = rdf_from_dist(sys_dist, sys.box * 0.1, rmax=3.1, binwidth=0.05)
     rdf.set_index("bin", inplace=True)
-    dprop["distance"] = dprop["distance"].apply(binned_distance)
+    dprop["distance"] = dprop["distance"].apply(bindistance)
     dprop.dropna(axis=0, inplace=True)
     dprop["gr"] = dprop["distance"].apply(lambda x: rdf.loc[x, "gr"])
     dprop["w"] = dprop["distance"].apply(lambda x: rdf.loc[x, "weihts"])
 
-    if rdfs:
+    alldata["rdf"] = dprop
+
+    if rdfs and not not_plots:
         fig, axs = rdf_plots_general(dprop)
         fig.suptitle(f"RDF analysis from the PC - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
         plt.tight_layout()
         plt.savefig(f"{out}/{name}_rdf_g_s{step}r{replica}.png", dpi=300)
 
-    sys_dist["time"] = sys_dist["frame"].apply(lambda x: frame_to_time[x])
-    sys_dist["time"] = sys_dist["time"].apply(binned_time)
-    sys_dist.dropna(axis=0, inplace=True)
+        # sys_dist["time"] = sys_dist["frame"].apply(lambda x: frame_to_time[x])
+        # sys_dist["time"] = sys_dist["time"].apply(binned_time)
+        # sys_dist.dropna(axis=0, inplace=True)
 
-    if rdfs:
         fig, axs = rdf_plots_temporal(dprop, sys.box)
         fig.suptitle(f"RDF analysis of the distances by time period - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
         plt.tight_layout()
@@ -1403,11 +1527,24 @@ def GenPlots(
     dprop_resume = dprop.groupby("time").agg(aggregation)
     dprop_resume["t"] = [int(i.replace("ps", "")) for i in dprop_resume.index]
 
-    if means_t:
+    alldata["resume_t"] = dprop_resume
+
+    dfdist = alldata["distance"]
+    dfdist["d"] = dfdist["distance"].apply(binned_distance)
+    dfresume = dfdist.groupby("d").agg(aggregation)
+    dfresume.reset_index(inplace=True)
+    alldata["resume_d"] = dfresume
+
+    if means and not not_plots:
         fig, axs = plots_mean_per_time(dprop_resume)
-        fig.suptitle(f"Mean analysis of polymer - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
+        fig.suptitle(f"Mean analysis of polymer per time - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
         plt.tight_layout()
         plt.savefig(f"{out}/{name}_means_t_s{step}r{replica}.png", dpi=300)
 
+        fig, axs = plots_mean_per_dist(dfresume)
+        fig.suptitle(f"Mean analysis of polymer per distance - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
+        plt.tight_layout()
+        plt.savefig(f"{out}/{name}_means_d_s{step}r{replica}.png", dpi=300)
+
     if return_data:
-        return dprop_resume
+        return alldata

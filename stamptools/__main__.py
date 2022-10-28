@@ -9,7 +9,7 @@ from stamptools.analysis import save_system, load_system
 from stamptools.analysis import traj_analysis
 from stamptools.analysis import traj_center_mass, get_distances_from
 from stamptools.analysis import gen_centered_traj, mol_traj_analysis
-from stamptools.analysis import mol_traj_cut_distance
+from stamptools.analysis import mol_traj_cut_distance, get_angles_distance
 from molcraft import clusters
 from stamptools.stamptools import clean_data
 import pandas as pd
@@ -44,22 +44,26 @@ Usage:
     python -um stamptools -l --poly > pol.log &
 
     Analysis of distances with respect to a resid:
-    python -um stamptools -l --centerm --mref 0 > dist.log &
+    python -um stamptools -l --centerm -mref 0 > dist.log &
 
     System center from a reference:
-    python -m stamptools -l --centered_traj --rcutoff 1.0 --mref 0
+    python -m stamptools -l --centered_traj --rcutoff 1.0 -mref 0
 
     Molecules around from a distance cut
-    python -m stamptools -l --mol_d_aa --mref 0 --out_folder distances --rcutoff 0.5
+    python -m stamptools -l --mol_d_aa -mref 0 --out_folder distances --rcuto\
+ff 0.5
 
     On server:
     python -um stamptools -l > log &
 
     Combined analysis:
-    python -m stamptools -l --centered_traj --rcutoff 1.0 --mref 0\
+    python -m stamptools -l --centered_traj --rcutoff 1.0 -mref 0\
  --out_folder test0 --centerm
 
-    python -m stamptools -l --poly --centerm --mref 0
+    python -m stamptools -l --poly --centerm -mref 0
+
+    Angles distances:
+    python -m stamptools -l --centerm --ref_plane -mref 0 -atref 11 12 13
 
 """
 
@@ -127,9 +131,17 @@ def options():
     )
 
     analysis.add_argument(
-        "--mref",
-        help="Analyze center of mass distance from a referece, use resid.",
+        "-mref", "--mref",
+        help="Reference molecule.",
         type=int,
+        default=None
+    )
+
+    analysis.add_argument(
+        "-atref", "--atref",
+        help="References atoms.",
+        type=int,
+        nargs="+",
         default=None
     )
 
@@ -155,13 +167,28 @@ def options():
 
     analysis.add_argument(
         "--mol_d_aa",
-        help="Extract the structure of mol around a reference mol using atom-atom distance.",
+        help="Extract the structure of mol around a reference mol using atom-a\
+tom distance.",
+        action="store_true"
+    )
+
+    analysis.add_argument(
+        "--mol_d",
+        help="Analyze center of mass distance from a referece, use resid.",
         action="store_true"
     )
 
     analysis.add_argument(
         "--reset",
         help="Re-collect data.",
+        action="store_true"
+    )
+
+    analysis.add_argument(
+        "--ref_plane",
+        help="The angle between the normal vector to a plane formed by three a\
+toms centered at the center of mass of the reference molecule and the center o\
+f mass is analyzed.",
         action="store_true"
     )
 
@@ -293,10 +320,10 @@ if args["mol_d_aa"]:
         out_folder=args["out_folder"]
     )
 
-#if isinstance(args["mref"], int):
-#    print("Resid:", args["mref"])
-#    get_distances_from(args["mref"], system.box)
-#    print("file mol_dist_from_{}.csv saved.".format(args["mref"]))
+if args["mol_d"]:
+    print("Resid:", args["mref"])
+    get_distances_from(args["mref"], system.box)
+    print("file mol_dist_from_{}.csv saved.".format(args["mref"]))
 
 if args["centered_traj"]:
     # distances file
@@ -313,3 +340,24 @@ if args["centered_traj"]:
         rcutoff=args["rcutoff"],
         ref=args["mref"],
         out_folder=args["out_folder"])
+
+if args["ref_plane"]:
+    print("Analysis using a plane")
+
+    # Reference molecule using mref
+    mref = args["mref"]
+    print("Resid:", mref)
+
+    # References atoms indexs
+    atref = args["atref"]
+    print("Index:", " ".join([str(i) for i in atref]))
+
+    # FIle traj center of mass
+    file = "mol_cmass.csv"
+
+    # Coordinates
+    traj = system.traj
+    box = system.box
+
+    get_angles_distance(mref, atref, box, traj, file)
+    print(f"file mol_angles_d_{mref}.csv saved.")
