@@ -238,6 +238,7 @@ if args["poly"]:
 
     if os.path.exists("polymers.csv"):
         dat = pd.read_csv("polymers.csv")
+        # Remove incomplete frames.
         dat = clean_data(dat)
         dat.to_csv("polymers.csv", index=False)
         frames_readed = list(pd.unique(dat["frame"]))
@@ -352,7 +353,7 @@ if args["ref_plane"]:
     atref = args["atref"]
     print("Index:", " ".join([str(i) for i in atref]))
 
-    # FIle traj center of mass
+    # File traj center of mass
     file = "mol_cmass.csv"
 
     # Coordinates

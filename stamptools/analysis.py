@@ -506,7 +506,7 @@ def get_angles_distance(mref, atref, box, traj, file="mol_cmass"):
     traj_not_mref = traj_mol_cm[traj_mol_cm["idx"] != mref]
 
     out = open(f"mol_angles_d_{mref}.csv", "w")
-    out.write("frame,idx,angles,cos,distance\n")
+    out.write("frame,idx,distance,cos,angles\n")
     out.close()
 
     for frame in traj_mref["frame"]:
