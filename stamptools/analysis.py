@@ -11,15 +11,16 @@ import seaborn as sns
 import os
 from molcraft.structure import save_xyz
 from scipy.stats import linregress
+from scipy.spatial.distance import cdist
 
 
 """ Regular expression that extracts matrix XYZ """
 atoms = re.compile(r"""
-        ^\s+
+        ^\s*
         (?P<atsb>[A-Za-z]+\d?\d?)\s+      # Atom name.
-        (?P<x>[+-]?\d+\.\d+)\s+           # Orthogonal coordinates for X.
-        (?P<y>[+-]?\d+\.\d+)\s+           # Orthogonal coordinates for Y.
-        (?P<z>[+-]?\d+\.\d+)\s+           # Orthogonal coordinates for Z.
+        (?P<x>[+-]?\d+\.\d+\w?[+-]?\d*)\s+           # Orthogonal coordinates for X.
+        (?P<y>[+-]?\d+\.\d+\w?[+-]?\d*)\s+           # Orthogonal coordinates for Y.
+        (?P<z>[+-]?\d+\.\d+\w?[+-]?\d*)\s+           # Orthogonal coordinates for Z.
         """, re.X)
 
 """ Regular expression for .log """
@@ -50,13 +51,14 @@ masses = re.compile(r"""
 
 def read_fatomes(file):
     """Read Fatomes file."""
+    t0 = time.time()
+    print("Reading fatomes file", end=" - ")
     natypes = 0
     atomsM = {}
     xyz = []
     lnom = []
     lmass = []
     connects = dict()
-    t0 = time.time()
     with open(file, "r") as FATM:
         for line in FATM:
 
@@ -82,17 +84,13 @@ def read_fatomes(file):
                 box = np.array(line[1:4]).astype(np.float64)
                 continue
 
-            elif "PositionDesAtomesCart" in line:
-                Natoms = int(FATM.readline())
-                continue
-
             elif atoms.match(line):
                 m = atoms.match(line)
                 xyz.append(m.groupdict())
 
             elif "Zmatrice" in line:
                 N = int(FATM.readline())
-                print("N conectivity:", N)
+                # print("N conectivity:", N)
                 for _ in range(N):
                     zline = FATM.readline()
                     zline = zline.split()
@@ -108,16 +106,19 @@ def read_fatomes(file):
         # print("Esta bien, son iguales")
         for i in range(len(lnom)):
             atomsM[lnom[i]["nom"]] = np.float64(lmass[i]["mass"])
+            if lnom[i]["nom"][0].upper() == "H":
+                atomsM[lnom[i]["nom"]] = np.float64(1.008e-03)
+
     else:
         print("ERROR, no; and masses dont similar")
         exit()
 
-    print("Number of atoms in XYZ matrix:", Natoms)
+    # print("Number of atoms in XYZ matrix:", Natoms)
     # print("ATOMS types and Mass [Kg/mol]")
     # print(atomsM)
 
-    print("Box dimensions [angs]:")
-    print(box)
+    # print("Initial box dimensions [angs]:")
+    # print(box)
 
     tabXYZ = pd.DataFrame(xyz)
 
@@ -136,7 +137,7 @@ def read_fatomes(file):
         exit()
 
     tf = time.time()
-    print(f"FAtomes read: done in {tf-t0:.2f} s")
+    print(f"done in {tf-t0:.2f} s")
 
     return tabXYZ, box, connects
 
@@ -201,6 +202,8 @@ def traj_analysis(ndx_mol, top, traj, box, connectivity, GyrationTensor, b, rese
         if n_frame < b:
             continue
         for mol in ndx_mol:
+            if len(ndx_mol[mol]["index"]) == 1:
+                continue
             masses = top.loc[ndx_mol[mol]["index"], "mass"].values
             dfcoord = frame.loc[ndx_mol[mol]["index"], :]
 
@@ -292,6 +295,8 @@ def load_log(file="Stamp.log"):
         Output file from STAMP.
 
     """
+    print("Reading log file", end=" - ")
+    t0 = time.time()
     out_g = []
     out_frame = []
     with open(file, "r") as LOG:
@@ -308,14 +313,27 @@ def load_log(file="Stamp.log"):
     out_g.drop_duplicates(inplace=True, ignore_index=True)
     out_g.set_index("frame", inplace=True)
 
+    frame_dict = out_g["time"].to_dict()
+
     out_frame = pd.DataFrame(out_frame)
     out_frame.drop_duplicates(inplace=True, ignore_index=True)
 
-    out_frame["time"] = out_g.loc[out_frame["frame"].values, "time"].unique()
+    time_f = []
+    for t in out_frame["frame"]:
+        try:
+            time_f.append(frame_dict[t])
+        except KeyError:
+            time_f.append(np.NaN)
+
+    # out_frame["time"] = out_g.loc[out_frame["frame"].values, "time"].unique()
+    out_frame["time"] = time_f
+    out_frame.dropna(inplace=True)
     out_frame = out_frame.astype(
         {"frame": np.int64, "time": np.float64}
     )
     out_frame["time"] = out_frame["time"] * 1e12  # to ps
+
+    print(f"done in {time.time()-t0:.2f} s")
     return out_frame
 
 
@@ -573,16 +591,11 @@ def change_atsb(x):
         return "O"
 
 
-def gen_centered_traj(mol, mol_dist, c_mass, rcutoff=1.5, ref=0, out_folder="centered_traj"):
+def gen_centered_traj(traj, atoms_per_mol, connectivity, box, mol_dist, c_mass, rcutoff=1.5, ref=0, out_folder="centered_traj"):
     """Generate a trajectory of the system using a reference center."""
-    traj = mol.traj
     traj_resid_in_r = mol_dist[mol_dist["distance"] <= rcutoff]
     traj_center_ref = c_mass[c_mass["idx"] == ref].loc[:, ["x", "y", "z"]].values
-    
-    atoms_per_mol = mol.atoms_per_mol
-    connectivity = mol.connectivity
-    box = mol.box
-    
+
     # Output folder
     try:
         os.mkdir(out_folder)
@@ -595,7 +608,7 @@ def gen_centered_traj(mol, mol_dist, c_mass, rcutoff=1.5, ref=0, out_folder="cen
         resid = [ref] + list(traj_resid_in_r["idx"][traj_resid_in_r["frame"] == frame].values)
         center = traj_center_ref[frame]
         
-        atoms_ndx = []
+        # atoms_ndx = []
         ncoords = []
         for res in resid:
             atoms = atoms_per_mol[res]["index"]
@@ -676,15 +689,10 @@ def PBC_distance(vref, v2, box):
     return np.linalg.norm(np.array(dist))
 
 
-def mol_traj_cut_distance(system, ref, rcutoff=0.5, out_folder="mol_distances"):
+def mol_traj_cut_distance(traj, atoms_per_mol, top, box, connectivity, ref, rcutoff=0.5, out_folder="mol_distances"):
     #(index, mol_dist, connectivity, traj, box, rcutoff=1.5,
     #ref=0, out_folder="centered_traj"):
     """Extract the structure of mol around a reference mol using atom-atom distance."""
-    traj = system.traj
-    atoms_per_mol = system.atoms_per_mol
-    connectivity = system.connectivity
-    top = system.topology
-    box = system.box
     print(f"Extract the structure of molecules around a reference mol, resid {ref},")
     print(f"using atom-atom from a distance cut: {rcutoff:.2f} nm.")
 
@@ -787,6 +795,24 @@ def rdf_from_dist(df, box, rmin=0.0, rmax=6.0, binwidth=0.002):
     rdf["weihts"] = vol_per_com / rdf["vshell"] / n_frames
     
     return rdf, binned_distance
+
+
+def get_frame_distances(traj, atoms_ref, ref, cmass, box):
+    """Distances per frame from atoms references."""
+    frame_distances = {}
+    for frame, coord in enumerate(traj):
+        mol_ref = coord.loc[atoms_ref, :]
+        mol_xyz = mol_ref.loc[:, ["x", "y", "z"]].values
+        frame_cm = cmass[(cmass["frame"] == frame) & (cmass["idx"] != ref)]
+        cm_xyz = frame_cm.loc[:, ["x", "y", "z"]].values
+        frame_distances[frame] = cdist(mol_xyz, cm_xyz, lambda a, b: PBC_distance(a, b, box))
+
+    return frame_distances
+
+
+def rdf_analysis():
+    """."""
+    pass
 
 
 """ PLOTS FUNCTIONS """

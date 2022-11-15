@@ -112,7 +112,7 @@ def options():
     )
 
     analysis.add_argument(
-        "--mol",
+        "--mol_traj",
         help="Analyze trajectory of a particular molecule, use resid.",
         type=int,
         default=None
@@ -211,22 +211,27 @@ else:
     print("The state of the system must be defined.")
     exit()
 
+traj = system.get_traj()
+
 
 # Others options:
 
 if args["plots"]:
     system.save_plots(args["plots"])
 
-if isinstance(args["mol"], int):
-    resid = args["mol"]
+if isinstance(args["mol_traj"], int):
+    resid = args["mol_traj"]
     print("Resid:", resid)
     mol_ndx = system.atoms_per_mol[resid]
+    connectivity = system.connectivity
+    box = system.box
+
     mol_traj_analysis(
         resid,
         mol_ndx,
-        system.connectivity,
-        system.traj,
-        system.box
+        connectivity,
+        traj,
+        box
     )
 
 if args["poly"]:
@@ -262,7 +267,7 @@ if args["poly"]:
     traj_analysis(
         system.atoms_per_mol,
         system.topology, 
-        system.traj,
+        traj,
         system.box,
         system.connectivity,
         clusters.GyrationTensor,
@@ -302,7 +307,7 @@ if args["centerm"]:
         args["reset"] = True
 
     traj_center_mass(
-        system.traj,
+        traj,
         system.atoms_per_mol,
         system.topology,
         system.box,
@@ -315,7 +320,11 @@ if args["centerm"]:
 
 if args["mol_d_aa"]:
     mol_traj_cut_distance(
-        system,
+        traj,
+        system.atoms_per_mol,
+        system.topology,
+        system.box,
+        system.connectivity,
         ref=args["mref"],
         rcutoff=args["rcutoff"],
         out_folder=args["out_folder"]
@@ -335,7 +344,10 @@ if args["centered_traj"]:
     c_mass = pd.read_csv("mol_cmass.csv")
 
     gen_centered_traj(
-        system,
+        traj,
+        system.atoms_per_mol,
+        system.connectivity,
+        system.box,
         mol_dist,
         c_mass,
         rcutoff=args["rcutoff"],
@@ -357,7 +369,6 @@ if args["ref_plane"]:
     file = "mol_cmass.csv"
 
     # Coordinates
-    traj = system.traj
     box = system.box
 
     get_angles_distance(mref, atref, box, traj, file)
