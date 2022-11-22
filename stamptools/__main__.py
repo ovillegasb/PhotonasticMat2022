@@ -141,6 +141,13 @@ def options():
     )
 
     analysis.add_argument(
+        "-b", "--b",
+        help="Begining time.",
+        type=float,
+        default=0
+    )
+
+    analysis.add_argument(
         "-atref", "--atref",
         help="References atoms.",
         type=int,
@@ -395,10 +402,12 @@ if args["ref_plane"]:
     # Coordinates
     box = system.box
 
+    time_per_frame = system.time_per_frame
+    b = time_per_frame[time_per_frame["time"] >= args["b"]].index[0]
     if traj is None:
-        traj = system.get_traj()
+        traj = system.get_traj(b=b)
 
-    get_angles_distance(mref, atref, box, traj, file)
+    get_angles_distance(mref, atref, box, traj, file, b=b)
     print(f"file mol_angles_d_{mref}.csv saved.")
 
 if args["rdf"] is not None:
@@ -415,11 +424,10 @@ if args["rdf"] is not None:
     # rmin = 0.15
     # rmax = 3.0
     # binwidth = 0.05
-    b = 8000
-    b = list(time_per_frame["frame"][time_per_frame["time"] >= b])[0]
+    b = time_per_frame[time_per_frame["time"] >= args["b"]].index[0]
 
     if traj is None:
-        traj = system.get_traj()
+        traj = system.get_traj(b=b)
 
     rdf_analysis(
         mref,
@@ -431,5 +439,4 @@ if args["rdf"] is not None:
         box,
         vol,
         rmin=0.15,
-        b=b
     )

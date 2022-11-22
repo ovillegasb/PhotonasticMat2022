@@ -496,7 +496,7 @@ def get_distances_from(mref, box, file="mol_cmass.csv"):
                 out.write(line)
 
 
-def get_angles_distance(mref, atref, box, traj, file="mol_cmass"):
+def get_angles_distance(mref, atref, box, traj, file="mol_cmass", b=0):
 
     def vecPBC(r1, r2, L):
         nr2 = np.zeros(3)
@@ -531,6 +531,8 @@ def get_angles_distance(mref, atref, box, traj, file="mol_cmass"):
 
     # file cm trajectory
     traj_mol_cm = pd.read_csv(file)
+    if b != 0:
+        traj_mol_cm = traj_mol_cm[traj_mol_cm["frame"] >= b].copy()
 
     # cm trajectory from ref
     traj_mref = traj_mol_cm[traj_mol_cm["idx"] == mref]
@@ -541,10 +543,11 @@ def get_angles_distance(mref, atref, box, traj, file="mol_cmass"):
     out = open(f"mol_angles_d_{mref}.csv", "w")
     out.write("frame,idx,distance,cos,angles\n")
     out.close()
+    iframe = 0
 
     for frame in traj_mref["frame"]:
         print("frame", frame)
-        coord = traj[frame]
+        coord = traj[iframe]
         # print(coord)
         cm_ref = traj_mref[traj_mref["frame"] == frame].loc[:, ["x", "y", "z"]].values[0]
         # print("center of mass mol ref", cm_ref)
@@ -582,6 +585,8 @@ def get_angles_distance(mref, atref, box, traj, file="mol_cmass"):
 
             with open(f"mol_angles_d_{mref}.csv", "a") as out:
                 out.write(line)
+
+        iframe += 1
 
 
 def translate_to(coord, center, box):
@@ -830,7 +835,7 @@ def get_frame_distances(traj, atoms_ref, ref, cmass, box):
 
 
 @decoTime
-def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, rmin=0.0, rmax=3.0, binwidth=0.05, name="rdf", b=0):
+def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, rmin=0.0, rmax=3.0, binwidth=0.05, name="rdf"):
     """Calculate the RDF of a molecule and its environment."""
     print("RDF analysis:", atoms, end=" - ")
 
@@ -852,7 +857,7 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
     bins = np.arange(rmin, rmax + binwidth, binwidth)
 
     # Obtains the distances per frames
-    frame_distances = get_frame_distances(traj[b:], atoms_ref, ref, cmass, box)
+    frame_distances = get_frame_distances(traj, atoms_ref, ref, cmass, box)
 
     if atoms_ref == "cm":
         n_centers = 1
@@ -866,7 +871,6 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
     # rdf
     g_r = np.zeros(len(bins))
     for frame in frame_distances:
-        # if
         # print("frame", frame)
         # print(frame_distances[frame])
         for i, atom in enumerate(frame_distances[frame]):
