@@ -6,7 +6,7 @@ import argparse
 import os
 from stamptools.stamp import STAMP
 from stamptools.analysis import save_system, load_system
-from stamptools.analysis import traj_analysis
+from stamptools.analysis import traj_analysis, rdf_analysis
 from stamptools.analysis import traj_center_mass, get_distances_from
 from stamptools.analysis import gen_centered_traj, mol_traj_analysis
 from stamptools.analysis import mol_traj_cut_distance, get_angles_distance
@@ -64,6 +64,9 @@ ff 0.5
 
     Angles distances:
     python -m stamptools -l --centerm --ref_plane -mref 0 -atref 11 12 13
+
+    RDF analysis:
+    python -m stamptools [-d DONNEES.in or -l] --rdf [all,cm,i-j-k] -mref 0
 
 """
 
@@ -192,6 +195,12 @@ f mass is analyzed.",
         action="store_true"
     )
 
+    analysis.add_argument(
+        "--rdf",
+        help="Calculate the rdf of a reference molecule and the surrounding mo\
+lecules. Three types can be specified. all, cm or 12-13 (atomic index)."
+    )
+
     return vars(parser.parse_args())
 
 
@@ -211,7 +220,7 @@ else:
     print("The state of the system must be defined.")
     exit()
 
-traj = system.get_traj()
+traj = None
 
 
 # Others options:
@@ -225,6 +234,9 @@ if isinstance(args["mol_traj"], int):
     mol_ndx = system.atoms_per_mol[resid]
     connectivity = system.connectivity
     box = system.box
+
+    if traj is None:
+        traj = system.get_traj()
 
     mol_traj_analysis(
         resid,
@@ -263,6 +275,9 @@ if args["poly"]:
 
     if b == 0 and not args["reset"]:
         args["reset"] = True
+
+    if traj is None:
+        traj = system.get_traj()
 
     traj_analysis(
         system.atoms_per_mol,
@@ -306,6 +321,9 @@ if args["centerm"]:
     if b == 0 and not args["reset"]:
         args["reset"] = True
 
+    if traj is None:
+        traj = system.get_traj()
+
     traj_center_mass(
         traj,
         system.atoms_per_mol,
@@ -319,6 +337,9 @@ if args["centerm"]:
     print("file mol_cmass.csv saved.")
 
 if args["mol_d_aa"]:
+    if traj is None:
+        traj = system.get_traj()
+
     mol_traj_cut_distance(
         traj,
         system.atoms_per_mol,
@@ -342,6 +363,9 @@ if args["centered_traj"]:
 
     # load center of mass file
     c_mass = pd.read_csv("mol_cmass.csv")
+
+    if traj is None:
+        traj = system.get_traj()
 
     gen_centered_traj(
         traj,
@@ -371,5 +395,41 @@ if args["ref_plane"]:
     # Coordinates
     box = system.box
 
+    if traj is None:
+        traj = system.get_traj()
+
     get_angles_distance(mref, atref, box, traj, file)
     print(f"file mol_angles_d_{mref}.csv saved.")
+
+if args["rdf"] is not None:
+    # Reference molecule using mref
+    mref = args["mref"]
+    print("Resid:", mref)
+
+    atoms_per_mol = system.atoms_per_mol
+    connectivity = system.connectivity
+    top = system.topology
+    box = system.box
+    vol = system.vol
+    time_per_frame = system.time_per_frame
+    # rmin = 0.15
+    # rmax = 3.0
+    # binwidth = 0.05
+    b = 8000
+    b = list(time_per_frame["frame"][time_per_frame["time"] >= b])[0]
+
+    if traj is None:
+        traj = system.get_traj()
+
+    rdf_analysis(
+        mref,
+        args["rdf"],
+        traj,
+        atoms_per_mol,
+        connectivity,
+        top,
+        box,
+        vol,
+        rmin=0.15,
+        b=b
+    )

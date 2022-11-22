@@ -49,6 +49,17 @@ masses = re.compile(r"""
     """, re.X)
 
 
+def decoTime(func):
+    def elapsed_time(*args, **kwargs):
+        """Print the elapsed time in the use of the function."""
+        t0 = time.time()
+        func(*args, **kwargs)
+        tf = time.time()
+        print(f"done in {tf-t0:.3f} s")
+
+    return elapsed_time
+
+
 def read_fatomes(file):
     """Read Fatomes file."""
     t0 = time.time()
@@ -444,6 +455,10 @@ def minImagenC(q1, q2, L):
 def get_distances_from(mref, box, file="mol_cmass.csv"):
     # file cm trajectory
     traj_mol_cm = pd.read_csv(file)
+    # print(traj_mol_cm.isnull().values.any())
+    # exit()
+    traj_mol_cm["frame"] = traj_mol_cm["frame"].astype(np.int64)
+    traj_mol_cm["idx"] = traj_mol_cm["idx"].astype(np.int64)
 
     # cm trajectory from ref
     traj_mref = traj_mol_cm[traj_mol_cm["idx"] == 0]
@@ -801,8 +816,12 @@ def get_frame_distances(traj, atoms_ref, ref, cmass, box):
     """Distances per frame from atoms references."""
     frame_distances = {}
     for frame, coord in enumerate(traj):
-        mol_ref = coord.loc[atoms_ref, :]
-        mol_xyz = mol_ref.loc[:, ["x", "y", "z"]].values
+        if atoms_ref == "cm":
+            mol_ref = cmass[(cmass["frame"] == frame) & (cmass["idx"] == ref)]
+            mol_xyz = mol_ref.loc[:, ["x", "y", "z"]].values
+        else:
+            mol_ref = coord.loc[atoms_ref, :]
+            mol_xyz = mol_ref.loc[:, ["x", "y", "z"]].values
         frame_cm = cmass[(cmass["frame"] == frame) & (cmass["idx"] != ref)]
         cm_xyz = frame_cm.loc[:, ["x", "y", "z"]].values
         frame_distances[frame] = cdist(mol_xyz, cm_xyz, lambda a, b: PBC_distance(a, b, box))
@@ -810,9 +829,64 @@ def get_frame_distances(traj, atoms_ref, ref, cmass, box):
     return frame_distances
 
 
-def rdf_analysis():
-    """."""
-    pass
+@decoTime
+def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, rmin=0.0, rmax=3.0, binwidth=0.05, name="rdf", b=0):
+    """Calculate the RDF of a molecule and its environment."""
+    print("RDF analysis:", atoms, end=" - ")
+
+    # read molecules center of mass
+    cmass = pd.read_csv("mol_cmass.csv")
+
+    # RDF type
+    if atoms == "all":
+        atoms_ref = atoms_per_mol[ref]["index"]
+        name += "_all"
+    elif atoms == "cm":
+        atoms_ref = "cm"
+        name += "_cm"
+    else:
+        atoms_ref = [int(a) for a in atoms.split("-")]
+        name += "_" + "-".join(list(top.loc[atoms_ref, "atsb"].values))
+
+    # Define the bins
+    bins = np.arange(rmin, rmax + binwidth, binwidth)
+
+    # Obtains the distances per frames
+    frame_distances = get_frame_distances(traj[b:], atoms_ref, ref, cmass, box)
+
+    if atoms_ref == "cm":
+        n_centers = 1
+    else:
+        n_centers = len(atoms_ref)
+
+    total_n_centers = len(atoms_per_mol) - 1 + n_centers
+    vol_per_sphere = vol.mean() / total_n_centers
+    vshell = 4 * np.pi * ((binwidth + bins)**3 - bins**3) / 3
+
+    # rdf
+    g_r = np.zeros(len(bins))
+    for frame in frame_distances:
+        # if
+        # print("frame", frame)
+        # print(frame_distances[frame])
+        for i, atom in enumerate(frame_distances[frame]):
+            # print("atom", i)
+            indexs = np.int64(atom * 0.1 / binwidth)
+            indexs = indexs[indexs < len(bins)]
+            for n in indexs:
+                g_r[n] += 1
+
+    n_frames = len(frame_distances.keys())
+    g_r_norm = g_r * vol_per_sphere / vshell / n_frames
+
+    # return g_r_norm, bins
+    RDF = pd.DataFrame({
+        "g_r": g_r_norm,
+        "r": bins
+    })
+
+    file = f"{name}.csv"
+    RDF.to_csv(file, float_format="%.6f")
 
 
 """ PLOTS FUNCTIONS """
@@ -824,36 +898,36 @@ confIsomer = {
     }
 
 
-def thermo_plots(obj):
+def thermo_plots(data):
     """Thermodynamic Analysis."""
     fig, axs = plt.subplots(ncols=3, figsize=(12,4))
     (ax1, ax2, ax3) = axs
 
-    sns.lineplot(data=obj.data, x="I", y="T", color="red", ax=ax1, alpha=0.8)
+    sns.lineplot(data=data, x="I", y="T", color="red", ax=ax1, alpha=0.8)
     ax1.set_ylabel("Temperature (K)")
     ax1.set_xlabel("time (ps)")
     ax1.set_title(
         r"$\bar T =$ {:.2f} $\pm$ {:.2f} K".format(
-            obj.data["T"].mean(),
-            obj.data["T"].std())
+            data["T"].mean(),
+            data["T"].std())
         )
 
-    sns.lineplot(data=obj.data, x="I", y="P", color="purple", ax=ax2, alpha=0.8)
+    sns.lineplot(data=data, x="I", y="P", color="purple", ax=ax2, alpha=0.8)
     ax2.set_ylabel("Pressure (bar)")
     ax2.set_xlabel("time (ps)")
     ax2.set_title(
         r"$\bar P =$ {:.2f} $\pm$ {:.2f} bar".format(
-            obj.data["P"].mean(),
-            obj.data["P"].std())
+            data["P"].mean(),
+            data["P"].std())
         )
 
-    sns.lineplot(data=obj.data, x="I", y="Etot", color="green", ax=ax3, alpha=0.8)
+    sns.lineplot(data=data, x="I", y="Etot", color="green", ax=ax3, alpha=0.8)
     ax3.set_ylabel("Total Energy (kJ/mol)")
     ax3.set_xlabel("time (ps)")
     ax3.set_title(
         r"$\bar Etot =$ {:.2f} $\pm$ {:.2f} kJ/mol".format(
-            obj.data["Etot"].mean(),
-            obj.data["Etot"].std())
+            data["Etot"].mean(),
+            data["Etot"].std())
         )
 
     return fig, axs
@@ -1444,7 +1518,7 @@ def GenPlots(
     """Termodynamics."""
     alldata["thermo"] = sys.data
     if thermo and not not_plots:
-        fig, axs = thermo_plots(sys)
+        fig, axs = thermo_plots(sys.data)
         fig.suptitle(
             f"Thermodynamic properties - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
         plt.tight_layout()
