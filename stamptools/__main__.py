@@ -121,14 +121,8 @@ def options():
     )
 
     analysis.add_argument(
-        "--poly",
-        help="Analyze the shape and size of the polymers present.",
-        action="store_true"
-    )
-
-    analysis.add_argument(
-        "--centerm",
-        help="Analyze the of center of mass from molecules present.",
+        "--molprop",
+        help="Analyze the shape and size of the molecules present.",
         action="store_true"
     )
 
@@ -252,7 +246,7 @@ if isinstance(args["mol_traj"], int):
         box
     )
 
-if args["poly"]:
+if args["molprop"]:
     # begin frame
     b = 0
     if args["reset"]:
@@ -296,50 +290,6 @@ if args["poly"]:
     )
     # save information in file
     print("file molprop.csv saved.")
-
-if args["centerm"]:
-    # begin frame
-    b = 0
-    if args["reset"]:
-        os.remove("mol_cmass.csv")
-        print("File mol_cmass.csv removed.")
-
-    if os.path.exists("mol_cmass.csv"):
-        dat = pd.read_csv("mol_cmass.csv")
-        dat = clean_data(dat)
-        dat.to_csv("mol_cmass.csv", index=False)
-        frames_readed = list(pd.unique(dat["frame"]))
-        # update file list
-        system.update_xyz()
-
-        if len(frames_readed) == len(system.XYZs):
-            print("The number of XYZ files is equal to the number of "\
-                  "frames analyzed.")
-            b = len(frames_readed)
-
-        elif len(frames_readed) < len(system.XYZs):
-            print("The number of XYZ files is greater than the number of "\
-                  "files analyzed.")
-            b = len(frames_readed)
-            save_system(system)
-
-    if b == 0 and not args["reset"]:
-        args["reset"] = True
-
-    if traj is None:
-        traj = system.get_traj()
-
-    traj_center_mass(
-        traj,
-        system.atoms_per_mol,
-        system.topology,
-        system.box,
-        system.connectivity,
-        b,
-        args["reset"]
-    )
-    # save information in file
-    print("file mol_cmass.csv saved.")
 
 if args["mol_d_aa"]:
     if traj is None:

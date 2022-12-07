@@ -236,7 +236,7 @@ def traj_analysis(ndx_mol, top, traj, box, connectivity, b, reset=True):
             line += "{},".format(int(ndx_mol[mol]["Natoms"]))
             line += f"{G.iso_w_rg:.2f},"
             line += f"{G.shape_anisotropy:.3f},"
-            line += f"{G.max_distance:.2f}"
+            line += f"{G.max_distance:.2f},"
 
             # Center of mass
             mol_cm = center_of_mass(coord, masses)
