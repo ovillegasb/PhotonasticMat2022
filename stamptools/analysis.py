@@ -12,6 +12,7 @@ import os
 from molcraft.structure import save_xyz
 from scipy.stats import linregress
 from scipy.spatial.distance import cdist
+from molcraft.clusters import GyrationTensor
 
 
 """ Regular expression that extracts matrix XYZ """
@@ -164,7 +165,7 @@ def center_of_mass(coords, masses):
     return np.sum(coords * masses[:, np.newaxis], axis=0) / masses.sum()
 
 
-def traj_analysis(ndx_mol, top, traj, box, connectivity, GyrationTensor, b, reset=True):
+def traj_analysis(ndx_mol, top, traj, box, connectivity, b, reset=True):
     """
     Analyze properties during a simulation.
 
@@ -185,9 +186,6 @@ def traj_analysis(ndx_mol, top, traj, box, connectivity, GyrationTensor, b, rese
     connectivity : molcraft.structure.connectivity
         System connectivity.
 
-    GyrationTensor : class
-        Class that builds the information.
-
     b : int
         initial frame.
 
@@ -195,7 +193,7 @@ def traj_analysis(ndx_mol, top, traj, box, connectivity, GyrationTensor, b, rese
         Write a new file.
 
     """
-    print("Polymer analysis")
+    print("Trajectory analysis")
     t0 = time.time()
 
     # Number of frames read
@@ -203,8 +201,8 @@ def traj_analysis(ndx_mol, top, traj, box, connectivity, GyrationTensor, b, rese
     print(f"Number of frames: {Nframes}")
 
     if reset:
-        out = open("polymers.csv", "w")
-        out.write("frame,idx,Natoms,Rg,k2,dmax\n")
+        out = open("molprop.csv", "w")
+        out.write("frame,idx,Natoms,Rg,k2,dmax,x,y,z\n")
         out.close()
 
     for n_frame, frame in enumerate(traj):
@@ -239,8 +237,13 @@ def traj_analysis(ndx_mol, top, traj, box, connectivity, GyrationTensor, b, rese
             line += f"{G.iso_w_rg:.2f},"
             line += f"{G.shape_anisotropy:.3f},"
             line += f"{G.max_distance:.2f}"
+
+            # Center of mass
+            mol_cm = center_of_mass(coord, masses)
+            line += f"{mol_cm[0]:.3f},"
+            line += f"{mol_cm[1]:.3f},"
+            line += f"{mol_cm[2]:.3f}"
             line += "\n"
-            # print(line)
 
             with open("polymers.csv", "a") as out:
                 out.write(line)

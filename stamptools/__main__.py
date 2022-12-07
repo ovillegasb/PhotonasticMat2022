@@ -10,7 +10,6 @@ from stamptools.analysis import traj_analysis, rdf_analysis
 from stamptools.analysis import traj_center_mass, get_distances_from
 from stamptools.analysis import gen_centered_traj, mol_traj_analysis
 from stamptools.analysis import mol_traj_cut_distance, get_angles_distance
-from molcraft import clusters
 from stamptools.stamptools import clean_data
 import pandas as pd
 
@@ -292,7 +291,6 @@ if args["poly"]:
         traj,
         system.box,
         system.connectivity,
-        clusters.GyrationTensor,
         b,
         args["reset"]
     )
