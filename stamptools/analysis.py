@@ -245,7 +245,7 @@ def traj_analysis(ndx_mol, top, traj, box, connectivity, b, reset=True):
             line += f"{mol_cm[2]:.3f}"
             line += "\n"
 
-            with open("polymers.csv", "a") as out:
+            with open("molprop.csv", "a") as out:
                 out.write(line)
 
     print(f"{100:6.2f} % |{progress(100)}|")

@@ -256,14 +256,14 @@ if args["poly"]:
     # begin frame
     b = 0
     if args["reset"]:
-        os.remove("polymers.csv")
-        print("File polymers.csv removed.")
+        os.remove("molprop.csv")
+        print("File molprop.csv removed.")
 
-    if os.path.exists("polymers.csv"):
-        dat = pd.read_csv("polymers.csv")
+    if os.path.exists("molprop.csv"):
+        dat = pd.read_csv("molprop.csv")
         # Remove incomplete frames.
         dat = clean_data(dat)
-        dat.to_csv("polymers.csv", index=False)
+        dat.to_csv("molprop.csv", index=False)
         frames_readed = list(pd.unique(dat["frame"]))
         # update file list
         system.update_xyz()
@@ -295,7 +295,7 @@ if args["poly"]:
         args["reset"]
     )
     # save information in file
-    print("file polymers.csv saved.")
+    print("file molprop.csv saved.")
 
 if args["centerm"]:
     # begin frame
