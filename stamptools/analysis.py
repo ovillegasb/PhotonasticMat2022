@@ -42,11 +42,15 @@ out_xyz = re.compile(r"""
 """ Regular expression for FAtomes """
 
 noms = re.compile(r"""
-    nom\s+(?P<nom>\w+)               # Atom name
+    nom\s+(?P<nom>\w+)
     """, re.X)
 
 masses = re.compile(r"""
-    masse\s+(?P<mass>\d+\.\w+[+-]?\d+)               # Atom name
+    masse\s+(?P<mass>\d+\.\w+[+-]?\d+)
+    """, re.X)
+
+charges = re.compile(r"""
+    charge\s+(?P<charge>[+-]?\d+\.\d+)
     """, re.X)
 
 
@@ -70,17 +74,26 @@ def read_fatomes(file):
     xyz = []
     lnom = []
     lmass = []
+    lcharges = []
+    lcharge_mod = []
     connects = dict()
     with open(file, "r") as FATM:
+        nom = ""
         for line in FATM:
-
             if noms.match(line):
+                nom = ""
                 m = noms.match(line)
                 lnom.append(m.groupdict())
+                nom += m.groupdict()["nom"]
 
             if masses.match(line):
                 m = masses.match(line)
                 lmass.append(m.groupdict())
+
+            if charges.match(line):
+                m = charges.match(line)
+                lcharges.append({nom: float(m.groupdict()["charge"])})
+                nom = ""
 
             if "*" == line[0]:
                 # ignore lines with the * symbol
@@ -109,6 +122,14 @@ def read_fatomes(file):
                     zline = [int(i) for i in zline]
                     connects[zline[0]] = zline[1:]
 
+            elif "ModificationChargeDesAtomes" in line:
+                N = int(FATM.readline())
+                for _ in range(N):
+                    chline = FATM.readline()
+                    chline = chline.split()
+                    lcharge_mod.append({"idx": int(chline[0]), "charge": float(chline[1])})
+    print(lcharges)
+    print(lcharge_mod)
     atomsM = dict()
     # print("Atoms names:", lnom, len(lnom))
     # print("Atoms masses:", lmass, len(lmass))
@@ -147,6 +168,17 @@ def read_fatomes(file):
         print(tabXYZ.loc[0:26, :])
         print("ERROR")
         exit()
+
+    tabXYZ["charge"] = 0.0
+    for nom in tabXYZ["atsb"].unique():
+        for ch in lcharges:
+            if nom in ch:
+                break
+            
+            print(nom)
+            
+    # print(tabXYZ)
+    exit()
 
     tf = time.time()
     print(f"done in {tf-t0:.2f} s")
