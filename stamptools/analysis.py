@@ -92,7 +92,7 @@ def read_fatomes(file):
 
             if charges.match(line):
                 m = charges.match(line)
-                lcharges.append({nom: float(m.groupdict()["charge"])})
+                lcharges.append((nom, float(m.groupdict()["charge"])))
                 nom = ""
 
             if "*" == line[0]:
@@ -128,30 +128,26 @@ def read_fatomes(file):
                     chline = FATM.readline()
                     chline = chline.split()
                     lcharge_mod.append({"idx": int(chline[0]), "charge": float(chline[1])})
-    print(lcharges)
-    print(lcharge_mod)
+    
+    lcharges = {key: charge for (key, charge) in lcharges}
+    def from_lcharges(x):
+        try:
+            return lcharges[x]
+        except KeyError:
+            return 0.0
+
+    lcharge_mod = pd.DataFrame(lcharge_mod)
     atomsM = dict()
-    # print("Atoms names:", lnom, len(lnom))
-    # print("Atoms masses:", lmass, len(lmass))
-    # print(list(range(len(lnom))))
 
     if len(lmass) == len(lnom):
-        # print("Esta bien, son iguales")
         for i in range(len(lnom)):
             atomsM[lnom[i]["nom"]] = np.float64(lmass[i]["mass"])
             if lnom[i]["nom"][0].upper() == "H":
                 atomsM[lnom[i]["nom"]] = np.float64(1.008e-03)
 
     else:
-        print("ERROR, no; and masses dont similar")
+        print("\nERROR, no; and masses dont similar")
         exit()
-
-    # print("Number of atoms in XYZ matrix:", Natoms)
-    # print("ATOMS types and Mass [Kg/mol]")
-    # print(atomsM)
-
-    # print("Initial box dimensions [angs]:")
-    # print(box)
 
     tabXYZ = pd.DataFrame(xyz)
 
@@ -164,21 +160,16 @@ def read_fatomes(file):
     try:
         tabXYZ["mass"] = tabXYZ["atsb"].apply(lambda x: atomsM[x])
     except KeyError:
+        print("")
         print(atomsM)
         print(tabXYZ.loc[0:26, :])
         print("ERROR")
         exit()
 
-    tabXYZ["charge"] = 0.0
-    for nom in tabXYZ["atsb"].unique():
-        for ch in lcharges:
-            if nom in ch:
-                break
-            
-            print(nom)
-            
-    # print(tabXYZ)
-    exit()
+    tabXYZ["charge"] = tabXYZ["atsb"].apply(from_lcharges)
+
+    for i in lcharge_mod.index:
+        tabXYZ.loc[lcharge_mod.loc[i, "idx"], "charge"] = lcharge_mod.loc[i, "charge"]
 
     tf = time.time()
     print(f"done in {tf-t0:.2f} s")
