@@ -899,24 +899,22 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
     else:
         n_centers = len(atoms_ref)
 
-    total_n_centers = len(atoms_per_mol) - 1 + n_centers
-    vol_per_sphere = vol.mean() / total_n_centers
+    # total_n_centers = len(atoms_per_mol) - 1 + n_centers
+    # vol_per_sphere = vol.mean() / total_n_centers
+    vol_per_sphere = vol.mean() / (len(atoms_per_mol) - 1)
     vshell = 4 * np.pi * ((binwidth + bins)**3 - bins**3) / 3
 
     # rdf
     g_r = np.zeros(len(bins))
     for frame in frame_distances:
-        # print("frame", frame)
-        # print(frame_distances[frame])
         for i, atom in enumerate(frame_distances[frame]):
-            # print("atom", i)
             indexs = np.int64(atom * 0.1 / binwidth)
             indexs = indexs[indexs < len(bins)]
             for n in indexs:
                 g_r[n] += 1
 
     n_frames = len(frame_distances.keys())
-    g_r_norm = g_r * vol_per_sphere / vshell / n_frames
+    g_r_norm = g_r * vol_per_sphere / vshell / n_frames / n_centers
 
     # return g_r_norm, bins
     RDF = pd.DataFrame({
