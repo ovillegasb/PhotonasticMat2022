@@ -13,15 +13,16 @@ out = "SamplingUV-Vis"
 try:
     top = sys.argv[1]
     trj = sys.argv[2]
+    b = int(sys.argv[3])
+    e = int(sys.argv[4])
+    out += "_{}_{}".format(sys.argv[3], sys.argv[4])
 except IndexError:
-    print("Dont file DONNEES.in")
+    print("Options: .gro .xtc begin end")
     exit()
 
 if not os.path.exists(out):
     os.mkdir(out)
 
-b = 7500
-e = 10000
 resid = 0  # start from 1
 replica = "thf"
 isomer = input("Isomer, cis or trans: ")
