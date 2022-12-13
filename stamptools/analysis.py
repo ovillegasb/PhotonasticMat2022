@@ -188,7 +188,7 @@ def center_of_mass(coords, masses):
     return np.sum(coords * masses[:, np.newaxis], axis=0) / masses.sum()
 
 
-def traj_analysis(ndx_mol, top, traj, box, connectivity, b, reset=True):
+def traj_analysis(ndx_mol, top, traj, box, connectivity, b=0, reset=True):
     """
     Analyze properties during a simulation.
 
@@ -286,19 +286,19 @@ def load_data(file, t="LNVT"):
         Output file from STAMP.
 
     t : str
-        Simulation type: NVT or NPT.
+        Simulation type: LNVT or NPT.
 
     """
     names = {
         "LNVT": [
-            "I",
+            "time",
             "Etot", "Epot", "Epot_intra", "Epot_inter", "Ekin",
             "T", "Tx", "Ty", "Tz",
             "P", "Px", "Py", "Pz",
             "Vx", "Vy", "Vz",
             "D", "cpu"],
         "NPT": [
-            "I",
+            "time",
             "Etot", "Epot", "Epot_intra", "Epot_inter", "Ekin",
             "T", "Tx", "Ty", "Tz",
             "P", "Px", "Py", "Pz",
@@ -316,7 +316,7 @@ def load_data(file, t="LNVT"):
         comment="#"
                       )
     data["Etot"] = data["Etot"] * N_A / 1000  # to kJ/mol
-    data["I"] = data["I"] * 1e12  # to ps
+    data["time"] = data["time"] * 1e12  # to ps
     data["P"] = data["P"] * 1e-5  # to bar
 
     return data
@@ -421,7 +421,7 @@ def traj_center_mass(traj, ndx_mol, top, box, connectivity, b=0, reset=True):
     print(f"Number of frames: {Nframes}")
 
     if reset:
-        out = open("mol_cmass.csv", "w")
+        out = open("molprop.csv", "w")
         out.write("frame,idx,Natoms,x,y,z\n")
         out.close()
 
@@ -459,7 +459,7 @@ def traj_center_mass(traj, ndx_mol, top, box, connectivity, b=0, reset=True):
             line += "\n"
             # print(line)
 
-            with open("mol_cmass.csv", "a") as out:
+            with open("molprop.csv", "a") as out:
                 out.write(line)
             
     print(f"{100:6.2f} % |{progress(100)}|")
@@ -478,7 +478,7 @@ def minImagenC(q1, q2, L):
     return dq
 
 
-def get_distances_from(mref, box, file="mol_cmass.csv"):
+def get_distances_from(mref, box, file="molprop.csv"):
     # file cm trajectory
     traj_mol_cm = pd.read_csv(file)
     # print(traj_mol_cm.isnull().values.any())
@@ -727,6 +727,7 @@ def mol_traj_analysis(index, mol_ndx, connectivity, traj, box):
 
 
 def PBC_distance(vref, v2, box):
+    """Distance between two coordinates in periodic boundary conditions."""
     dist = []
     for i in range(3):
         ndist = minImagenC(vref[i], v2[i], box[i])
@@ -764,7 +765,7 @@ def mol_traj_cut_distance(traj, atoms_per_mol, top, box, connectivity, ref, rcut
             if j != ref:
                 # print(j)
                 atoms_near = atoms_per_mol[j]["index"]
-                mol_conn_near = connectivity.sub_connect(atoms_near)
+                # mol_conn_near = connectivity.sub_connect(atoms_near)
                 mol_ref_near = coord.loc[atoms_near, :]
                 mol_xyz_near = mol_ref_near.loc[:, ["x", "y", "z"]].values
                 # print(mol_xyz_near)
@@ -866,7 +867,7 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
     print("RDF analysis:", atoms, end=" - ")
 
     # read molecules center of mass
-    cmass = pd.read_csv("mol_cmass.csv")
+    molp = pd.read_csv("molprop.csv")
 
     # RDF type
     if atoms == "all":
@@ -883,7 +884,11 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
     bins = np.arange(rmin, rmax + binwidth, binwidth)
 
     # Obtains the distances per frames
-    frame_distances = get_frame_distances(traj, atoms_ref, ref, cmass, box)
+    frame_distances = get_frame_distances(traj, atoms_ref, ref, molp, box)
+
+    print(frame_distances)
+    print(frame_distances[198].shape)
+    exit()
 
     if atoms_ref == "cm":
         n_centers = 1
@@ -914,7 +919,8 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
     })
 
     file = f"{name}.csv"
-    RDF.to_csv(file, float_format="%.6f")
+    RDF.to_csv(file, float_format="%.6f", index=None)
+    print(f"file {file} saved.", end=" - ")
 
 
 """ PLOTS FUNCTIONS """

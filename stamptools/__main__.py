@@ -39,8 +39,8 @@ Usage:
     Save traj mol 0:
     python -m stamptools -l --mol 0
 
-    Save poly information:
-    python -um stamptools -l --poly > pol.log &
+    Save molecular information:
+    python -um stamptools -l --molprop > log &
 
     Analysis of distances with respect to a resid:
     python -um stamptools -l --centerm -mref 0 > dist.log &
@@ -58,8 +58,6 @@ ff 0.5
     Combined analysis:
     python -m stamptools -l --centered_traj --rcutoff 1.0 -mref 0\
  --out_folder test0 --centerm
-
-    python -m stamptools -l --poly --centerm -mref 0
 
     Angles distances:
     python -m stamptools -l --centerm --ref_plane -mref 0 -atref 11 12 13
@@ -135,9 +133,16 @@ def options():
 
     analysis.add_argument(
         "-b", "--b",
-        help="Begining time.",
+        help="Time of first frame to read from trajectory (default unit ps).",
         type=float,
         default=0
+    )
+
+    analysis.add_argument(
+        "-e", "--e",
+        help="Time of last frame to read from trajectory (default unit ps).",
+        type=float,
+        default=-1
     )
 
     analysis.add_argument(
@@ -196,7 +201,7 @@ f mass is analyzed.",
     )
 
     analysis.add_argument(
-        "--rdf",
+        "-rdf", "--rdf",
         help="Calculate the rdf of a reference molecule and the surrounding mo\
 lecules. Three types can be specified. all, cm or 12-13 (atomic index)."
     )
@@ -220,6 +225,7 @@ else:
     print("The state of the system must be defined.")
     exit()
 
+# Initializes the trajectory variable
 traj = None
 
 
@@ -317,7 +323,7 @@ if args["centered_traj"]:
     mol_dist["distance"] = mol_dist["distance"] * 0.1  # to nm
 
     # load center of mass file
-    c_mass = pd.read_csv("mol_cmass.csv")
+    c_mass = pd.read_csv("molprop.csv")
 
     if traj is None:
         traj = system.get_traj()
@@ -345,7 +351,7 @@ if args["ref_plane"]:
     print("Index:", " ".join([str(i) for i in atref]))
 
     # File traj center of mass
-    file = "mol_cmass.csv"
+    file = "molprop.csv"
 
     # Coordinates
     box = system.box
@@ -369,13 +375,18 @@ if args["rdf"] is not None:
     box = system.box
     vol = system.vol
     time_per_frame = system.time_per_frame
-    # rmin = 0.15
-    # rmax = 3.0
-    # binwidth = 0.05
+    ##############################
+    # Function return traj, in systems?
     b = time_per_frame[time_per_frame["time"] >= args["b"]].index[0]
+    if int(args["e"]) != -1:
+        e = list(time_per_frame[time_per_frame["time"] <= args["e"]].index)[-1]
+    else:
+        e = int(args["e"])
 
     if traj is None:
-        traj = system.get_traj(b=b)
+        traj = system.get_traj(b=b, e=e)
+
+    ##############################
 
     rdf_analysis(
         mref,
