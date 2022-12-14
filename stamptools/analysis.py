@@ -729,7 +729,7 @@ def mol_traj_analysis(index, mol_ndx, connectivity, traj, box):
 def PBC_distance(vref, v2, box):
     """Distance between two coordinates in periodic boundary conditions."""
     dist = []
-    for i in range(3):
+    for i in range(len(box)):
         ndist = minImagenC(vref[i], v2[i], box[i])
         dist.append(ndist)
     
