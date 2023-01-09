@@ -20,11 +20,9 @@ except IndexError:
     print("Dont file DONNEES.in")
     exit()
 
-if not os.path.exists(out):
-    os.mkdir(out)
-
-b = 500.
-e = 2500.
+# b = input("begin time in ps: "
+b = float(input("begin time in ps: "))
+e = float(input("end time in ps: "))
 resid = 0
 replica = int(input("Replica number: "))
 isomer = input("Isomer, cis or trans: ")
@@ -33,6 +31,10 @@ print("File:", file)
 print("Time >=", b, "ps")
 print("Time <", e, "ps")
 print("Resid:", resid)
+out += "_{}_{}".format(str(int(b)), str(int(e)))
+print("out folder:", out)
+if not os.path.exists(out):
+    os.mkdir(out)
 
 system = STAMP(file)
 
