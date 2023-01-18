@@ -844,19 +844,34 @@ def rdf_from_dist(df, box, rmin=0.0, rmax=6.0, binwidth=0.002):
     return rdf, binned_distance
 
 
-def get_frame_distances_0(traj, atoms_ref, ref, cmass, box):
-    """Distances per frame from atoms references."""
+def get_frame_distances_cm(traj, ref, near, cmass, box, rcutoff):
+    """Distances per frame from center of mass references."""
     frame_distances = {}
+    neighbor_list = set()
+    nstlist = 1000
+
     for frame, coord in enumerate(traj):
-        if atoms_ref == "cm":
-            mol_ref = cmass[(cmass["frame"] == frame) & (cmass["idx"] == ref)]
-            mol_xyz = mol_ref.loc[:, ["x", "y", "z"]].values
-        else:
-            mol_ref = coord.loc[atoms_ref, :]
-            mol_xyz = mol_ref.loc[:, ["x", "y", "z"]].values
-        frame_cm = cmass[(cmass["frame"] == frame) & (cmass["idx"] != ref)]
-        cm_xyz = frame_cm.loc[:, ["x", "y", "z"]].values
-        frame_distances[frame] = cdist(mol_xyz, cm_xyz, lambda a, b: PBC_distance(a, b, box))
+
+        # ==== NEIGHBOR SEARCHING ====
+        # Update the neighbor list every nstlist iterations
+        if frame % nstlist == 0:
+            neighbor_list = set()
+            neighbor = []
+            for j in near:
+                mol_i = coord.loc[ref, ["x", "y", "z"]].values
+                mol_j = coord.loc[j, ["x", "y", "z"]].values
+                if PBC_distance(mol_i, mol_j, box) <= rcutoff * 10.0:
+                    neighbor.append(j)
+
+            neighbor_list.update(neighbor.copy())
+
+        ncoord = cmass[cmass["frame"] == frame].reset_index()
+        mol_ref_xyz = ncoord.loc[[ref], ["x", "y", "z"]].values
+        mol_near_xyz = ncoord.loc[list(neighbor_list), ["x", "y", "z"]].values
+
+        frame_distances[frame] = cdist(
+            mol_ref_xyz, mol_near_xyz, lambda a, b: PBC_distance(a, b, box)
+        )
 
     return frame_distances
 
@@ -866,11 +881,6 @@ def get_frame_distances(traj, atoms_ref, atoms_near, box, rcutoff):
     frame_distances = {}
     neighbor_list = set()
     nstlist = 1000
-    ###TEST
-    # atoms_near = atoms_near[0:4000]
-    ###
-
-    # ============================
 
     for frame, coord in enumerate(traj):
         # ==== NEIGHBOR SEARCHING ====
@@ -924,6 +934,11 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
     elif atoms == "cm":
         atoms_ref = "cm"
         name += "_cm"
+        molp = pd.read_csv("molprop.csv")
+        atoms_near = []
+        for i in atoms_per_mol:
+            if i != ref:
+                atoms_near.append(i)
     else:
         atoms_ref = [int(a) for a in atoms.split("-")]
         name += "_" + "-".join(list(top.loc[atoms_ref, "atsb"].values))
@@ -932,15 +947,18 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
     bins = np.arange(rmin, rmax + binwidth, binwidth)
 
     # Obtains the distances per frames
-    # frame_distances = get_frame_distances(traj, atoms_ref, ref, molp, box)
-    frame_distances = get_frame_distances(traj, atoms_ref, atoms_near, box, rcutoff=rmax)
+    if atoms == "cm":
+        frame_distances = get_frame_distances_cm(traj, ref, atoms_near, molp, box, rcutoff=rmax)
+
+    else:
+        frame_distances = get_frame_distances(traj, atoms_ref, atoms_near, box, rcutoff=rmax)
 
     if atoms_ref == "cm":
         n_centers = 1
     else:
         n_centers = len(atoms_ref)
 
-    total_centers = len(atoms_ref) + len(atoms_near)
+    total_centers = n_centers + len(atoms_near)
     # print(total_centers)
 
     # total_n_centers = len(atoms_per_mol) - 1 + n_centers
