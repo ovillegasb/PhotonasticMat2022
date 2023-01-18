@@ -209,9 +209,21 @@ lecules. Three types can be specified. all, cm or 12-13 (atomic index)."
     return vars(parser.parse_args())
 
 
+def read_traj(system, **kwargs):
+    """Read the trajectory for specific limits in time (ps)."""
+    time_per_frame = system.time_per_frame
+    b = time_per_frame[time_per_frame["time"] >= kwargs["b"]].index[0]
+    b = time_per_frame[time_per_frame["time"] >= kwargs["b"]].index[0]
+    if int(kwargs["e"]) != -1:
+        e = list(time_per_frame[time_per_frame["time"] <= kwargs["e"]].index)[-1]
+    else:
+        e = int(kwargs["e"])
+
+    return system.get_traj(b=b, e=e)
+
+
 print(TITLE)
 args = options()
-# print(args)
 
 if not args["load"] and args["donnees"]:
     system = STAMP(donnees=args["donnees"], data=args["dataStamp"])
@@ -228,7 +240,6 @@ else:
 # Initializes the trajectory variable
 traj = None
 
-
 # Others options:
 
 if args["plots"]:
@@ -242,7 +253,7 @@ if isinstance(args["mol_traj"], int):
     box = system.box
 
     if traj is None:
-        traj = system.get_traj()
+        traj = read_traj(system, **args)
 
     mol_traj_analysis(
         resid,
@@ -283,7 +294,7 @@ if args["molprop"]:
         args["reset"] = True
 
     if traj is None:
-        traj = system.get_traj()
+        traj = read_traj(system, **args)
 
     traj_analysis(
         system.atoms_per_mol,
@@ -299,7 +310,7 @@ if args["molprop"]:
 
 if args["mol_d_aa"]:
     if traj is None:
-        traj = system.get_traj()
+        traj = read_traj(system, **args)
 
     mol_traj_cut_distance(
         traj,
@@ -326,7 +337,7 @@ if args["centered_traj"]:
     c_mass = pd.read_csv("molprop.csv")
 
     if traj is None:
-        traj = system.get_traj()
+        traj = read_traj(system, **args)
 
     gen_centered_traj(
         traj,
@@ -359,7 +370,7 @@ if args["ref_plane"]:
     time_per_frame = system.time_per_frame
     b = time_per_frame[time_per_frame["time"] >= args["b"]].index[0]
     if traj is None:
-        traj = system.get_traj(b=b)
+        traj = read_traj(system, **args)
 
     get_angles_distance(mref, atref, box, traj, file, b=b)
     print(f"file mol_angles_d_{mref}.csv saved.")
@@ -375,18 +386,8 @@ if args["rdf"] is not None:
     box = system.box
     vol = system.vol
     time_per_frame = system.time_per_frame
-    ##############################
-    # Function return traj, in systems?
-    b = time_per_frame[time_per_frame["time"] >= args["b"]].index[0]
-    if int(args["e"]) != -1:
-        e = list(time_per_frame[time_per_frame["time"] <= args["e"]].index)[-1]
-    else:
-        e = int(args["e"])
-
     if traj is None:
-        traj = system.get_traj(b=b, e=e)
-
-    ##############################
+        traj = read_traj(system, **args)
 
     rdf_analysis(
         mref,
