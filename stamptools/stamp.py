@@ -133,6 +133,7 @@ class STAMP:
 
         self._traj = traj
         tf = time.time()
+        print(f"Number of frames: {len(traj)}", end=" - ")
         print(f"done in {tf-t0:.2f} s")
 
     def get_traj(self, b=0, e=None):
