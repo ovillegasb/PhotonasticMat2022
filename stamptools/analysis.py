@@ -880,7 +880,7 @@ def get_frame_distances(traj, atoms_ref, atoms_near, box, rcutoff):
     """Distances per frame from atoms references."""
     frame_distances = {}
     neighbor_list = set()
-    nstlist = 50
+    nstlist = 20
 
     for frame, coord in enumerate(traj):
         # ==== NEIGHBOR SEARCHING ====
