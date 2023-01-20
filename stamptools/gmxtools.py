@@ -9,9 +9,9 @@ def read_xtc(**kwargs):
     # set needed variables:
     trajfile = kwargs["xtc"]
     top = kwargs["top"]
-    interval = kwargs["interval"]
-    begin = kwargs["b"]
-    end = kwargs["e"]
+    interval = int(kwargs["interval"])
+    begin = int(kwargs["b"])
+    end = int(kwargs["e"])
 
     print("Read trajectory file: ", trajfile)
     print("Read topology from:   ", top)

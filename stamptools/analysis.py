@@ -848,26 +848,26 @@ def get_frame_distances_cm(traj, ref, near, cmass, box, rcutoff):
     """Distances per frame from center of mass references."""
     frame_distances = {}
     neighbor_list = set()
-    nstlist = 50
+    nstlist = 1
 
     for frame, coord in enumerate(traj):
 
-        # ==== NEIGHBOR SEARCHING ====
-        # Update the neighbor list every nstlist iterations
-        if frame % nstlist == 0:
-            neighbor_list = set()
-            neighbor = []
-            for j in near:
-                mol_i = coord.loc[ref, ["x", "y", "z"]].values
-                mol_j = coord.loc[j, ["x", "y", "z"]].values
-                if PBC_distance(mol_i, mol_j, box) <= rcutoff * 10.0:
-                    neighbor.append(j)
+        # # ==== NEIGHBOR SEARCHING ====
+        # # Update the neighbor list every nstlist iterations
+        # if frame % nstlist == 0:
+        #     neighbor_list = set()
+        #     neighbor = []
+        #     for j in near:
+        #         mol_i = coord.loc[ref, ["x", "y", "z"]].values
+        #         mol_j = coord.loc[j, ["x", "y", "z"]].values
+        #         if PBC_distance(mol_i, mol_j, box) <= rcutoff * 10.0:
+        #             neighbor.append(j)
 
-            neighbor_list.update(neighbor.copy())
+        #      neighbor_list.update(neighbor.copy())
 
         ncoord = cmass[cmass["frame"] == frame].reset_index()
         mol_ref_xyz = ncoord.loc[[ref], ["x", "y", "z"]].values
-        mol_near_xyz = ncoord.loc[list(neighbor_list), ["x", "y", "z"]].values
+        mol_near_xyz = ncoord.loc[near, ["x", "y", "z"]].values
 
         frame_distances[frame] = cdist(
             mol_ref_xyz, mol_near_xyz, lambda a, b: PBC_distance(a, b, box)
@@ -949,7 +949,6 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
     # Obtains the distances per frames
     if atoms == "cm":
         frame_distances = get_frame_distances_cm(traj, ref, atoms_near, molp, box, rcutoff=rmax)
-
     else:
         frame_distances = get_frame_distances(traj, atoms_ref, atoms_near, box, rcutoff=rmax)
 
@@ -966,7 +965,7 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
     ###vol_per_sphere = vol.mean() / (len(atoms_per_mol) - 1)
     ###vshell = 4 * np.pi * ((binwidth + bins)**3 - bins**3) / 3
 
-    vol_per_sphere = vol.mean() / (total_centers - len(atoms_ref))
+    vol_per_sphere = vol.mean() / (total_centers - n_centers)
     vshell = 4 * np.pi * ((binwidth + bins)**3 - bins**3) / 3
 
     # rdf

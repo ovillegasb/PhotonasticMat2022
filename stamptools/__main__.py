@@ -430,49 +430,49 @@ if args["rdf"] is not None:
     )
 
 
-import numpy as np
-
 if args["top"] is not None and args["xtc"] is not None:
+    ## import numpy as np
     # read trajectory 
     trajectory = read_xtc(**args)
 
     # make index for models
-    n_models = args["mref"]
-    models_ndx = np.array(
-        [trajectory.top.select(f"resid {ires}") for ires in range(n_models)]
-    )
+    resid = args["mref"]
+    ## print(trajectory.top.select(f"resid {resid}"))
+    ## models_ndx = np.array(
+    ##     [trajectory.top.select(f"resid {ires}") for ires in range(n_models)]
+    ## )
 
-    # compute clusters data
-    clusters = get_clusters(trajectory, models_ndx, **args)
-    masses = np.array([atom.element.mass for atom in trajectory.topology.atoms])
+    ### compute clusters data
+    ##clusters = get_clusters(trajectory, models_ndx, **args)
+    ##masses = np.array([atom.element.mass for atom in trajectory.topology.atoms])
 
-    print("Save data into files.")
+    ##print("Save data into files.")
 
-    # file with gyration data
-    lines = GyrationTensor.get_data_header()
-    lines += "# column 8: number of models in the cluster\n"
-    lines += "# column 9: frame number\n"
+    ### file with gyration data
+    ##lines = GyrationTensor.get_data_header()
+    ##lines += "# column 8: number of models in the cluster\n"
+    ##lines += "# column 9: frame number\n"
 
-    # file with the number of cluster per frame
-    nclust_lines = "# Number of clusters in each frame\n"
+    ### file with the number of cluster per frame
+    ##nclust_lines = "# Number of clusters in each frame\n"
 
-    # file with the residue id for each cluster and each frame
-    resid_lines = "# Residue id for each frame and for each cluster\n"
-    resid_lines += "# iframe   nmol   [resid]\n"
-    for iframe, frame_clusters in enumerate(clusters):
-        true_frame = iframe * args["interval"]
+    ### file with the residue id for each cluster and each frame
+    ##resid_lines = "# Residue id for each frame and for each cluster\n"
+    ##resid_lines += "# iframe   nmol   [resid]\n"
+    ##for iframe, frame_clusters in enumerate(clusters):
+    ##    true_frame = iframe * args["interval"]
 
-        nclust_lines += f"{true_frame:8d} {len(frame_clusters):5d}\n"
+    ##    nclust_lines += f"{true_frame:8d} {len(frame_clusters):5d}\n"
 
-        for cluster in frame_clusters:
-            ndx = np.hstack(cluster["ndx"])
-            gyr = GyrationTensor(coords=trajectory.xyz[iframe, ndx],
-                                 masses=masses[ndx],
-                                 box=trajectory.unitcell_lengths)
-            lines += gyr.get_data()
-            lines += f"{cluster['nmol']:4d}"
-            lines += f"{true_frame:8d}\n"
+    ##    for cluster in frame_clusters:
+    ##        ndx = np.hstack(cluster["ndx"])
+    ##        gyr = GyrationTensor(coords=trajectory.xyz[iframe, ndx],
+    ##                             masses=masses[ndx],
+    ##                             box=trajectory.unitcell_lengths)
+    ##        lines += gyr.get_data()
+    ##        lines += f"{cluster['nmol']:4d}"
+    ##        lines += f"{true_frame:8d}\n"
 
-            resid_lines += f"{true_frame:8d}{cluster['nmol']:4d}"
-            resid_lines += "".join([f"{resid + 1:4d}" for resid in cluster["imol"]])
-            resid_lines += "\n"
+    ##        resid_lines += f"{true_frame:8d}{cluster['nmol']:4d}"
+    ##        resid_lines += "".join([f"{resid + 1:4d}" for resid in cluster["imol"]])
+    ##        resid_lines += "\n"
