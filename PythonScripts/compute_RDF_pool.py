@@ -190,13 +190,29 @@ keyword."
         # references atomes
         atoms_ref = []
         if "resid" == ref[0]:
-            for i in ref[1:]:
-                atoms_ref += atoms_per_mol[int(i)]["index"]
+            ###
+            # Function Selection
+            if "not" == ref[1]:
+                for i in atoms_per_mol:
+                    if i != int(ref[2]):
+                        atoms_ref += atoms_per_mol[i]["index"]
+            else:
+                for i in ref[1:]:
+                    atoms_ref += atoms_per_mol[int(i)]["index"]
+            ###
 
         atoms_sel = []
         if "resid" == sel[0]:
-            for i in sel[1:]:
-                atoms_sel += atoms_per_mol[int(i)]["index"]
+            ###
+            # Function Selection
+            if "not" == sel[1]:
+                for i in atoms_per_mol:
+                    if i != int(sel[2]):
+                        atoms_sel += atoms_per_mol[i]["index"]
+            else:
+                for i in sel[1:]:
+                    atoms_sel += atoms_per_mol[int(i)]["index"]
+            ###
         
         print("N atoms ref:", len(atoms_ref))
         print("N atoms sel:", len(atoms_sel))
