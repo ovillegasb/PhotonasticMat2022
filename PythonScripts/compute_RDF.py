@@ -13,84 +13,6 @@ import time
 import pandas as pd
 import matplotlib.pyplot as plt
 
-"""
-# Folder and systems
-systems = ["0", "1", "2", "3", "4", "0_long"]
-isomer = "azoC_procedure"
-home = "/home/ovillegas"
-fatomes = f"{home}/{isomer}/6_prod_0/FAtomes.inp_6_prod"
-name = "RDF_all_cis"
-
-# RDFs options
-resid = 0
-# Define the bins
-rmin = 0.0
-rmax = 3.0
-binwidth = 0.05
-bins = np.arange(rmin, rmax + binwidth, binwidth)
-
-# Reading FAtome
-topology, box, connects = read_fatomes(fatomes)
-vol = box[0] * box[1] * box[2] * 0.1**3
-
-conn = connectivity()
-conn.define_atoms(topology)
-conn.read_dict(connects)
-atoms_per_mol = conn.atomsMOL
-
-atoms_ref = atoms_per_mol[resid]["index"]
-atoms_env = []
-for i in atoms_per_mol:
-    if i != resid:
-        atoms_env += atoms_per_mol[i]["index"]
-
-print("resid:      ", resid)
-print("N atoms ref:", len(atoms_ref))
-print("N atoms env:", len(atoms_env))
-
-
-XYZs = []
-for s in systems:
-    XYZs += glob.glob(f"{home}/{isomer}/6_prod_{s}/XYZ/*.xyz")
-
-print("N of frames:", len(XYZs))
-
-frame_distances = {}
-print(
-    "Memory in frame_distances before traj analysis:",
-    sys.getsizeof(frame_distances),
-    "bytes"
-)
-
-start = time.perf_counter()
-
-for i, frame in enumerate(XYZs):
-    coord = load_xyz(frame, warning=False)
-    # print(frame)
-    atoms_xyz_ref = coord.loc[atoms_ref, ["x", "y", "z"]].values
-    atoms_xyz_env = coord.loc[atoms_env, ["x", "y", "z"]].values
-    # print(atoms_xyz_ref.shape)
-    # print(atoms_xyz_env.shape)
-    frame_distances[frame] = cdist(
-            atoms_xyz_ref,
-            atoms_xyz_env,
-            lambda a, b: PBC_distance(a, b, box)
-        )
-    # if i == 50:
-    #     break
-
-end = time.perf_counter()
-
-print("frame_distances computed: " + str(round(end - start, 2)) + "s")
-print("Nomber of frames added:", len(frame_distances))
-print(
-    "Memory in frame_distances:",
-    sys.getsizeof(frame_distances),
-    "bytes"
-)
-
-
-"""
 
 TITLE = """
 Module created to calculate the RDF of a molecular system.
@@ -101,7 +23,7 @@ Date: 2023-01-23
 Usage:
 
     python compute_RDF.py -s FAtomes.inp_6_prod -ref resid 0 -sel resid 0 -f \
-XYZ/*.xyz --show_plot -rmax 1. -bin 0.01
+XYZ/*.xyz --show_plot -rmax 1. -bin 0.01 -out rdf_name.csv
 
 """
 
@@ -209,9 +131,9 @@ def main():
     rmax = args["rmax"]
     binwidth = args["bin"]
     print("Start Program:")
-    print(f"    rmin {rmin} nm")
-    print(f"    rmax {rmax} nm")
-    print(f"    bin {binwidth} nm")
+    print(f"    rmin {rmin:8} nm")
+    print(f"    rmax {rmax:8} nm")
+    print(f"    bin  {binwidth:8} nm")
     bins = np.arange(rmin, rmax + binwidth, binwidth)
     # print(bins)
 
@@ -297,10 +219,9 @@ keyword."
     g_r = np.zeros(len(bins))
     for frame in frame_distances:
         for i, atom in enumerate(frame_distances[frame]):
-            indexs = np.int64(atom * 0.1 / binwidth)
-            indexs = indexs[indexs < len(bins)]
-            for n in indexs:
-                g_r[n] += 1
+            indexs = np.rint(atom * 0.1 / binwidth).astype(np.int64)
+            indexs = indexs[(0 < indexs) & (indexs < len(bins))]
+            g_r[indexs] += 1
 
     n_frames = len(frame_distances.keys())
     g_r_norm = g_r * vol_per_sphere / vshell / n_frames / n_centers_ref
