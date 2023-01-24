@@ -3,7 +3,6 @@
 """RDF analysis all atoms between systems."""
 
 import argparse
-import glob
 import numpy as np
 from stamptools.analysis import read_fatomes, PBC_distance, progress
 from molcraft.structure import connectivity, load_xyz
@@ -24,6 +23,17 @@ Usage:
 
     python compute_RDF.py -s FAtomes.inp_6_prod -ref resid 0 -sel resid 0 -f \
 XYZ/*.xyz --show_plot -rmax 1. -bin 0.01 -out rdf_name.csv
+
+Using OpenMPI
+
+Installation:
+    sudo dnf -y install openmpi openmpi-devel
+    source /etc/profile.d/modules.sh
+
+    module load mpi/openmpi-x86_64
+
+
+compute_RDF: 98.43 s
 
 """
 
@@ -93,6 +103,13 @@ def options():
         default=False
     )
 
+    analysis.add_argument(
+        "--show_bar",
+        help="Displays progress bar.",
+        action="store_true",
+        default=False
+    )
+
     selections = parser.add_argument_group(
         """\033[1;36mSelection options\033[m
 The selections work with the keyword resid, followed by the number or \
@@ -118,6 +135,18 @@ resid all
     )
 
     return vars(parser.parse_args())
+
+
+def get_distances(frame, atoms_ref, atoms_sel, box):
+    coord = load_xyz(frame, warning=False)
+    atoms_xyz_ref = coord.loc[atoms_ref, ["x", "y", "z"]].values
+    atoms_xyz_sel = coord.loc[atoms_sel, ["x", "y", "z"]].values
+
+    return cdist(
+        atoms_xyz_ref,
+        atoms_xyz_sel,
+        lambda a, b: PBC_distance(a, b, box)
+    )
 
 
 def main():
@@ -183,19 +212,16 @@ keyword."
         start = time.perf_counter()
 
         for i, frame in enumerate(traj):
-            porcent = i * 100 / Nframes
-            print(f"{porcent:6.2f} % |{progress(porcent)}|")
-            coord = load_xyz(frame, warning=False)
-            atoms_xyz_ref = coord.loc[atoms_ref, ["x", "y", "z"]].values
-            atoms_xyz_sel = coord.loc[atoms_sel, ["x", "y", "z"]].values
+            if args["show_bar"]:
+                porcent = i * 100 / Nframes
+                print(f"{porcent:6.2f} % |{progress(porcent)}|")
 
-            frame_distances[frame] = cdist(
-                atoms_xyz_ref,
-                atoms_xyz_sel,
-                lambda a, b: PBC_distance(a, b, box)
-            )
+            frame_distances[frame] = get_distances(
+                frame, atoms_ref, atoms_sel, box
+                )
 
-        print(f"{100:6.2f} % |{progress(100)}|")
+        if args["show_bar"]:
+            print(f"{100:6.2f} % |{progress(100)}|")
 
         end = time.perf_counter()
 
