@@ -204,7 +204,7 @@ keyword."
         Nframes = len(traj)
         print(f"Number of frames: {Nframes}")
         print("Number of CPUs:", os.cpu_count())
-        exit()
+
         start = time.perf_counter()
         arguments = [(frame, atoms_ref, atoms_sel, box) for frame in traj]
         with Pool() as pool:
