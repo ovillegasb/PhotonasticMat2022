@@ -22,8 +22,9 @@ conda install -c conda-forge mpi4py
 conda install memory_profiler
 conda install statsmodels
 pip install pyppeteer
+conda install -c conda-forge mdtraj
 # conda install -c auto threadpool
-conda install -c auto multiprocessing
+# conda install -c auto multiprocessing
 
 
 # Enviroment AmberTools

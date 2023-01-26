@@ -137,6 +137,25 @@ resid all
     return vars(parser.parse_args())
 
 
+def get_atom_list(select, atoms_per_mol):
+    """Return the list of atoms of a selections."""
+    atoms = []
+    for elem in range(len(select)):
+        if "resid" == select[elem]:
+            if "not" == select[elem + 1]:
+                for mol in atoms_per_mol:
+                    if mol != int(select[elem + 2]):
+                        atoms += atoms_per_mol[mol]["index"]
+            else:
+                for mol in select[elem + 1:]:
+                    if mol != "resid":
+                        atoms += atoms_per_mol[int(mol)]["index"]
+                    else:
+                        break
+
+    return atoms
+
+
 def get_distances(frame, atoms_ref, atoms_sel, box):
     coord = load_xyz(frame, warning=False)
     atoms_xyz_ref = coord.loc[atoms_ref, ["x", "y", "z"]].values
@@ -153,7 +172,7 @@ def main():
     """Execute the program."""
     print(TITLE)
     args = options()
-    # print(args)
+    print(args)
 
     # RDFs options
     rmin = args["rmin"]
@@ -180,9 +199,9 @@ keyword."
     # Frame distances structure
     frame_distances = {}
 
+    # Read topology
     topol = args["topol"]
     if topol is not None:
-        # print(topol)
         # Reading FAtomes
         topology, box, connects = read_fatomes(topol)
         vol = box[0] * box[1] * box[2] * 0.1**3
@@ -193,16 +212,12 @@ keyword."
         # dict = {resid : {"Natoms": int, "index": [...]}}
         atoms_per_mol = conn.atomsMOL
 
-        # references atomes
-        atoms_ref = []
-        if "resid" == ref[0]:
-            for i in ref[1:]:
-                atoms_ref += atoms_per_mol[int(i)]["index"]
-
-        atoms_sel = []
-        if "resid" == sel[0]:
-            for i in sel[1:]:
-                atoms_sel += atoms_per_mol[int(i)]["index"]
+        # references atoms
+        atoms_ref = get_atom_list(ref, atoms_per_mol)
+        atoms_sel = get_atom_list(sel, atoms_per_mol)
+        print(atoms_sel)
+        print(atoms_ref)
+        exit()
         
         print("N atoms ref:", len(atoms_ref))
         print("N atoms sel:", len(atoms_sel))
