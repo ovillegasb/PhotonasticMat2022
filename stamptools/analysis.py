@@ -879,31 +879,31 @@ def get_frame_distances_cm(traj, ref, near, cmass, box, rcutoff):
 def get_frame_distances(traj, atoms_ref, atoms_near, box, rcutoff):
     """Distances per frame from atoms references."""
     frame_distances = {}
-    neighbor_list = set()
-    nstlist = 20
+    # neighbor_list = set()
+    # nstlist = 1
 
     for frame, coord in enumerate(traj):
-        # ==== NEIGHBOR SEARCHING ====
-        # Update the neighbor list every nstlist iterations
-        if frame % nstlist == 0:
-            neighbor_list = set()
-            for i in atoms_ref:
-                neighbor = []
-                for j in atoms_near:
-                    if i == j:
-                        continue
-                    at_i = coord.loc[i, ["x", "y", "z"]].values
-                    at_j = coord.loc[j, ["x", "y", "z"]].values
+        ## ==== NEIGHBOR SEARCHING ====
+        ## Update the neighbor list every nstlist iterations
+        #if frame % nstlist == 0:
+        #    neighbor_list = set()
+        #    for i in atoms_ref:
+        #        neighbor = []
+        #        for j in atoms_near:
+        #            if i == j:
+        #                continue
+        #            at_i = coord.loc[i, ["x", "y", "z"]].values
+        #            at_j = coord.loc[j, ["x", "y", "z"]].values
 
-                    if PBC_distance(at_i, at_j, box) <= rcutoff * 10.0:
-                        neighbor.append(j)
+        #            if PBC_distance(at_i, at_j, box) <= rcutoff * 10.0:
+        #                neighbor.append(j)
 
-                neighbor_list.update(neighbor.copy())
+        #        neighbor_list.update(neighbor.copy())
         
         mol_ref = coord.loc[atoms_ref, :]
         mol_xyz = mol_ref.loc[:, ["x", "y", "z"]].values
 
-        mol_near = coord.loc[list(neighbor_list), :]
+        mol_near = coord.loc[atoms_near, :]
         mol_xyz_near = mol_near.loc[:, ["x", "y", "z"]].values
 
         frame_distances[frame] = cdist(
@@ -945,6 +945,8 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
 
     # Define the bins
     bins = np.arange(rmin, rmax + binwidth, binwidth)
+    # print(len(atoms_ref))
+    # print(len(atoms_near))
 
     # Obtains the distances per frames
     if atoms == "cm":
@@ -952,33 +954,30 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
     else:
         frame_distances = get_frame_distances(traj, atoms_ref, atoms_near, box, rcutoff=rmax)
 
-    if atoms_ref == "cm":
-        n_centers = 1
-    else:
-        n_centers = len(atoms_ref)
-
-    total_centers = n_centers + len(atoms_near)
-    # print(total_centers)
+    ## if atoms_ref == "cm":
+    ##     n_centers = 1
+    ## else:
+    ##     n_centers = len(atoms_ref)
 
     # total_n_centers = len(atoms_per_mol) - 1 + n_centers
     # vol_per_sphere = vol.mean() / total_n_centers
     ###vol_per_sphere = vol.mean() / (len(atoms_per_mol) - 1)
     ###vshell = 4 * np.pi * ((binwidth + bins)**3 - bins**3) / 3
 
-    vol_per_sphere = vol.mean() / (total_centers - n_centers)
+    vol_per_sphere = vol.mean() / len(atoms_near)
     vshell = 4 * np.pi * ((binwidth + bins)**3 - bins**3) / 3
 
     # rdf
     g_r = np.zeros(len(bins))
     for frame in frame_distances:
-        for i, atom in enumerate(frame_distances[frame]):
-            indexs = np.int64(atom * 0.1 / binwidth)
+        for atoms_distances in frame_distances[frame]:
+            indexs = np.int64(atoms_distances * 0.1 / binwidth)
             indexs = indexs[indexs < len(bins)]
             for n in indexs:
                 g_r[n] += 1
 
     n_frames = len(frame_distances.keys())
-    g_r_norm = g_r * vol_per_sphere / vshell / n_frames / n_centers
+    g_r_norm = g_r * vol_per_sphere / vshell / n_frames / len(atoms_ref)
 
     # return g_r_norm, bins
     RDF = pd.DataFrame({
