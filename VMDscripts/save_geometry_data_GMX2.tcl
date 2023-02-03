@@ -2,20 +2,35 @@
 # RUN:
 # vmd mol_traj.xyz -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_dih_data.tcl
 
-# GEOMETRY GROMACS
+# # GEOMETRY GROMACS
+# # r_cc
+# label add Bonds 0/4 0/12
+# # r_ar_1
+# label add Bonds 0/3 0/17
+# # r_ar_2
+# label add Bonds 0/5 0/13
+# # d_cnnc
+# label add Dihedrals 0/4 0/10 0/11 0/12
+# # d_ccnn_1,2,3,4
+# label add Dihedrals 0/3 0/4 0/10 0/11
+# label add Dihedrals 0/5 0/4 0/10 0/11
+# label add Dihedrals 0/10 0/11 0/12 0/17
+# label add Dihedrals 0/10 0/11 0/12 0/13
+
+# GEOMETRY STAMP
 # r_cc
-label add Bonds 0/4 0/12
+label add Bonds 0/11 0/14
 # r_ar_1
-label add Bonds 0/3 0/17
+label add Bonds 0/0 0/24
 # r_ar_2
-label add Bonds 0/5 0/13
+label add Bonds 0/9 0/15
 # d_cnnc
-label add Dihedrals 0/4 0/10 0/11 0/12
+label add Dihedrals 0/11 0/12 0/13 0/14
 # d_ccnn_1,2,3,4
-label add Dihedrals 0/3 0/4 0/10 0/11
-label add Dihedrals 0/5 0/4 0/10 0/11
-label add Dihedrals 0/10 0/11 0/12 0/17
-label add Dihedrals 0/10 0/11 0/12 0/13
+label add Dihedrals 0/0 0/11 0/12 0/13
+label add Dihedrals 0/9 0/11 0/12 0/13
+label add Dihedrals 0/12 0/13 0/14 0/24
+label add Dihedrals 0/12 0/13 0/14 0/15
 
 
 set r_cc [label graph Bonds 0]
@@ -38,7 +53,7 @@ close $ofile
 
 # RDF analysis
 # all atoms
-set RDFs [measure gofr [atomselect 0 "resid 1"] [atomselect 0 "not resid 1"] delta 0.1 rmax 20. usepbc True first 1 last -1 step 1]
+set RDFs [measure gofr [atomselect 0 "resname PHO"] [atomselect 0 "resname POL"] delta 0.1 rmax 20. usepbc True first 500 last -1 step 1]
 set r [lindex $RDFs 0]
 set g_r [lindex $RDFs 1]
 set nbins [llength $r]

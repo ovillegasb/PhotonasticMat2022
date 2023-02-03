@@ -9,6 +9,7 @@ from scipy.constants import N_A
 from stamptools.stamptools import read_donnees
 from stamptools.analysis import load_data, read_fatomes, save_plot, load_log
 from molcraft import structure
+from multiprocessing import Pool
 
 setplots = {
     "T": {
@@ -127,9 +128,9 @@ class STAMP:
         t0 = time.time()
         print("Loading the system trajectory", end=" - ")
 
-        for file in self.XYZs[b:e]:
-            xyz = structure.load_xyz(file, warning=False)
-            traj.append(xyz)
+        with Pool() as pool:
+            for xyz in pool.map(structure.load_xyz, self.XYZs[b:e]):
+                traj.append(xyz)
 
         self._traj = traj
         tf = time.time()

@@ -1,3 +1,4 @@
 # TODO
 
-- [ ]  convert xyz to xtc trajectories
+- [ ] convert xyz to xtc trajectories
+- [ ] RDF analysis with python 

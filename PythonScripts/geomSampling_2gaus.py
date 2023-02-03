@@ -13,7 +13,7 @@ import glob
 def options():
     """Generate command line interface."""
     parser = argparse.ArgumentParser(
-        prog="GeomSampling_to_Gaus",
+        prog="geomSampling_2gaus",
         usage="%(prog)s [-options]",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="Enjoy the program!"
@@ -82,6 +82,13 @@ def options():
         default=None
     )
 
+    analysis.add_argument(
+        "-N", "--NSamples",
+        help="Number of samples to take.",
+        type=int,
+        default=100
+    )
+
     return vars(parser.parse_args())
 
 
@@ -116,6 +123,7 @@ def main():
 
     resid = args["resid"]
     solvent = args["solvent"]
+    samples_number = args["NSamples"]
 
     print("File top:", top)
     print("File trj:", trj)
@@ -127,7 +135,7 @@ def main():
     t = md.load(trj, top=top)
 
     traj = t[b:e]
-    frames_sample = np.random.choice(range(len(traj)), 100, replace=False)
+    frames_sample = np.random.choice(range(len(traj)), samples_number, replace=False)
 
     # Extracts the system topology
     top = traj.topology

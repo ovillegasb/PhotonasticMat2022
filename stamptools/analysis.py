@@ -27,7 +27,7 @@ atoms = re.compile(r"""
 """ Regular expression for .log """
 out_mean = re.compile(r"""
     \s*
-    (?P<frame>\d+)\s                      # Frame
+    (?P<frame>[\d,0]+)\s                      # Frame
     -\sCPU=(?P<cpu>\d+\.\w+[+-]?\d+)\s
     .+\s
     t=(?P<time>\d+\.\w+[+-]?\d+)
@@ -35,7 +35,7 @@ out_mean = re.compile(r"""
 
 out_xyz = re.compile(r"""
     ^\s+[\*]+\sIteration\s
-    (?P<frame>\d+)\s
+    (?P<frame>[\d,0]+)\s
     -\sSortie\sXYZ
     """, re.X)
 
@@ -358,7 +358,10 @@ def load_log(file="Stamp.log"):
     time_f = []
     for t in out_frame["frame"]:
         try:
-            time_f.append(frame_dict[t])
+            if t == "0":
+                time_f.append("0.000")
+            else:
+                time_f.append(frame_dict[t])
         except KeyError:
             time_f.append(np.NaN)
 
@@ -1749,3 +1752,4 @@ def GenPlots(
 
     if return_data:
         return alldata
+
