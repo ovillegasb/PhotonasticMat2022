@@ -15,7 +15,7 @@ import numpy as np
 from multiprocessing import Pool
 from stamptools.stamp import STAMP
 from stamptools.analysis import center_of_mass, minImagenC
-
+from shutil import which
 
 def options():
     """Generate command line interface."""
@@ -227,10 +227,22 @@ def main():
     os.chdir(out)
     os.system("cat frame_* > traj.gro")
     os.system("rm frame_*")
-    os.system("echo 0 | gmx trjconv -f traj.gro -s confout.gro -o traj_comp.xtc")
-    os.system("rm traj.gro")
+
+    gmx_cmd = None
+    if which("gmx") is not None:
+        gmx_cmd = "gmx"
+    elif which("gmx_mpi") is not None:
+        gmx_cmd = "gmx_mpi"
+
+    if gmx_cmd is not None:
+        os.system(f"echo 0 | {gmx_cmd} trjconv -f traj.gro -s confout.gro -o traj_comp.xtc")
+        os.system("rm traj.gro")
+        print("Saved trajectory gro in traj_comp.xtc")
+
+    else:
+        print("Could not convert the gro trajectory to xtc, the gromacs executable could not be found.")
+
     os.system("cd ..")
-    print("Saved trajectory gro in traj_comp.xtc")
 
 
 if __name__ == '__main__':
