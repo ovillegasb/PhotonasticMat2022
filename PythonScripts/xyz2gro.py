@@ -125,11 +125,13 @@ def main():
     # Load System
     system = STAMP(donnees=args["donnees"])
     # ######## Function for correction of box
-    # veloc_x = 0
-    # try:
-    #     veloc_x = float(system.donnees["PistonDvitesse"]) * 1e10 / 1e12 
-    # except KeyError:
-    #     pass
+    veloc_x = 0
+    PistonD_fin = 0
+    try:
+        veloc_x = float(system.donnees["PistonDvitesse"]) * 1e10 / 1e12 
+        PistonD_fin = float(system.donnees["PistonDtfin"]) * 1e12 
+    except KeyError:
+        pass
     # ########
 
     resid_PC = 0
@@ -153,19 +155,18 @@ def main():
 
     # get trajectory
     traj = system.get_traj()
-    # # Is piston
-    # if veloc_x != 0.0:
-    #     for i, frame in enumerate(traj):
-    #         frame["x"] = frame["x"] + time_per_frame.loc[i, "time"] * veloc_x
+    # Is piston
+    if veloc_x != 0.0:
+        end_piston = time_per_frame[time_per_frame["time"] >= PistonD_fin].index[0]
+        for i, frame in enumerate(traj):
+            if i <= end_piston:
+                translate_x = (time_per_frame.loc[i, "time"] * veloc_x) / 2
+                frame["x"] -= translate_x
+            else:
+                frame["x"] -= translate_x
 
     # BOXs
-    boxs = []
-    for file in system.XYZs:
-        with open(file, "r") as xyz:
-            _ = xyz.readline()
-            boxs.append(xyz.readline().split()[0:3])
-
-    boxs = np.array(boxs).astype(np.float64)
+    boxs = system.box_in_time
 
     print("Saving GRO files", end=" - ")
     t0 = time.perf_counter()
