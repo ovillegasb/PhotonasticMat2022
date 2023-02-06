@@ -690,11 +690,13 @@ def gen_centered_traj(traj, atoms_per_mol, connectivity, box, mol_dist, c_mass, 
         save_xyz(ncoords, name=f"{out_folder}/{name}")
 
 
-def mol_traj_analysis(index, mol_ndx, connectivity, traj, box):
+@decoTime
+def mol_traj_analysis(index, mol_ndx, connectivity, traj, box_in_time):
     """Analyze trajectory of a particular molecule."""
-    i = 0
-    for xyz in traj:
+    print("Gen trajectory for a mol, resid: ", index, end=" - ")
+    for i, xyz in enumerate(traj):
         name = "mol_%d_%005d" % (index, i)
+        box = box_in_time[i][0:4]
 
         mol_xyz = xyz.loc[mol_ndx["index"], :]
         mol_conn = connectivity.sub_connect(mol_ndx["index"])
@@ -722,11 +724,9 @@ def mol_traj_analysis(index, mol_ndx, connectivity, traj, box):
         new_mol_xyz["z"] -= cm[2]
 
         save_xyz(new_mol_xyz, name=name)
-        i += 1
 
     os.system(f"cat mol_{index}_0* > mol_{index}_traj.xyz")
     os.system(f"rm mol_{index}_0*")
-    print(f"Saved trajectory mol {index} in mol_{index}_traj.xyz")
 
 
 def PBC_distance(vref, v2, box):

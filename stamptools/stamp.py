@@ -4,7 +4,9 @@
 
 import glob
 import time
+import os
 import numpy as np
+from pathlib import Path
 from scipy.constants import N_A
 from stamptools.stamptools import read_donnees
 from stamptools.analysis import load_data, read_fatomes, save_plot, load_log
@@ -30,10 +32,14 @@ setplots = {
 class STAMP:
     """Object describing a system and its features."""
 
-    def __init__(self, donnees, data="Stamp.dat"):
+    def __init__(self, donnees, data="Stamp.dat", ensamble="LNVT"):
         """Initialize the class when loading the calculation information."""
+        # Home path
+        hw_path = os.path.split(os.path.abspath(donnees))[0]
+        self.hw_path = hw_path
+
+        # Load donnees informations
         self.donnees = read_donnees(donnees)
-        # print(self.donnees)
 
         # Define Ensemble
         self.ensemble = self.donnees["Ensemble"]
@@ -42,16 +48,19 @@ class STAMP:
         self.fatomes = self.donnees["FichierAtomes"]
 
         # Load results from Stamp.dat
-        self.data = load_data(data)
+        self.data = load_data(os.path.join(hw_path, data), t=ensamble)
 
         # Load log information
         try:
-            self.time_per_frame = load_log()
+            self.time_per_frame = load_log(os.path.join(hw_path, "Stamp.log"))
         except FileNotFoundError:
             self.time_per_frame = None
 
         # Reading FAtome
-        topology, box, connects = read_fatomes(self.fatomes)
+        topology, box, connects = read_fatomes(
+            os.path.join(hw_path, self.fatomes)
+        )
+
         self.topology = topology
         self.box = box
         self.connects = connects
@@ -83,16 +92,16 @@ class STAMP:
                 print(f"Option {a} has not been configured.")
 
     @property
-    def vol(self):
-        """Volume (nm3) from xyz file stamp."""
-        info = []
+    def box_in_time(self):
+        """Box [ang, ang, ang] in times from xyz files."""
+        boxs = []
         if self.time_per_frame is not None:
             for j in self.time_per_frame.index:
                 with open(self.XYZs[j], "r") as xyz:
                     for i, line in enumerate(xyz):
                         if i == 1:
                             line = line.replace("\n", "").split()
-                            info.append(line)
+                            boxs.append(line)
                             break
         else:
             for i in self.XYZs:
@@ -100,11 +109,17 @@ class STAMP:
                     for i, line in enumerate(xyz):
                         if i == 1:
                             line = line.replace("\n", "").split()
-                            info.append(line)
+                            boxs.append(line)
                             break
 
-        info = np.array(info).astype(np.float)
-        return info[:, 0] * info[:, 1] * info[:, 2] * 1e-3
+        return np.array(boxs).astype(np.float)
+
+
+    @property
+    def vol(self):
+        """Volume (nm3) from xyz file stamp."""
+        boxs = self.box_in_time
+        return boxs[:, 0] * boxs[:, 1] * boxs[:, 2] * 1e-3
 
     @property
     def dens(self):
@@ -113,9 +128,15 @@ class STAMP:
 
         return massT / self.vol / 1e-27
 
+    @property
+    def dens_in_time(self):
+        dens = self.time_per_frame
+        dens["Dens"] = self.dens
+        return dens
+
     def _xyz_list(self):
         """Load list of file xyz."""
-        return sorted(glob.glob("./XYZ/PasDeCalcul_Iteration*.xyz"))
+        return sorted(glob.glob(f"{self.hw_path}/XYZ/PasDeCalcul_Iteration*.xyz"))
 
     def update_xyz(self):
         """Reload list of file xyz and traj."""

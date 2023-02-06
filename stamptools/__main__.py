@@ -143,7 +143,7 @@ def options():
         "-e", "--e",
         help="Time of last frame to read from trajectory (default unit ps).",
         type=float,
-        default=-1
+        default=None
     )
 
     analysis.add_argument(
@@ -239,10 +239,10 @@ def read_traj(system, **kwargs):
     time_per_frame = system.time_per_frame
     b = time_per_frame[time_per_frame["time"] >= kwargs["b"]].index[0]
     b = time_per_frame[time_per_frame["time"] >= kwargs["b"]].index[0]
-    if int(kwargs["e"]) != -1:
+    if kwargs["e"] is not None:
         e = list(time_per_frame[time_per_frame["time"] <= kwargs["e"]].index)[-1]
     else:
-        e = int(kwargs["e"])
+        e = kwargs["e"]
 
     return system.get_traj(b=b, e=e)
 
@@ -278,7 +278,8 @@ if isinstance(args["mol_traj"], int):
     print("Resid:", resid)
     mol_ndx = system.atoms_per_mol[resid]
     connectivity = system.connectivity
-    box = system.box
+    box_in_time = system.box_in_time
+    time_per_frame = system.time_per_frame
 
     if traj is None:
         traj = read_traj(system, **args)
@@ -288,7 +289,7 @@ if isinstance(args["mol_traj"], int):
         mol_ndx,
         connectivity,
         traj,
-        box
+        box_in_time
     )
 
 if args["molprop"]:
