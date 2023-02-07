@@ -8,8 +8,26 @@
 conda activate SimMOL
 
 # STAMP
+#---------
 
+# to convert XYZs files to XTC trajectory gromacs
+xyz2gro -d DONNEES.in
 
+# gen trajectory for a molecule
+python -m stamptools -d DONNEES.in --mol_traj 0
+
+# save information about geometry
+vmd mol_0_traj.xyz -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_geometry_data.tcl
+
+# RDF from vmd
+
+## XYZ from stamp directly
+vmd XYZ/PasDeCalcul_Iteration_0* -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_RDF_data.tcl
+
+## XTC from XYZs STAMP
+vmd GRO_files/confout.gro GRO_files/traj_comp.xtc -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_RDF_data_GMX2.tcl
+
+# Geometry analysis
 
 # GROMACS
 #---------
@@ -29,5 +47,5 @@ echo -e "2 \n 2 \n" | gmx trjconv -f traj_nojump_mol.xtc -s run.tpr -o traj_nopb
 # UV-VIS analysis
 geomSampling_2gaus -f traj_nopbc_mol.xtc -s mol.gro -b 0 -e 2500 -r 0 -sol CHX -isomer cis
 
-# Geometry DATA in gromacs
+# Geometry and RDF DATA in gromacs
 vmd confout.gro traj_nopbc.xtc -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_geometry_data_GMX.tcl

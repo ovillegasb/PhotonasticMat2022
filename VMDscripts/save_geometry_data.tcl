@@ -17,9 +17,6 @@ label add Dihedrals 0/9 0/11 0/12 0/13
 label add Dihedrals 0/12 0/13 0/14 0/24
 label add Dihedrals 0/12 0/13 0/14 0/15
 
-
-# GROMACS label add Dihedrals 0/4 0/10 0/11 0/12
-
 set r_cc [label graph Bonds 0]
 set r_ar_1 [label graph Bonds 1]
 set r_ar_2 [label graph Bonds 2]
@@ -38,23 +35,23 @@ for {set i 0} {$i < $Nframes} {incr i} {
 }
 close $ofile
 
-# PBC in xyz files
-pbc set {65.002 60. 60.} -all
-pbc box -center origin
-
-# RDF analysis
-# all atoms
-set RDFs [measure gofr [atomselect 0 "index 0 to 25"] [atomselect 0 "not index 0 to 25"] delta 0.1 rmax 20. usepbc True first 1 last -1 step 1]
-set r [lindex $RDFs 0]
-set g_r [lindex $RDFs 1]
-set nbins [llength $r]
-
-set ofile [open "rdf_all_at_pc_env.csv" w]
-puts $ofile "r,g_r"
-for {set i 0} {$i < $nbins} {incr i} {
-    puts $ofile "[lindex $r $i],[lindex $g_r $i]"
-}
-close $ofile
+### PBC in xyz files
+##pbc set {65.002 60. 60.} -all
+##pbc box -center origin
+##
+### RDF analysis
+### all atoms
+##set RDFs [measure gofr [atomselect 0 "index 0 to 25"] [atomselect 0 "not index 0 to 25"] delta 0.1 rmax 20. usepbc True first 1 last -1 step 1]
+##set r [lindex $RDFs 0]
+##set g_r [lindex $RDFs 1]
+##set nbins [llength $r]
+##
+##set ofile [open "rdf_all_at_pc_env.csv" w]
+##puts $ofile "r,g_r"
+##for {set i 0} {$i < $nbins} {incr i} {
+##    puts $ofile "[lindex $r $i],[lindex $g_r $i]"
+##}
+##close $ofile
 
 
 

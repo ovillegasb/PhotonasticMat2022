@@ -60,7 +60,7 @@ set nbins [llength $r]
 
 set ofile [open "rdf_all_at_pc_env.csv" w]
 puts $ofile "r,g_r"
-for {set i 1} {$i < $nbins} {incr i} {
+for {set i 0} {$i < $nbins} {incr i} {
     puts $ofile "[lindex $r $i],[lindex $g_r $i]"
 }
 close $ofile
