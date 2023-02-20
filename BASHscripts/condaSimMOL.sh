@@ -1,13 +1,15 @@
 #!/bin/bash
 
+# Enviroment SimMOL
 conda create --name SimMOL scipy jupyterlab numpy matplotlib seaborn pandas
 conda activate SimMOL
 conda install --channel conda-forge pymatgen
+conda install -c conda-forge mdtraj
+conda install -c anaconda networkx
 conda install nglview -c conda-forge
 
 conda config --add channels conda-forge
 conda install mdanalysis
-conda install -c anaconda networkx
 
 # Others
 sudo dnf install pandoc
@@ -22,7 +24,7 @@ conda install -c conda-forge mpi4py
 conda install memory_profiler
 conda install statsmodels
 pip install pyppeteer
-conda install -c conda-forge mdtraj
+
 # conda install -c auto threadpool
 # conda install -c auto multiprocessing
 
@@ -36,4 +38,16 @@ conda install -c conda-forge acpype
 
 
 # To convert Jupyter to slides
-jupyter nbconvert --to slides --no-input --post serve presentation.slides.ipynb 
+jupyter nbconvert --to slides --no-input --post serve presentation.slides.ipynb
+
+
+# python modules
+python -m site --user-site
+mkdir -p $(python -m site --user-site)
+
+# create new .pth file with our path
+echo "$HOME/foo/bar" > "$SITEDIR/somelib.pth"
+
+# Run
+chmod +x ./GITPROYECTS/PhotonasticMat/stamptools/__main__.py
+ln -s /home/ovillegas/GITPROYECTS/PhotonasticMat/stamptools/__main__.py /home/ovillegas/.local/bin/stamptools

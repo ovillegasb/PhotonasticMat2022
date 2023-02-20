@@ -70,6 +70,8 @@ class STAMP:
 
         # Files xyz
         self.XYZs = self._xyz_list()
+        self.b_frame = 0
+        self.e_frame = None
         # if load_traj:
         #     self._load_traj()
 
@@ -92,28 +94,18 @@ class STAMP:
                 print(f"Option {a} has not been configured.")
 
     @property
-    def box_in_time(self):
+    def box_in_frame(self):
         """Box [ang, ang, ang] in times from xyz files."""
         boxs = []
-        if self.time_per_frame is not None:
-            for j in self.time_per_frame.index:
-                with open(self.XYZs[j], "r") as xyz:
-                    for i, line in enumerate(xyz):
-                        if i == 1:
-                            line = line.replace("\n", "").split()
-                            boxs.append(line)
-                            break
-        else:
-            for i in self.XYZs:
-                with open(i, "r") as xyz:
-                    for i, line in enumerate(xyz):
-                        if i == 1:
-                            line = line.replace("\n", "").split()
-                            boxs.append(line)
-                            break
+        for file in self.XYZs[self.b_frame:self.e_frame]:
+            with open(file, "r") as xyz:
+                for i, line in enumerate(xyz):
+                    if i == 1:
+                        line = line.replace("\n", "").split()
+                        boxs.append(line)
+                        break
 
         return np.array(boxs).astype(np.float)
-
 
     @property
     def vol(self):
@@ -161,6 +153,8 @@ class STAMP:
     def get_traj(self, b=0, e=None):
         """Trajectory of system."""
         self._load_traj(b, e)
+        self.b_frame = b
+        self.e_frame = e
 
         return self._traj        
 

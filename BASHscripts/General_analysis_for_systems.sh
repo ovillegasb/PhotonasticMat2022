@@ -10,11 +10,11 @@ conda activate SimMOL
 # STAMP
 #---------
 
-# to convert XYZs files to XTC trajectory gromacs
-xyz2gro -d DONNEES.in
-
 # gen trajectory for a molecule
 python -m stamptools -d DONNEES.in --mol_traj 0
+
+# to convert XYZs files to XTC trajectory gromacs
+xyz2gro -d DONNEES.in
 
 # save information about geometry
 vmd mol_0_traj.xyz -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_geometry_data.tcl

@@ -53,7 +53,7 @@ close $ofile
 
 # RDF analysis
 # all atoms
-set RDFs [measure gofr [atomselect 0 "resname PHO"] [atomselect 0 "resname POL"] delta 0.1 rmax 20. usepbc True first 500 last -1 step 1]
+set RDFs [measure gofr [atomselect 0 "resid 1"] [atomselect 0 "not resid 1"] delta 0.1 rmax 20. usepbc True first 0 last -1 step 1]
 set r [lindex $RDFs 0]
 set g_r [lindex $RDFs 1]
 set nbins [llength $r]

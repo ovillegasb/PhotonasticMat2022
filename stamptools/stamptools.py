@@ -9,6 +9,8 @@ Orlando Villegas - 2022
 import re
 import numpy as np
 import pandas as pd
+from pymatgen.core import Molecule
+import nglview as nv
 
 """ Regular expression that extracts matrix XYZ """
 atoms = re.compile(r"""
@@ -142,3 +144,101 @@ def clean_data(df):
         pass
 
     return df
+
+
+class read_modes_vib:
+    """Class defining the vibrational modes obtained in STAMP."""
+
+    def __init__(self, file):
+        """Initialize the class by reading the file."""
+        self.file = file
+        self._read_file()
+        
+    def _read_file(self):
+        file = self.file
+        tab = {}
+        
+        freq = re.compile(r"""
+        ^nu\[(?P<idf>\d+)/\d+/\d+\]=(?P<f>\d+.\d+)
+        """, re.X)
+        
+        coord = re.compile(r"""
+        ^(?P<atsb>\w+)\s+
+        (?P<x>[+-]?\d+\.\d+)\s+
+        (?P<y>[+-]?\d+\.\d+)\s+
+        (?P<z>[+-]?\d+\.\d+)\s+
+        \w+\s+
+        (?P<vx>[+-]?\d+\.\d+)\s+
+        (?P<vy>[+-]?\d+\.\d+)\s+
+        (?P<vz>[+-]?\d+\.\d+)\s+
+        """, re.X)
+        
+        nfreq = 0
+        with open(file, "r") as F:
+            for line in F:
+                array = line.split()
+                if len(array) == 1:
+                    nfreq += 1
+            
+                elif freq.match(line):
+                    m = freq.match(line)
+                    tab[int(m.groupdict()['idf'])] = dict()
+                    tab[int(m.groupdict()['idf'])]['freq'] = float(m.groupdict()['f'])
+                    tab[int(m.groupdict()['idf'])]["coord"] = []
+            
+                elif coord.match(line):
+                    m = coord.match(line)
+                    tab[nfreq]["coord"].append(m.groupdict())
+                
+        for i in tab:
+            coord = pd.DataFrame(tab[i]["coord"])
+            coord = coord.astype({
+                'x': np.float64,
+                'y': np.float64,
+                'z': np.float64,
+                'vx': np.float64,
+                'vy': np.float64,
+                'vz': np.float64})
+            coord["atsb"] = coord["atsb"].apply(lambda x: x.upper())
+            tab[i]["coord"] = coord
+            
+        self.table = tab
+
+        modo = []
+        freq = []
+        for i in self.table:
+            modo.append(i)
+            freq.append(self.table[i]["freq"])
+    
+        self.modes_vib_freqs = pd.DataFrame({"n": modo, "freq": freq})
+
+    def show_vectors(self, n, amplitud=2.):
+        """Display the molecule with the vectors."""
+        tab = self.table
+
+        print("Frequency {} cm-1".format(tab[n]["freq"]))
+        coords = tab[n]["coord"].loc[:, ["x", "y", "z"]].values
+
+        atoms = list(tab[n]["coord"].loc[:, ["atsb"]].values.T[0])
+
+        mol = Molecule(atoms, coords)
+
+        view = nv.show_pymatgen(mol)
+        view.update_representation(opacity=0.4, camara='orthographic')
+        for i in tab[n]["coord"].index:
+            po = tab[n]["coord"].loc[i, ["x", "y", "z"]].values
+            pf = po + amplitud*tab[n]["coord"].loc[i, ["vx", "vy", "vz"]].values
+            view.shape.add_arrow(po, pf, [0, 0.4, 0.8], 0.2)
+    
+        return view
+
+
+def read_geometry_file(file, freq, t0=0.0):
+    """Read molecular geometry archives."""
+    geom = pd.read_csv(
+        file,
+        index_col=0
+    )
+    geom["time"] = (geom.index.astype(float) - 1) * freq + t0
+    
+    return geom

@@ -1,4 +1,5 @@
 #!/bin/env python
+# -*- coding: utf-8 -*-
 
 """Using stamptools directly in terminal."""
 
@@ -7,7 +8,7 @@ import os
 from stamptools.stamp import STAMP
 from stamptools.analysis import save_system, load_system
 from stamptools.analysis import traj_analysis, rdf_analysis
-from stamptools.analysis import traj_center_mass, get_distances_from
+from stamptools.analysis import get_distances_from
 from stamptools.analysis import gen_centered_traj, mol_traj_analysis
 from stamptools.analysis import mol_traj_cut_distance, get_angles_distance
 from stamptools.stamptools import clean_data
@@ -276,51 +277,51 @@ if args["plots"]:
 if isinstance(args["mol_traj"], int):
     resid = args["mol_traj"]
     print("Resid:", resid)
-    mol_ndx = system.atoms_per_mol[resid]
-    connectivity = system.connectivity
-    box_in_time = system.box_in_time
-    time_per_frame = system.time_per_frame
-
     if traj is None:
         traj = read_traj(system, **args)
+
+    mol_ndx = system.atoms_per_mol[resid]
+    connectivity = system.connectivity
+    box_in_frame = system.box_in_frame
+    time_per_frame = system.time_per_frame
 
     mol_traj_analysis(
         resid,
         mol_ndx,
         connectivity,
         traj,
-        box_in_time
+        box_in_frame
     )
 
 if args["molprop"]:
     # begin frame
-    b = 0
-    if args["reset"]:
-        os.remove("molprop.csv")
-        print("File molprop.csv removed.")
+    #b = 0
+    #if args["reset"]:
+    #    os.remove("molprop.csv")
+    #    print("File molprop.csv removed.")
 
-    if os.path.exists("molprop.csv"):
-        dat = pd.read_csv("molprop.csv")
-        # Remove incomplete frames.
-        dat = clean_data(dat)
-        dat.to_csv("molprop.csv", index=False)
-        frames_readed = list(pd.unique(dat["frame"]))
-        # update file list
-        system.update_xyz()
+    #if os.path.exists("molprop.csv"):
+    #    dat = pd.read_csv("molprop.csv")
+    #    # Remove incomplete frames.
+    #    dat = clean_data(dat)
+    #    dat.to_csv("molprop.csv", index=False)
+    #    frames_readed = list(pd.unique(dat["frame"]))
+    #    # update file list
+    #    system.update_xyz()
 
-        if len(frames_readed) == len(system.XYZs):
-            print("The number of XYZ files is equal to the number of "\
-                  "frames analyzed.")
-            b = len(frames_readed)
+    #    if len(frames_readed) == len(system.XYZs):
+    #        print("The number of XYZ files is equal to the number of "\
+    #              "frames analyzed.")
+    #        b = len(frames_readed)
 
-        elif len(frames_readed) < len(system.XYZs):
-            print("The number of XYZ files is greater than the number of "\
-                  "files analyzed.")
-            b = len(frames_readed)
-            save_system(system)
+    #    elif len(frames_readed) < len(system.XYZs):
+    #        print("The number of XYZ files is greater than the number of "\
+    #              "files analyzed.")
+    #        b = len(frames_readed)
+    #        save_system(system)
 
-    if b == 0 and not args["reset"]:
-        args["reset"] = True
+    #if b == 0 and not args["reset"]:
+    #    args["reset"] = True
 
     if traj is None:
         traj = read_traj(system, **args)
@@ -329,10 +330,8 @@ if args["molprop"]:
         system.atoms_per_mol,
         system.topology, 
         traj,
-        system.box,
-        system.connectivity,
-        b,
-        args["reset"]
+        system.box_in_frame,
+        system.connectivity
     )
     # save information in file
     print("file molprop.csv saved.")
@@ -372,7 +371,7 @@ if args["centered_traj"]:
         traj,
         system.atoms_per_mol,
         system.connectivity,
-        system.box,
+        system.box_in_frame,
         mol_dist,
         c_mass,
         rcutoff=args["rcutoff"],
