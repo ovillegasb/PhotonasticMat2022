@@ -6,7 +6,7 @@ conda activate SimMOL
 conda install --channel conda-forge pymatgen
 conda install -c conda-forge mdtraj
 conda install -c anaconda networkx
-conda install nglview -c conda-forge
+conda install -n SimMOL -c conda-forge nglview
 
 conda config --add channels conda-forge
 conda install mdanalysis

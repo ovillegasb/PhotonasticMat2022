@@ -6,7 +6,6 @@ import glob
 import time
 import os
 import numpy as np
-from pathlib import Path
 from scipy.constants import N_A
 from stamptools.stamptools import read_donnees
 from stamptools.analysis import load_data, read_fatomes, save_plot, load_log
