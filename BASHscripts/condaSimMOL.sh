@@ -39,6 +39,8 @@ conda install -c conda-forge acpype
 
 # To convert Jupyter to slides
 jupyter nbconvert --to slides --no-input --post serve presentation.slides.ipynb
+# then to pdf using pandoc
+pandoc presentation.slides.html -t latex -o slides.pdf
 
 
 # python modules
