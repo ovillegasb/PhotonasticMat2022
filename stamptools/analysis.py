@@ -520,7 +520,114 @@ def minImagenC(q1, q2, L):
     return dq
 
 
+def get_distances_from_cm(mref, molprop, box_in_frame):
+    """Return distances from center of mass list."""
+    # file cm trajectory
+    traj_mol_cm = molprop.loc[:, ["frame", "idx", "x", "y", "z"]] .copy()
+    traj_mol_cm["frame"] = traj_mol_cm["frame"].astype(np.int64)
+    traj_mol_cm["idx"] = traj_mol_cm["idx"].astype(np.int64)
+    
+    # cm trajectory from ref
+    traj_mref = traj_mol_cm[traj_mol_cm["idx"] == 0]
+    
+    # cm trajectory from others
+    traj_not_mref = traj_mol_cm[traj_mol_cm["idx"] != 0]
+    
+    # Data
+    table = {
+        "frame": [],
+        "idx": [],
+        "distance": []
+    }
+    
+    for frame in traj_mref["frame"]:
+        mref_xyz = traj_mref[traj_mref["frame"] == frame].loc[:, ["x", "y", "z"]].values[0]
+        not_mref_xyz = traj_not_mref[traj_not_mref["frame"] == frame].loc[:, ["idx", "x", "y", "z"]].values
+        box = box_in_frame[mref][0:3]
+        for mol in not_mref_xyz:
+            pol_id = int(mol[0])
+            mol = mol[1:]
+            dist = PBC_distance(mref_xyz, mol, box)
+            table["frame"].append(frame)
+            table["idx"].append(pol_id)
+            table["distance"].append(dist)
+            
+    return pd.DataFrame(table)
+
+
+def closest_distance_inFrame(mol_ref, frame, n_frame, molecules, top, connectivity, box):
+    """Distance from closest atoms in a frame."""
+    line = ""
+    mref_xyz = frame.loc[mol_ref, ["x", "y", "z"]].values
+    # print(mref_xyz)
+    for mol in molecules:
+        mol_coord = frame.loc[molecules[mol], ["x", "y", "z"]].values
+        matrix_dist = cdist(
+            mref_xyz, mol_coord, lambda a, b: PBC_distance(a, b, box)
+        )
+        min_distance = matrix_dist.min()
+        at_i, at_j = list(zip(*np.where(matrix_dist == min_distance)))[0]
+
+        line += f"{n_frame},"
+        line += f"{mol},"
+        line += f"{mol_ref[at_i]},"
+        line += f"{molecules[mol][at_j]},"
+        line += f"{min_distance:.6f},"
+        line += "\n"
+
+    return line
+
+
+@decoTime
+def get_dist_from_closest_atom(resid, ndx_mol, top, traj, box_in_frame, connectivity, b=0, reset=True):
+    """Return distances from closest atoms."""
+    print("Trajectory analysis Closest distance", end=" - ")
+    print(f"resid {resid}", end=" - ")
+    # Number of frames read
+    Nframes = len(traj)
+    print(f"Frame initial {b}", end=" - ")
+    print(f"Number of frames: {Nframes}", end=" - ")
+
+    output = "closest_d_To_%d.csv" % resid
+    if reset:
+        out = open(output, "w")
+        out.write("frame,idx,at_i,at_j,distance\n")
+        out.close()
+
+    # List molecules present
+    molecules = {}
+    for mol in ndx_mol:
+        if len(ndx_mol[mol]["index"]) == 1:
+            continue
+        if mol != resid:
+            molecules[mol] = ndx_mol[mol]["index"]
+
+    mol_ref = ndx_mol[resid]["index"]
+
+    arguments = []
+    for i, frame in enumerate(traj):
+        arguments.append(
+            (
+                mol_ref,
+                frame,
+                i + b,
+                molecules,
+                top, connectivity,
+                box_in_frame[i, 0:3]
+            )
+        )
+
+    lines = ""
+    with Pool() as pool:
+        for lines_frame in pool.starmap(closest_distance_inFrame, arguments):
+            lines += lines_frame
+
+    with open(output, "a") as out:
+        out.write(lines)
+
+
 def get_distances_from(mref, box, file="molprop.csv"):
+    """Dsitance from center of mass."""
     # file cm trajectory
     traj_mol_cm = pd.read_csv(file)
     # print(traj_mol_cm.isnull().values.any())

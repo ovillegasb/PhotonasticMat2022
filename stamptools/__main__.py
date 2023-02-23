@@ -11,6 +11,7 @@ from stamptools.analysis import traj_analysis, rdf_analysis
 from stamptools.analysis import get_distances_from
 from stamptools.analysis import gen_centered_traj, mol_traj_analysis
 from stamptools.analysis import mol_traj_cut_distance, get_angles_distance
+from stamptools.analysis import get_dist_from_closest_atom
 from stamptools.stamptools import clean_data
 from stamptools.gmxtools import read_xtc
 import pandas as pd
@@ -215,6 +216,13 @@ f mass is analyzed.",
 lecules. Three types can be specified. all, cm or 12-13 (atomic index)."
     )
 
+    analysis.add_argument(
+        "--closestDist",
+        help="Calculates the closest distance between atoms and saves it in a \
+csv file.",
+        action="store_true"
+    )
+
     gromacs = parser.add_argument_group(
         "\033[1;36mAnalysis GROMACS options\033[m")
 
@@ -337,6 +345,58 @@ if args["molprop"]:
     )
     # save information in file
     print("file molprop.csv saved.")
+
+if args["closestDist"]:
+    # begin frame
+    b = 0
+    resid = args["mref"]
+    output = "closest_d_To_%d.csv" % resid
+    if args["reset"]:
+        os.remove(output)
+        print(f"File {output} removed.")
+
+    if os.path.exists(output):
+        dat = pd.read_csv(output)
+        if len(dat) == 0:
+            os.remove(output)
+            print(f"File {output} removed.")
+        else:
+            # Remove incomplete frames.
+            dat = clean_data(dat)
+            dat.to_csv(output, index=False)
+            frames_readed = list(pd.unique(dat["frame"]))
+            # update file list
+            system.update_xyz()
+
+            if len(frames_readed) == len(system.XYZs):
+                print("The number of XYZ files is equal to the number of\
+ frames analyzed.")
+                b = len(frames_readed)
+
+            elif len(frames_readed) < len(system.XYZs):
+                print("The number of XYZ files is greater than the number of\
+ files analyzed.")
+                b = len(frames_readed)
+                traj = system.get_traj(b=b)
+
+    if b == 0 and not args["reset"]:
+        args["reset"] = True
+
+    if traj is None:
+        traj = read_traj(system, **args)
+
+    get_dist_from_closest_atom(
+        resid,
+        system.atoms_per_mol,
+        system.topology, 
+        traj,
+        system.box_in_frame,
+        system.connectivity,
+        b=b,
+        reset=args["reset"]
+    )
+    # save information in file
+    print(f"file {output} saved.")
 
 if args["mol_d_aa"]:
     if traj is None:
