@@ -256,6 +256,33 @@ def read_traj(system, **kwargs):
     return system.get_traj(b=b, e=e)
 
 
+def to_Continue_analysis(system, output, **kwargs):
+    """Determine if the analysis continues from the last analyzed frame."""
+    # begin frame
+    b = 0
+
+    if os.path.exists(output):
+        dat = pd.read_csv(output)
+        # Remove incomplete frames.
+        dat = clean_data(dat)
+        dat.to_csv(output, index=False)
+        frames_readed = list(pd.unique(dat["frame"]))
+        # update file list
+        system.update_xyz()
+
+        if len(frames_readed) == len(system.XYZs):
+            print("The number of XYZ files is equal to the number of\
+ frames analyzed.")
+            b = len(frames_readed)
+
+        elif len(frames_readed) < len(system.XYZs):
+            print("The number of XYZ files is greater than the number of\
+ files analyzed.")
+            b = len(frames_readed)
+
+    return b
+
+
 print(TITLE)
 args = options()
 
@@ -302,34 +329,19 @@ if isinstance(args["mol_traj"], int):
     )
 
 if args["molprop"]:
-    # begin frame
-    b = 0
+    # output name
+    output = "molprop.csv"
     if args["reset"]:
-        os.remove("molprop.csv")
-        print("File molprop.csv removed.")
+        os.remove(output)
+        print(f"File {output} removed.")
 
-    if os.path.exists("molprop.csv"):
-        dat = pd.read_csv("molprop.csv")
-        # Remove incomplete frames.
-        dat = clean_data(dat)
-        dat.to_csv("molprop.csv", index=False)
-        frames_readed = list(pd.unique(dat["frame"]))
-        # update file list
-        system.update_xyz()
-
-        if len(frames_readed) == len(system.XYZs):
-            print("The number of XYZ files is equal to the number of\
- frames analyzed.")
-            b = len(frames_readed)
-
-        elif len(frames_readed) < len(system.XYZs):
-            print("The number of XYZ files is greater than the number of\
- files analyzed.")
-            b = len(frames_readed)
-            traj = system.get_traj(b=b)
+    # Run from the last frame analyzed
+    b = to_Continue_analysis(system, output, **args)
 
     if b == 0 and not args["reset"]:
         args["reset"] = True
+    elif b > 0:
+        traj = system.get_traj(b=b)
 
     if traj is None:
         traj = read_traj(system, **args)
@@ -344,44 +356,25 @@ if args["molprop"]:
         reset=args["reset"]
     )
     # save information in file
-    print("file molprop.csv saved.")
+    print(f"file {output} saved.")
+
 
 if args["closestDist"]:
-    # begin frame
-    # b = 0
     resid = args["mref"]
+    # output name
     output = "closest_d_To_%d.csv" % resid
     if args["reset"]:
         os.remove(output)
         print(f"File {output} removed.")
 
-    # if os.path.exists(output):
-    #     dat = pd.read_csv(output)
-    #     if len(dat) == 0:
-    #         os.remove(output)
-    #         print(f"File {output} removed.")
-    #     else:
-    #         # Remove incomplete frames.
-    #         dat = clean_data(dat)
-    #         dat.to_csv(output, index=False)
-    #         frames_readed = list(pd.unique(dat["frame"]))
-    #         # update file list
-    #         system.update_xyz()
+        # Run from the last frame analyzed
+    b = to_Continue_analysis(system, output, **args)
 
-    #         if len(frames_readed) == len(system.XYZs):
-    #             print("The number of XYZ files is equal to the number of\
-    # frames analyzed.")
-    #             b = len(frames_readed)
-
-    #         elif len(frames_readed) < len(system.XYZs):
-    #             print("The number of XYZ files is greater than the number of\
-    # files analyzed.")
-    #             b = len(frames_readed)
-    #             traj = system.get_traj(b=b)
-
-    # if b == 0 and not args["reset"]:
-    #     args["reset"] = True
-
+    if b == 0 and not args["reset"]:
+        args["reset"] = True
+    elif b > 0:
+        traj = system.get_traj(b=b)
+    
     if traj is None:
         traj = read_traj(system, **args)
 
@@ -392,8 +385,8 @@ if args["closestDist"]:
         traj,
         system.box_in_frame,
         system.connectivity,
-        b=0,
-        reset=True
+        b=b,
+        reset=args["reset"]
     )
     # save information in file
     print(f"file {output} saved.")
