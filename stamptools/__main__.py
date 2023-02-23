@@ -348,39 +348,39 @@ if args["molprop"]:
 
 if args["closestDist"]:
     # begin frame
-    b = 0
+    # b = 0
     resid = args["mref"]
     output = "closest_d_To_%d.csv" % resid
     if args["reset"]:
         os.remove(output)
         print(f"File {output} removed.")
 
-    if os.path.exists(output):
-        dat = pd.read_csv(output)
-        if len(dat) == 0:
-            os.remove(output)
-            print(f"File {output} removed.")
-        else:
-            # Remove incomplete frames.
-            dat = clean_data(dat)
-            dat.to_csv(output, index=False)
-            frames_readed = list(pd.unique(dat["frame"]))
-            # update file list
-            system.update_xyz()
+    # if os.path.exists(output):
+    #     dat = pd.read_csv(output)
+    #     if len(dat) == 0:
+    #         os.remove(output)
+    #         print(f"File {output} removed.")
+    #     else:
+    #         # Remove incomplete frames.
+    #         dat = clean_data(dat)
+    #         dat.to_csv(output, index=False)
+    #         frames_readed = list(pd.unique(dat["frame"]))
+    #         # update file list
+    #         system.update_xyz()
 
-            if len(frames_readed) == len(system.XYZs):
-                print("The number of XYZ files is equal to the number of\
- frames analyzed.")
-                b = len(frames_readed)
+    #         if len(frames_readed) == len(system.XYZs):
+    #             print("The number of XYZ files is equal to the number of\
+    # frames analyzed.")
+    #             b = len(frames_readed)
 
-            elif len(frames_readed) < len(system.XYZs):
-                print("The number of XYZ files is greater than the number of\
- files analyzed.")
-                b = len(frames_readed)
-                traj = system.get_traj(b=b)
+    #         elif len(frames_readed) < len(system.XYZs):
+    #             print("The number of XYZ files is greater than the number of\
+    # files analyzed.")
+    #             b = len(frames_readed)
+    #             traj = system.get_traj(b=b)
 
-    if b == 0 and not args["reset"]:
-        args["reset"] = True
+    # if b == 0 and not args["reset"]:
+    #     args["reset"] = True
 
     if traj is None:
         traj = read_traj(system, **args)
@@ -392,8 +392,8 @@ if args["closestDist"]:
         traj,
         system.box_in_frame,
         system.connectivity,
-        b=b,
-        reset=args["reset"]
+        b=0,
+        reset=True
     )
     # save information in file
     print(f"file {output} saved.")
