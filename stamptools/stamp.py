@@ -121,6 +121,7 @@ class STAMP:
 
     @property
     def dens_in_time(self):
+        """Density in time from boxs."""
         dens = self.time_per_frame
         dens["Dens"] = self.dens
         return dens

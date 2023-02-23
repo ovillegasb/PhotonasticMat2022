@@ -295,33 +295,33 @@ if isinstance(args["mol_traj"], int):
 
 if args["molprop"]:
     # begin frame
-    #b = 0
-    #if args["reset"]:
-    #    os.remove("molprop.csv")
-    #    print("File molprop.csv removed.")
+    b = 0
+    if args["reset"]:
+        os.remove("molprop.csv")
+        print("File molprop.csv removed.")
 
-    #if os.path.exists("molprop.csv"):
-    #    dat = pd.read_csv("molprop.csv")
-    #    # Remove incomplete frames.
-    #    dat = clean_data(dat)
-    #    dat.to_csv("molprop.csv", index=False)
-    #    frames_readed = list(pd.unique(dat["frame"]))
-    #    # update file list
-    #    system.update_xyz()
+    if os.path.exists("molprop.csv"):
+        dat = pd.read_csv("molprop.csv")
+        # Remove incomplete frames.
+        dat = clean_data(dat)
+        dat.to_csv("molprop.csv", index=False)
+        frames_readed = list(pd.unique(dat["frame"]))
+        # update file list
+        system.update_xyz()
 
-    #    if len(frames_readed) == len(system.XYZs):
-    #        print("The number of XYZ files is equal to the number of "\
-    #              "frames analyzed.")
-    #        b = len(frames_readed)
+        if len(frames_readed) == len(system.XYZs):
+            print("The number of XYZ files is equal to the number of\
+ frames analyzed.")
+            b = len(frames_readed)
 
-    #    elif len(frames_readed) < len(system.XYZs):
-    #        print("The number of XYZ files is greater than the number of "\
-    #              "files analyzed.")
-    #        b = len(frames_readed)
-    #        save_system(system)
+        elif len(frames_readed) < len(system.XYZs):
+            print("The number of XYZ files is greater than the number of\
+ files analyzed.")
+            b = len(frames_readed)
+            traj = system.get_traj(b=b)
 
-    #if b == 0 and not args["reset"]:
-    #    args["reset"] = True
+    if b == 0 and not args["reset"]:
+        args["reset"] = True
 
     if traj is None:
         traj = read_traj(system, **args)
@@ -331,7 +331,9 @@ if args["molprop"]:
         system.topology, 
         traj,
         system.box_in_frame,
-        system.connectivity
+        system.connectivity,
+        b=b,
+        reset=args["reset"]
     )
     # save information in file
     print("file molprop.csv saved.")

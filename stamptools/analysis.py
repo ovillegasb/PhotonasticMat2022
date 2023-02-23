@@ -282,10 +282,10 @@ def traj_analysis(ndx_mol, top, traj, box_in_frame, connectivity, b=0, reset=Tru
 
     """
     print("Trajectory analysis", end=" - ")
-    #t0 = time.time()
 
     # Number of frames read
     Nframes = len(traj)
+    print(f"Frame initial {b}", end=" - ")
     print(f"Number of frames: {Nframes}", end=" - ")
 
     if reset:
@@ -303,7 +303,7 @@ def traj_analysis(ndx_mol, top, traj, box_in_frame, connectivity, b=0, reset=Tru
     arguments = []
     for i, frame in enumerate(traj):
         arguments.append(
-            (frame, i, molecules, top, connectivity, box_in_frame[i])
+            (frame, i + b, molecules, top, connectivity, box_in_frame[i])
         )
 
     lines = ""
@@ -313,53 +313,6 @@ def traj_analysis(ndx_mol, top, traj, box_in_frame, connectivity, b=0, reset=Tru
     
     with open("molprop.csv", "a") as out:
         out.write(lines)
-
-    #for n_frame, frame in enumerate(traj):
-    #    porcent = n_frame * 100 / Nframes
-    #    print(f"{porcent:6.2f} % |{progress(porcent)}|")
-    #    if n_frame < b:
-    #        continue
-    #    ###
-    #    for mol in molecules:
-    #        masses = top.loc[molecules[mol], "mass"].values
-    #        dfcoord = frame.loc[molecules[mol], :]
-    #
-    #        # Connectivity in the molecule
-    #        connect = connectivity.sub_connect(molecules[mol])
-    #
-    #        # update coordinates
-    #        connect.update_coordinates(dfcoord)
-    #
-    #        # remove PBC
-    #        connect.noPBC(box, center=np.zeros(3))
-    #
-    #        newdfcoord = connect.get_df()
-    #        coord = newdfcoord.loc[:, ["x", "y", "z"]].values
-    #
-    #        G = GyrationTensor(coord, masses, box, pbc=False)
-    #
-    #        line = ""
-    #        line += f"{n_frame},"
-    #        line += f"{mol},"
-    #        line += "{},".format(len(molecules[mol]))
-    #        line += f"{G.iso_w_rg:.2f},"
-    #        line += f"{G.shape_anisotropy:.3f},"
-    #        line += f"{G.max_distance:.2f},"
-    #
-    #        # Center of mass
-    #        mol_cm = center_of_mass(coord, masses)
-    #        line += f"{mol_cm[0]:.3f},"
-    #        line += f"{mol_cm[1]:.3f},"
-    #        line += f"{mol_cm[2]:.3f}"
-    #        line += "\n"
-    #
-    #        with open("molprop.csv", "a") as out:
-    #            out.write(line)
-    #    ###
-
-    #print(f"{100:6.2f} % |{progress(100)}|")
-    #tf = time.time()
-    #print(f"Analysis time: {tf-t0:.2f} s")
 
 
 def load_data(file, t="LNVT"):
