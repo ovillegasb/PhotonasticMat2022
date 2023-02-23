@@ -572,7 +572,7 @@ def closest_distance_inFrame(mol_ref, frame, n_frame, molecules, top, connectivi
         line += f"{mol},"
         line += f"{mol_ref[at_i]},"
         line += f"{molecules[mol][at_j]},"
-        line += f"{min_distance:.6f},"
+        line += f"{min_distance:.6f}"
         line += "\n"
 
     return line
