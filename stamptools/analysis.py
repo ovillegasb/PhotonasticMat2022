@@ -528,31 +528,36 @@ def get_distances_from_cm(mref, molprop, box_in_frame):
     traj_mol_cm["idx"] = traj_mol_cm["idx"].astype(np.int64)
     
     # cm trajectory from ref
-    traj_mref = traj_mol_cm[traj_mol_cm["idx"] == 0]
+    traj_mref = traj_mol_cm[traj_mol_cm["idx"] == mref]
     
     # cm trajectory from others
-    traj_not_mref = traj_mol_cm[traj_mol_cm["idx"] != 0]
+    traj_not_mref = traj_mol_cm[traj_mol_cm["idx"] != mref]
     
     # Data
-    table = {
-        "frame": [],
-        "idx": [],
-        "distance": []
-    }
+    frame_list = []
+    resid_list = []
+    distance_list = []
     
-    for frame in traj_mref["frame"]:
+    for frame in traj_mref["frame"].values:
         mref_xyz = traj_mref[traj_mref["frame"] == frame].loc[:, ["x", "y", "z"]].values[0]
         not_mref_xyz = traj_not_mref[traj_not_mref["frame"] == frame].loc[:, ["idx", "x", "y", "z"]].values
-        box = box_in_frame[mref][0:3]
+        box = box_in_frame[frame][0:3]
         for mol in not_mref_xyz:
+            # int
             pol_id = int(mol[0])
+            # [float, float, float]
             mol = mol[1:]
+            # One distance at a time
             dist = PBC_distance(mref_xyz, mol, box)
-            table["frame"].append(frame)
-            table["idx"].append(pol_id)
-            table["distance"].append(dist)
+            frame_list.append(frame)
+            resid_list.append(pol_id)
+            distance_list.append(dist)
             
-    return pd.DataFrame(table)
+    return pd.DataFrame({
+        "frame": frame_list,
+        "idx": resid_list,
+        "distance": distance_list
+    })
 
 
 def closest_distance_inFrame(mol_ref, frame, n_frame, molecules, top, connectivity, box):
@@ -963,7 +968,7 @@ def mol_traj_cut_distance(traj, atoms_per_mol, top, box, connectivity, ref, rcut
         save_xyz(ncoords, name=f"{out_folder}/{name}")
 
 
-def rdf_from_dist(df, box_in_frame, rmin=0.0, rmax=6.0, binwidth=0.002):
+def rdf_from_dist(df, box_in_frame, rmin=0.0, rmax=6.0, binwidth=0.002, atoms_ref=1):
     """Return rdf data and binned function."""
     def binned_distance(x):
         bins = np.arange(rmin, rmax, binwidth)
@@ -972,6 +977,8 @@ def rdf_from_dist(df, box_in_frame, rmin=0.0, rmax=6.0, binwidth=0.002):
             return bins[index]
         except IndexError:
             return np.NaN
+
+    df = df.copy()
         
     df["bin"] = df["distance"].apply(binned_distance)
 
@@ -988,10 +995,13 @@ def rdf_from_dist(df, box_in_frame, rmin=0.0, rmax=6.0, binwidth=0.002):
     
     rdf["vshell"] = 4 * np.pi * ((binwidth + rdf["bin"])**3 - rdf["bin"]**3) / 3
     
-    rdf["gr"] = rdf["distance"] * vol_per_com / rdf["vshell"] / n_frames
-    rdf["weihts"] = vol_per_com / rdf["vshell"] / n_frames
+    rdf["gr"] = rdf["distance"] * vol_per_com / rdf["vshell"] / n_frames / atoms_ref
+    rdf["weihts"] = vol_per_com / rdf["vshell"] / n_frames / atoms_ref
     
-    return rdf, binned_distance
+    try:
+        return rdf.drop(columns=["frame", "idx", "at_i", "at_j", "distance"])
+    except KeyError:
+        return rdf
 
 
 def get_frame_distances_cm(traj, ref, near, cmass, box, rcutoff):
