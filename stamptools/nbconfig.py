@@ -23,7 +23,8 @@ boxText = {
 aggregation = {
         "Rg": ["mean", "std"],
         "k2": ["mean", "std"],
-        "dmax": ["mean", "std"]
+        "dmax": ["mean", "std"],
+        "bin": "count"
     }
 
 """ Some Functions. """

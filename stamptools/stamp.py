@@ -31,7 +31,7 @@ setplots = {
 class STAMP:
     """Object describing a system and its features."""
 
-    def __init__(self, donnees, data="Stamp.dat", ensamble="LNVT"):
+    def __init__(self, donnees, data="Stamp.dat", ensamble="LNVT", loadConnect=True):
         """Initialize the class when loading the calculation information."""
         # Home path
         hw_path = os.path.split(os.path.abspath(donnees))[0]
@@ -56,16 +56,17 @@ class STAMP:
             self.time_per_frame = None
 
         # Reading FAtome
-        topology, box, connects = read_fatomes(
-            os.path.join(hw_path, self.fatomes)
-        )
+        if loadConnect:
+            topology, box, connects = read_fatomes(
+                os.path.join(hw_path, self.fatomes)
+            )
 
-        self.topology = topology
-        self.box = box
-        self.connects = connects
+            self.topology = topology
+            self.box = box
+            self.connects = connects
 
-        # searching conectivity
-        self.connectivity = self._get_connectivity()
+            # searching conectivity
+            self.connectivity = self._get_connectivity()
 
         # Files xyz
         self.XYZs = self._xyz_list()

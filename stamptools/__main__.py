@@ -240,6 +240,16 @@ csv file.",
         default=None
     )
 
+    fileout = parser.add_argument_group(
+        "\033[1;36mOutput settings\033[m")
+
+    fileout.add_argument(
+        "--format",
+        help="Specifies the out format.",
+        default="xyz",
+        type=str
+    )
+
     return vars(parser.parse_args())
 
 
@@ -325,7 +335,8 @@ if isinstance(args["mol_traj"], int):
         mol_ndx,
         connectivity,
         traj,
-        box_in_frame
+        box_in_frame,
+        o_format=args["format"]
     )
 
 if args["molprop"]:

@@ -9,7 +9,7 @@ import pickle
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
-from molcraft.structure import save_xyz
+from molcraft.structure import save_xyz, save_gro
 from scipy.stats import linregress
 from scipy.spatial.distance import cdist
 from molcraft.clusters import GyrationTensor
@@ -791,7 +791,10 @@ def change_atsb(x):
         return "O"
 
 
-def gen_centered_traj(traj, atoms_per_mol, connectivity, box, mol_dist, c_mass, rcutoff=1.5, ref=0, out_folder="centered_traj"):
+def gen_centered_traj(
+    traj, atoms_per_mol, connectivity, box, mol_dist,
+    c_mass, rcutoff=1.5, ref=0, out_folder="centered_traj"
+):
     """Generate a trajectory of the system using a reference center."""
     traj_resid_in_r = mol_dist[mol_dist["distance"] <= rcutoff]
     traj_center_ref = c_mass[c_mass["idx"] == ref].loc[:, ["x", "y", "z"]].values
@@ -837,17 +840,19 @@ def gen_centered_traj(traj, atoms_per_mol, connectivity, box, mol_dist, c_mass, 
         # ndf = sys_conn.get_df()
         # ndf["atsb"] = ndf["atsb"].apply(change_atsb).values.astype(str)
         ncoords = pd.concat(ncoords, ignore_index=True)
-        
-        save_xyz(ncoords, name=f"{out_folder}/{name}")
+
+        if o_format == "xyz":
+            save_xyz(ncoords, name=f"{out_folder}/{name}")
 
 
 @decoTime
-def mol_traj_analysis(index, mol_ndx, connectivity, traj, box_in_frame):
+def mol_traj_analysis(index, mol_ndx, connectivity, traj, box_in_frame, o_format="xyz"):
     """Analyze trajectory of a particular molecule."""
     print("Gen trajectory for a mol, resid: ", index, end=" - ")
+    name_last = ""
     for i, xyz in enumerate(traj):
         name = "mol_%d_%005d" % (index, i)
-        box = box_in_frame[i][0:4]
+        box = box_in_frame[i][0:3]
 
         mol_xyz = xyz.loc[mol_ndx["index"], :]
         mol_conn = connectivity.sub_connect(mol_ndx["index"])
@@ -874,10 +879,28 @@ def mol_traj_analysis(index, mol_ndx, connectivity, traj, box_in_frame):
         new_mol_xyz["y"] -= cm[1]
         new_mol_xyz["z"] -= cm[2]
 
-        save_xyz(new_mol_xyz, name=name)
+        if o_format == "xyz":
+            save_xyz(new_mol_xyz, name=name)
 
-    os.system(f"cat mol_{index}_0* > mol_{index}_traj.xyz")
-    os.system(f"rm mol_{index}_0*")
+        elif o_format == "gro":
+            new_mol_xyz["resname"] = "MOL"
+            new_mol_xyz["resid"] = index + 1
+            # CHAGE ########
+            time = i * 2.5 + 500
+            ################
+            save_gro(new_mol_xyz, name=name, box=box, time=time)
+
+        name_last = name
+
+    if o_format == "xyz":
+        os.system(f"cat mol_{index}_0* > mol_{index}_traj.xyz")
+        os.system(f"rm mol_{index}_0*")
+    elif o_format == "gro":
+        print(f"Last frame: {name_last}", end=" - ")
+        os.system(f"cp {name_last}.gro mol.gro")
+        os.system(f"cat mol_{index}_0* > traj_mol_{index}.gro")
+        os.system(f"rm mol_{index}_0*")
+        os.system(f"gmx trjconv -f traj_mol_{index}.gro -o traj_comp_mol_{index}.xtc")
 
 
 def PBC_distance(vref, v2, box):
@@ -891,8 +914,6 @@ def PBC_distance(vref, v2, box):
 
 
 def mol_traj_cut_distance(traj, atoms_per_mol, top, box, connectivity, ref, rcutoff=0.5, out_folder="mol_distances"):
-    #(index, mol_dist, connectivity, traj, box, rcutoff=1.5,
-    #ref=0, out_folder="centered_traj"):
     """Extract the structure of mol around a reference mol using atom-atom distance."""
     print(f"Extract the structure of molecules around a reference mol, resid {ref},")
     print(f"using atom-atom from a distance cut: {rcutoff:.2f} nm.")

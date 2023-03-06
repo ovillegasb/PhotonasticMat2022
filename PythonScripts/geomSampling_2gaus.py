@@ -62,6 +62,20 @@ def options():
     )
 
     analysis.add_argument(
+        "--init_t",
+        help="Initial simulation time (default unit ps).",
+        type=float,
+        default=0.0
+    )
+
+    analysis.add_argument(
+        "-dt", "--dt",
+        help="Frame generation step (default unit ps).",
+        type=float,
+        default=2.5
+    )
+
+    analysis.add_argument(
         "-r", "--resid",
         help="resid number.",
         type=int,
@@ -104,7 +118,6 @@ def main():
     args = options()
 
     out = args["out"]
-
     top = args["topol"]
     assert top is not None, "You have to define a topology file."
     trj = args["traj"]
@@ -127,47 +140,63 @@ def main():
 
     print("File top:", top)
     print("File trj:", trj)
-    print("Time >=", b, "ps")
-    print("Time <", e, "ps")
+
+    # delta t regular
+    dt = args["dt"]
+    init_t = args["init_t"]
+
+    print("Time >=", b, "ps", end=" ")
+    b -= init_t
+    begin = int(b / dt)
+    print("Step ", begin)
+
+    print("Time <", e, "ps", end=" ")
+    e -= init_t
+    end = int(e / dt)
+    print("Step ", end)
+
     print("Resid:", resid)
 
-    # Reads the system trajectory
-    t = md.load(trj, top=top)
+    if top.endswith("gro"):
+        # Reads the system trajectory
+        t = md.load(trj, top=top)
 
-    traj = t[b:e]
-    frames_sample = np.random.choice(range(len(traj)), samples_number, replace=False)
+        traj = t[begin:end]
+        frames_sample = np.random.choice(
+            range(len(traj)), samples_number, replace=False
+        )
 
-    # Extracts the system topology
-    top = traj.topology
-    table, bonds = top.to_dataframe()
+        # Extracts the system topology
+        top = traj.topology
+        table, bonds = top.to_dataframe()
 
-    # The indices of the atoms of interest are selected.
-    iat_res = top.select("resid %s" % resid)
+        # The indices of the atoms of interest are selected.
+        iat_res = top.select("resid %s" % resid)
 
-    # for frame to gaussian input
-    for i in frames_sample:
-        atoms = table.loc[iat_res, "element"].values
-        coord = traj.xyz[:, iat_res][i] * 10.0  # to angstroms
+        # for frame to gaussian input
+        for i in frames_sample:
+            atoms = table.loc[iat_res, "element"].values
+            coord = traj.xyz[:, iat_res][i] * 10.0  # to angstroms
     
-        mol = Molecule(atoms, coord)
+            mol = Molecule(atoms, coord)
     
-        # save file gaussian
-        GaussianInput(
-            mol,
-            charge=0,
-            spin_multiplicity=1,
-            title="Azobenzene %s Sampling in %s - sample %d" % (isomer, solvent, i),
-            functional="Cam-B3LYP",
-            basis_set="6-311+g(d,p)",
-            route_parameters={
-                "TD": "(NStates=6)",
-                "SCRF": "(Solvent=TetraHydroFuran)"
-            },
-            link0_parameters={
-                "%mem": "8GB",
-                "%nprocshared": "12"
-            }
-        ).write_file("%s/azo%s_%s_%005d.com" % (out, isomer[0].upper(), solvent, i))
+            # save file gaussian
+            GaussianInput(
+                mol,
+                charge=0,
+                spin_multiplicity=1,
+                title="Azobenzene %s Sampling in %s - sample %d" % (isomer, solvent, i),
+                functional="Cam-B3LYP",
+                basis_set="6-311+g(d,p)",
+                route_parameters={
+                    "TD": "(NStates=6)",
+                    "SCRF": "(Solvent=CarbonTetraChloride)"
+                },
+                link0_parameters={
+                    "%mem": "8GB",
+                    "%nprocshared": "12"
+                }
+            ).write_file("%s/azo%s_%s_%005d.com" % (out, isomer[0].upper(), solvent, i))
 
 
 if __name__ == '__main__':
