@@ -61,3 +61,9 @@ geomSampling_2gaus -s GRO/mol.gro -f GRO/traj_nopbc_mol.xtc -b 500 -e 2500 -sol 
 
 # Geometry and RDF DATA in gromacs
 vmd confout.gro traj_nopbc.xtc -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_geometry_data_GMX.tcl
+
+
+# MSD
+# x label "tau (ps)"
+# y label "MSD (nm\\S2\\N)"
+gmx msd -s confout.gro -f traj_comp.xtc -n index.ndx -o msd.xvg -xvg none

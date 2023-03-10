@@ -5,6 +5,7 @@ conda create --name SimMOL scipy jupyterlab numpy matplotlib seaborn pandas
 conda activate SimMOL
 conda install --channel conda-forge pymatgen
 conda install -c conda-forge mdtraj
+# conda install -c conda-forge mdanalysis
 conda install -c anaconda networkx
 conda install -n SimMOL -c conda-forge nglview
 
