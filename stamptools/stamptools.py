@@ -10,7 +10,6 @@ import re
 import numpy as np
 import pandas as pd
 from pymatgen.core import Molecule
-import nglview as nv
 
 """ Regular expression that extracts matrix XYZ """
 atoms = re.compile(r"""
@@ -223,6 +222,7 @@ class read_modes_vib:
 
         mol = Molecule(atoms, coords)
 
+        import nglview as nv
         view = nv.show_pymatgen(mol)
         view.update_representation(opacity=0.4, camara='orthographic')
         for i in tab[n]["coord"].index:

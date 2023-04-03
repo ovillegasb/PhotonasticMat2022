@@ -66,4 +66,11 @@ vmd confout.gro traj_nopbc.xtc -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMD
 # MSD
 # x label "tau (ps)"
 # y label "MSD (nm\\S2\\N)"
-gmx msd -s confout.gro -f traj_comp.xtc -n index.ndx -o msd.xvg -xvg none
+gmx msd -s confout.gro -f traj_comp.xtc -n index.ndx -o msd.xvg -xvg none -mol
+
+# Dihedrals
+gmx angle -f traj_comp.xtc -n index.ndx -type dihedral -od angdist.xvg -ov angaver.xvg -ot dihtrans.xvg -oh trhisto.xvg -oc dihcorr.xvg
+
+
+# Translate system
+echo 0 | gmx trjconv -f traj_comp.xtc -s confout.gro -o traj_translated.xtc -trans -3. -3. 3. -pbc atom

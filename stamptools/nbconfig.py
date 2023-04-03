@@ -69,6 +69,18 @@ def binned_distance(x, rmin, rmax, binwidth):
         return np.NaN
 
 
+def save_fig(name, outfig):
+    """Save the figure."""
+    plt.savefig(
+        f"{outfig}/{name}",
+        dpi=300,
+        bbox_inches="tight",
+        format="png",
+        facecolor='white',
+        transparent=False
+    )
+
+
 class dihedral_trans:
     """Object representing trans dihedrals."""
     
