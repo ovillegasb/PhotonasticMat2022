@@ -388,9 +388,9 @@ def load_log(file="Stamp.log", use_xyz=True):
 
     out_g = pd.DataFrame(out_g)
     out_g.drop_duplicates(inplace=True, ignore_index=True)
-    out_g.set_index("frame", inplace=True)
 
     if use_xyz:
+        out_g.set_index("frame", inplace=True)
         frame_dict = out_g["time"].to_dict()
 
         out_frame = pd.DataFrame(out_frame)
@@ -418,6 +418,11 @@ def load_log(file="Stamp.log", use_xyz=True):
         return out_frame
 
     else:
+        out_g = out_g.astype(
+            {"frame": np.int64, "time": np.float64, "cpu": np.float64}
+        )
+        out_g.set_index("frame", inplace=True)
+        print(f"done in {time.time()-t0:.2f} s")
         return out_g
 
 
