@@ -361,14 +361,15 @@ def load_data(file, t="LNVT"):
     return data
 
 
-def load_log(file="Stamp.log"):
+def load_log(file="Stamp.log", use_xyz=True):
     """
     Load info from file log Stamp.
 
-    Parameters:
-    -----------
-    file : str
-        Output file from STAMP.
+    Args:
+        file (str): Output file from STAMP (log).
+
+    Returns:
+        DataFrame: Frame per time.
 
     """
     print("Reading log file", end=" - ")
@@ -389,31 +390,35 @@ def load_log(file="Stamp.log"):
     out_g.drop_duplicates(inplace=True, ignore_index=True)
     out_g.set_index("frame", inplace=True)
 
-    frame_dict = out_g["time"].to_dict()
+    if use_xyz:
+        frame_dict = out_g["time"].to_dict()
 
-    out_frame = pd.DataFrame(out_frame)
-    out_frame.drop_duplicates(inplace=True, ignore_index=True)
+        out_frame = pd.DataFrame(out_frame)
+        out_frame.drop_duplicates(inplace=True, ignore_index=True)
 
-    time_f = []
-    for t in out_frame["frame"]:
-        try:
-            if t == "0":
-                time_f.append("0.000")
-            else:
-                time_f.append(frame_dict[t])
-        except KeyError:
-            time_f.append(np.NaN)
+        time_f = []
+        for t in out_frame["frame"]:
+            try:
+                if t == "0":
+                    time_f.append("0.000")
+                else:
+                    time_f.append(frame_dict[t])
+            except KeyError:
+                time_f.append(np.NaN)
 
-    # out_frame["time"] = out_g.loc[out_frame["frame"].values, "time"].unique()
-    out_frame["time"] = time_f
-    out_frame.dropna(inplace=True)
-    out_frame = out_frame.astype(
-        {"frame": np.int64, "time": np.float64}
-    )
-    out_frame["time"] = out_frame["time"] * 1e12  # to ps
+        # out_frame["time"] = out_g.loc[out_frame["frame"].values, "time"].unique()
+        out_frame["time"] = time_f
+        out_frame.dropna(inplace=True)
+        out_frame = out_frame.astype(
+            {"frame": np.int64, "time": np.float64}
+        )
+        out_frame["time"] = out_frame["time"] * 1e12  # to ps
 
-    print(f"done in {time.time()-t0:.2f} s")
-    return out_frame
+        print(f"done in {time.time()-t0:.2f} s")
+        return out_frame
+
+    else:
+        return out_g
 
 
 def save_system(obj, file="system.chk"):
