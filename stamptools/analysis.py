@@ -422,6 +422,7 @@ def load_log(file="Stamp.log", use_xyz=True):
             {"frame": np.int64, "time": np.float64, "cpu": np.float64}
         )
         out_g.set_index("frame", inplace=True)
+        out_g["time"] *= 1e12  # to ps
         print(f"done in {time.time()-t0:.2f} s")
         return out_g
 

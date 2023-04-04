@@ -81,6 +81,14 @@ def save_fig(name, outfig):
     )
 
 
+def format_time(seconds):
+    """Convert seconds to formated time."""
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    days, hours = divmod(hours, 24)
+    return f"{days:02d}:{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
 class dihedral_trans:
     """Object representing trans dihedrals."""
     
