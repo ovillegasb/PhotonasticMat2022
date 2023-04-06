@@ -376,6 +376,8 @@ def load_log(file="Stamp.log", use_xyz=True):
     t0 = time.time()
     out_g = []
     out_frame = []
+    status = "Not finished"
+
     with open(file, "r") as LOG:
         for line in LOG:
             if out_mean.match(line):
@@ -385,6 +387,9 @@ def load_log(file="Stamp.log", use_xyz=True):
             if out_xyz.match(line):
                 m = out_xyz.match(line)
                 out_frame.append(m.groupdict())
+
+            if "Arret normal du calcul" in line:
+                status = "finished"
 
     out_g = pd.DataFrame(out_g)
     out_g.drop_duplicates(inplace=True, ignore_index=True)
@@ -415,7 +420,7 @@ def load_log(file="Stamp.log", use_xyz=True):
         out_frame["time"] = out_frame["time"] * 1e12  # to ps
 
         print(f"done in {time.time()-t0:.2f} s")
-        return out_frame
+        return out_frame, status
 
     else:
         out_g = out_g.astype(
@@ -424,7 +429,7 @@ def load_log(file="Stamp.log", use_xyz=True):
         out_g.set_index("frame", inplace=True)
         out_g["time"] *= 1e12  # to ps
         print(f"done in {time.time()-t0:.2f} s")
-        return out_g
+        return out_g, status
 
 
 def save_system(obj, file="system.chk"):
