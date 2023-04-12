@@ -51,7 +51,7 @@ class STAMP:
 
         # Load log information
         try:
-            self.time_per_frame = load_log(os.path.join(hw_path, "Stamp.log"))
+            self.time_per_frame, self.status = load_log(os.path.join(hw_path, "Stamp.log"))
         except FileNotFoundError:
             self.time_per_frame = None
 

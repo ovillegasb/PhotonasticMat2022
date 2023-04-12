@@ -44,7 +44,7 @@ do
 
         # Geometry analysis
         ##python -m stamptools -d DONNEES.in --mol_traj 0
-        ##vmd mol_0_traj.xyz -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_geometry.tcl
+        vmd mol_0_traj.xyz -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_geometry.tcl
 
         # RDF all atoms analysis
         vmd GRO/PasDeCalcul__Iteration_*.gro -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_RDF.tcl
