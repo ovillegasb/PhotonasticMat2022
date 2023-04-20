@@ -12,6 +12,7 @@ from stamptools.analysis import get_distances_from
 from stamptools.analysis import gen_centered_traj, mol_traj_analysis
 from stamptools.analysis import mol_traj_cut_distance, get_angles_distance
 from stamptools.analysis import get_dist_from_closest_atom
+from stamptools.fatomes import TOPOL
 from stamptools.stamptools import clean_data
 from stamptools.gmxtools import read_xtc
 import pandas as pd
@@ -86,6 +87,12 @@ def options():
     fileinput.add_argument(
         "-d", "--donnees",
         help="Specifies the system DONNEES file.",
+        default=None
+    )
+
+    fileinput.add_argument(
+        "-f", "--fatomes",
+        help="Specifies the FAtomes file.",
         default=None
     )
 
@@ -223,6 +230,12 @@ csv file.",
         action="store_true"
     )
 
+    analysis.add_argument(
+        "--add_hydrogen",
+        help="Reads a fatome and adds missing hydrogens to terminal carbon atoms.",
+        action="store_true"
+    )
+
     gromacs = parser.add_argument_group(
         "\033[1;36mAnalysis GROMACS options\033[m")
 
@@ -306,6 +319,9 @@ elif args["load"]:
 
 elif args["top"] and args["xtc"]:
     print("Analysis will be performed for gromacs systems.")
+
+elif args["fatomes"] and not args["donnees"]:
+    print("Working with the system topology.")
 
 else:
     print("The state of the system must be defined.")
@@ -494,6 +510,19 @@ if args["rdf"] is not None:
         vol,
         rmin=0.15,
     )
+
+
+if args["add_hydrogen"]:
+    fatomes = TOPOL(args["fatomes"])
+    print("FAtomes file:", fatomes.file)
+    fatomes.complete_with_H()
+    # atomsref = list(range(0, 26))  # photochromo
+    atomsref = [4, 10, 11, 12]
+    fatomes.center_to(ref=atomsref, ref_type="atoms_ndx")
+    fatomes.export_xyz("translate_to")
+
+    # File
+    fatomes.save_fatomes()
 
 
 if args["top"] is not None and args["xtc"] is not None:

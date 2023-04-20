@@ -78,12 +78,14 @@ charges = re.compile(r"""
 
 
 def decoTime(func):
+    """Indicate the time elapsed in the execution of a function."""
+
     def elapsed_time(*args, **kwargs):
         """Print the elapsed time in the use of the function."""
-        t0 = time.time()
+        ti = time.perf_counter()
         func(*args, **kwargs)
-        tf = time.time()
-        print(f"done in {tf-t0:.3f} s")
+        tf = time.perf_counter()
+        print("done in {} s".format(round(tf - ti, 3)))
 
     return elapsed_time
 
@@ -526,6 +528,7 @@ def traj_center_mass(traj, ndx_mol, top, box, connectivity, b=0, reset=True):
 
 
 def minImagenC(q1, q2, L):
+    # q1---->q2 = q2 - q1
     dq = q2 - q1
     if dq > L * 0.5:
         dq -= L
@@ -796,15 +799,20 @@ def translate_to(coord, center, box):
 
 
 def change_atsb(x):
-    """Change the FAtomes atom types to atoms from XYZ files."""
-    if x in ["ca", "cb", "CT", "CM"]:
+    """Change atom types to simple symbols."""
+    if x in ["ca", "cb", "CT", "CM", "C"]:
         return "C"
-    elif x in ["ha", "ho", "HT", "HM"]:
+    elif x in ["ha", "ho", "HT", "HM", "H"]:
         return "H"
-    elif x in ["nf", "ne"]:
+    elif x in ["nf", "ne", "N"]:
         return "N"
-    elif x in ["oh"]:
+    elif x in ["oh", "O"]:
         return "O"
+    elif x in ["DU"]:
+        return "DU"
+    else:
+        print(f"WARNING: {x} atom not reconize.")
+        return x
 
 
 def gen_centered_traj(
