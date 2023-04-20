@@ -82,9 +82,16 @@ class TOPOL:
 
         # Intermolecular parameters
         Intermol_potentials = []
+        comb_rules = "" 
 
         # Force field parameters
         ffparms = []
+
+        # Charges modified
+        ChargesMOD = []
+
+        # Contributions intramolecular to dispersion
+        ContribDispRepIntra = []
 
         with open(self.file, "r") as FATM:
             nom = ""
@@ -134,7 +141,11 @@ class TOPOL:
                 if "ChampDeForces" in line:
                     N = int(FATM.readline())
                     for _ in range(N):
-                        ffparms.append(FATM.readline().replace("\n", ""))
+                        lne = FATM.readline()
+                        while lne.startswith("*"):
+                            lne = FATM.readline()
+
+                        ffparms.append(lne.replace("\n", ""))
 
                 if "Zmatrice" in line:
                     N = int(FATM.readline())
@@ -145,12 +156,25 @@ class TOPOL:
                         zline = [int(i) for i in zline]
                         connects[zline[0]] = zline[1:]
 
+                if "Regle_melange" in line:
+                    comb_rules = line.replace("\n", "").split()[1]
+
                 if "ModificationChargeDesAtomes" in line:
                     N = int(FATM.readline())
                     for _ in range(N):
                         chline = FATM.readline()
+                        ChargesMOD.append(chline.replace("\n", ""))
                         chline = chline.split()
                         lcharge_mod.append({"idx": int(chline[0]), "charge": float(chline[1])})
+
+                if "ContribDispRepIntra" in line:
+                    N = int(FATM.readline())
+                    for _ in range(N):
+                        lne = FATM.readline()
+                        while lne.startswith("*"):
+                            lne = FATM.readline()
+
+                        ContribDispRepIntra.append(lne.replace("\n", ""))
 
                 if line.startswith("Potentiel"):
                     Intermol_potentials.append(line.replace("Potentiel  ", "").replace("\n", ""))
@@ -204,8 +228,10 @@ class TOPOL:
 
         self.atoms_types = atoms_types
         self.Intermol_potentials = Intermol_potentials
+        self.comb_rules = comb_rules
         self.ffparms = ffparms
-        # self.fatome_lines = fatome_lines
+        self.ChargesMOD = ChargesMOD
+        self.ContribDispRepIntra = ContribDispRepIntra
 
     @decoTime
     def _get_connectivity(self):
@@ -359,6 +385,9 @@ class TOPOL:
         for pot in self.Intermol_potentials:
             lines += f"Potentiel {pot}\n"
 
+        if self.comb_rules != "":
+            lines += "Regle_melange %s\n" % self.comb_rules
+
         # Forcefield parameters
         # ==============================
         lines += """*
@@ -398,6 +427,33 @@ Zmatrice
         for i in atoms_map:
             lines += "{} {}\n".format(i, " ".join([str(j) for j in atoms_map[i]]))
 
+        # Atomic charges
+        # ==============================
+        lines += """*
+* =================
+* Charges atomiques 
+* =================
+ModificationChargeDesAtomes e-
+"""     
+        ChargesMOD = self.ChargesMOD
+        lines += "%d\n" % len(ChargesMOD)
+        for le in ChargesMOD:
+            lines += "%s\n" % le
+
+        # Contribution to dispersion intramolecular
+        # ==============================
+        lines += """*
+* =========================================================
+* Contribution de dispersion repulsion en intramoleculaire 
+* =========================================================
+ContribDispRepIntra
+"""     
+        ContribDispRepIntra = self.ContribDispRepIntra
+        lines += "%d\n" % len(ContribDispRepIntra)
+        for le in ContribDispRepIntra:
+            lines += "%s\n" % le
+
+        lines += "\n"
         # Save lines
         with open(out, "w") as FATM:
             FATM.write(lines)
