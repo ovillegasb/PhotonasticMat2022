@@ -112,7 +112,7 @@ class TOPOL:
                     break_line = line.split()
                     keywords = break_line[0]
                     if keywords in infoType:
-                        atoms_types[ntype][keywords] = break_line[1:] 
+                        atoms_types[ntype][keywords] = " ".join(break_line[1:])
 
                 if masses.match(line):
                     m = masses.match(line)
@@ -340,7 +340,7 @@ class TOPOL:
 *                       Fichier issu de Stamp                         *
 *                        (Iteration   302500)                         *
 *                                                                     *
-*        Date: {now}                                             *
+*        Date: {now}                                      *
 *        Created using STAMPtools                                     *
 *#####################################################################*
 *
@@ -365,11 +365,21 @@ class TOPOL:
         lines += "NbTypesAtomes %d\n" % len(self.atoms_types)
 
         atoms_types = self.atoms_types
+        new_types = []
+        modified_atoms = self.connectivity.modified_atoms
+        if len(modified_atoms) > 0:
+            for at in modified_atoms:
+                if modified_atoms[at] not in new_types:
+                    new_types.append(modified_atoms[at])
+
+            for i, atyp in enumerate(new_types):
+                atoms_types[i + len(atoms_types)] = atyp
+
         for i in atoms_types:
             type_lines = f"* Description du type atomique    {i}\n"
             for key in atoms_types[i]:
                 if atoms_types[i][key] != "":
-                    type_lines += "{} {}\n".format(key, " ".join(atoms_types[i][key]))
+                    type_lines += "{} {}\n".format(key, atoms_types[i][key])
             
             lines += type_lines
 
@@ -439,8 +449,8 @@ ModificationChargeDesAtomes e-
         for le in ChargesMOD:
             lines += "%s\n" % le
 
-        for at in self.connectivity.modified_atoms:
-            lines += "%d%10.3f\n" % (at, self.connectivity.nodes[at]["charge"])
+        # for at in self.connectivity.modified_atoms:
+        #     lines += "%d%10.3f\n" % (at, self.connectivity.nodes[at]["charge"])
 
         # Contribution to dispersion intramolecular
         # ==============================
