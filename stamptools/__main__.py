@@ -515,13 +515,11 @@ if args["rdf"] is not None:
 if args["add_hydrogen"]:
     fatomes = TOPOL(args["fatomes"])
     print("FAtomes file:", fatomes.file)
-    print(fatomes.dfatoms)
     fatomes.complete_with_H()
     # atomsref = list(range(0, 26))  # photochromo
     atomsref = [4, 10, 11, 12]
     fatomes.center_to(ref=atomsref, ref_type="atoms_ndx")
     fatomes.export_xyz("translate_to")
-    print(fatomes.dfatoms)
 
     # File
     fatomes.save_fatomes()

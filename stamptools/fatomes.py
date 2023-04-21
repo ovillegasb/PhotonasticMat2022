@@ -277,8 +277,8 @@ class TOPOL:
 
             # If the residue has only one atom, it continues to the following.
             if len(atoms) == 1:
-                mol_xyz = mol_conn.get_df()
-                ncoords.append(mol_xyz)
+                # mol_xyz = mol_conn.get_df()
+                # ncoords.append(mol_xyz)
                 conn_list.append(mol_conn)
                 continue
 
@@ -290,9 +290,9 @@ class TOPOL:
 
             # Adding PBC
             mol_conn.addPBC(self.box, center=np.zeros(3))
-            mol_xyz = mol_conn.get_df()
+            # mol_xyz = mol_conn.get_df()
 
-            ncoords.append(mol_xyz)
+            # ncoords.append(mol_xyz)
             conn_list.append(mol_conn)
             
         # Create a new connectivity object with the new information.
@@ -300,8 +300,6 @@ class TOPOL:
             newconnectivity.add_residue(mol)
 
         self.connectivity = newconnectivity
-
-        #ncoords = pd.concat(ncoords, ignore_index=True)
         ncoords = self.connectivity.get_df()
 
         self.dfatoms = ncoords.copy()
@@ -336,7 +334,7 @@ class TOPOL:
         """Save the fatomes in a file."""
         print("Writing FAtomes file:", end=" - ")
         now = datetime.now()
-        now = now.strftime("%H:%M:%S")
+        now = now.strftime("%d/%m/%y %H:%M:%S")
         header = f"""*
 *#####################################################################*
 *                       Fichier issu de Stamp                         *
@@ -394,6 +392,7 @@ class TOPOL:
 * =============== 
 * Champ de forces 
 * =============== 
+ChampDeForces
 """     
         ffparms = self.ffparms
         lines += "%d\n" % len(ffparms)
@@ -436,9 +435,12 @@ Zmatrice
 ModificationChargeDesAtomes e-
 """     
         ChargesMOD = self.ChargesMOD
-        lines += "%d\n" % len(ChargesMOD)
+        lines += "%d\n" % (len(ChargesMOD) + len(self.connectivity.modified_atoms))
         for le in ChargesMOD:
             lines += "%s\n" % le
+
+        for at in self.connectivity.modified_atoms:
+            lines += "%d%10.3f\n" % (at, self.connectivity.nodes[at]["charge"])
 
         # Contribution to dispersion intramolecular
         # ==============================
@@ -453,7 +455,6 @@ ContribDispRepIntra
         for le in ContribDispRepIntra:
             lines += "%s\n" % le
 
-        lines += "\n"
         # Save lines
         with open(out, "w") as FATM:
             FATM.write(lines)
