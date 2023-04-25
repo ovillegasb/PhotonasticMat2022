@@ -3,11 +3,44 @@
 from stamptools.analysis import decoTime, change_atsb
 from stamptools.analysis import center_of_mass, translate_to
 from molcraft import structure
+import itertools as it
 import numpy as np
 import pandas as pd
+import networkx as nx
 from datetime import datetime
 import re
+import os
 
+
+# dat location
+location = os.path.dirname(os.path.realpath(__file__))
+cell_unit = os.path.join(location, "oplsaa.dat")
+
+
+# Some definitions
+POTENTIAL_par_OPLS = {
+    "OH": "ati  ati LJ sigma 3.12 ang epsilon 0.066 kcal/mol rc 12.5 ang",
+    "HO": "ati  ati LJ sigma 0.00 ang epsilon 0.000 kcal/mol rc 12.5 ang"
+}
+
+BONDS_par_OPLS = {
+    ("HO", "OH"): "bond_opls     HO  OH     0.945 ang   553.0 kcal/mol/ang2   0.0 -  0.0 -",
+    ("CT", "OH"): "bond_opls     CT  OH     1.410 ang   320.0 kcal/mol/ang2   0.0 -  0.0 -"
+}
+
+ANGLES_par_OPLS = {
+    ("CT", "OH", "OH"): "angle_opls     CT  OH  HO     108.5 degre  55.0  kcal/mol   0.0 -  0.0 -",
+    ("CM", "CT", "OH"): "angle_opls     CM  CT  OH     109.5 degre  50.0  kcal/mol   0.0 -  0.0 -",
+    ("HT", "CT", "OH"): "angle_opls     HT  CT  OH     109.5 degre  35.0  kcal/mol   0.0 -  0.0 -"
+}
+
+# https://pubs-acs-org.inc.bib.cnrs.fr/doi/suppl/10.1021/ja9621760/suppl_file/ja11225.pdf
+DIHEDRALS_par_OPLS = {
+    ("CM", "CT", "OH", "HO"): "torsion_opls     CM  CT  OH  HO  -0.356 kcal/mol -0.174  kcal/mol   0.492  kcal/mol",  # amberTools 051
+    ("HT", "CT", "OH", "HO"): "torsion_opls     HT  CT  OH  HO   0.000 kcal/mol  0.000  kcal/mol   0.450  kcal/mol",  # oplsaa.dat
+    ("CM", "CM", "CT", "OH"): "torsion_opls     CM  CM  CT  OH   1.711 kcal/mol -0.500  kcal/mol   0.663  kcal/mol",
+    ("HM", "CM", "CT", "OH"): "torsion_opls     HM  CM  CT  OH   0.000 kcal/mol  0.000  kcal/mol   0.468  kcal/mol"
+}
 
 Keywords = {}
 
@@ -112,7 +145,7 @@ class TOPOL:
                     break_line = line.split()
                     keywords = break_line[0]
                     if keywords in infoType:
-                        atoms_types[ntype][keywords] = " ".join(break_line[1:])
+                        atoms_types[ntype - 1][keywords] = " ".join(break_line[1:])
 
                 if masses.match(line):
                     m = masses.match(line)
@@ -126,7 +159,7 @@ class TOPOL:
                 if "NbTypesAtomes" in line:
                     line = line.split()
                     natypes += int(line[1])
-                    atoms_types = {idx: dict(infoType) for idx in range(1, natypes+1)}
+                    atoms_types = {idx: dict(infoType) for idx in range(0, natypes)}
                     continue
 
                 if "maille_long" in line:
@@ -286,7 +319,7 @@ class TOPOL:
             mol_conn.noPBC(self.box, center=np.zeros(3))
 
             # Search and add hydrogen to vacant atoms
-            mol_conn.add_hydrogen(type_add="terminal", mass=1.008e-03, atypes="HT", charge=0.060)
+            mol_conn.add_hydrogen(type_add="terminal-C", mass=1.008e-03, atypes="HT", charge=0.060)
 
             # Adding PBC
             mol_conn.addPBC(self.box, center=np.zeros(3))
@@ -295,6 +328,57 @@ class TOPOL:
             # ncoords.append(mol_xyz)
             conn_list.append(mol_conn)
             
+        # Create a new connectivity object with the new information.
+        for mol in conn_list:
+            newconnectivity.add_residue(mol)
+
+        self.connectivity = newconnectivity
+        ncoords = self.connectivity.get_df()
+
+        self.dfatoms = ncoords.copy()
+
+    @decoTime
+    def complete_with_OH(self):
+        """Verify and complete molecules missing terminal hydrogens."""
+        print("Adding OH atom", end=" - ")
+        atoms_per_mol = self.atoms_per_mol
+        connectivity = self.connectivity
+
+        ncoords = []
+        newconnectivity = structure.connectivity()
+        conn_list = []
+
+        for resid in atoms_per_mol:
+            atoms = atoms_per_mol[resid]["index"]
+
+            # Extracts the connectivity of the residue.
+            mol_conn = connectivity.sub_connect(atoms)
+            mol_conn.simple_at_symbols()
+
+            # Reset index and symbols, and add mass
+            mol_conn = mol_conn.reset_nodes()
+
+            # If the residue has only one atom, it continues to the following.
+            if len(atoms) == 1:
+                # mol_xyz = mol_conn.get_df()
+                # ncoords.append(mol_xyz)
+                conn_list.append(mol_conn)
+                continue
+
+            # whole molecule
+            mol_conn.noPBC(self.box, center=np.zeros(3))
+
+            # Search and add oxygens to vacant carbons
+            mol_conn.add_OH(type_add="terminal-C", mass=1.600e-02, atypes="OH", charge=-0.683)
+            # Search and add hydrogen to vacant atoms
+            mol_conn.add_hydrogen(type_add="OH", mass=1.008e-03, atypes="HO", charge=0.418)
+            mol_xyz = mol_conn.get_df()
+            structure.save_xyz(mol_xyz, "testOH")
+            # Adding PBC
+            mol_conn.addPBC(self.box, center=np.zeros(3))
+
+            conn_list.append(mol_conn)
+        
         # Create a new connectivity object with the new information.
         for mol in conn_list:
             newconnectivity.add_residue(mol)
@@ -329,6 +413,101 @@ class TOPOL:
             self.connectivity.addPBC(self.box, center=np.zeros(3))
             self.dfatoms = self.connectivity.get_df()
 
+    def _verify_atomTypes(self):
+        """Check the atom types with the modified atoms when adding new atoms."""
+        new_types = []
+        atoms_types = self.atoms_types.copy()
+        NatomsTypes = len(atoms_types)
+        modified_atoms = self.connectivity.modified_atoms
+        if len(modified_atoms) > 0:
+            for at in modified_atoms:
+                if modified_atoms[at] not in new_types:
+                    new_types.append(modified_atoms[at])
+
+            for i, atyp in enumerate(new_types):
+                atoms_types[i + NatomsTypes] = atyp
+
+        self.atoms_types = atoms_types
+        self.new_types = new_types
+
+    def get_atomstypesPot(self):
+        """Check that each type of atom contains an intermolecular van der waals potential."""
+        atoms_types = self.atoms_types
+        potentials = self.Intermol_potentials
+        AtomTypesPot = {}
+        not_reconized = []
+        types_num = {}
+        for at in atoms_types:
+            try:
+                AtomTypesPot[at] = {}
+                AtomTypesPot[at]["lj"] = potentials[at]
+                AtomTypesPot[at]["nomFF"] = atoms_types[at]["nomFF"]
+                types_num[atoms_types[at]["nomFF"]] = at
+
+            except IndexError:
+                not_reconized.append(at)
+                continue
+
+        for at in not_reconized:
+            if atoms_types[at]["nomFF"] in types_num:
+                # Check if the Van der Waals parameters are already added.
+                AtomTypesPot[at].update(AtomTypesPot[types_num[atoms_types[at]["nomFF"]]])
+                AtomTypesPot[at]["lj"] = re.sub(r"\d+\s+\d+", f"{at}  {at}", AtomTypesPot[at]["lj"])
+            else:
+                if atoms_types[at]["nomFF"] in POTENTIAL_par_OPLS:
+                    AtomTypesPot[at]["lj"] = POTENTIAL_par_OPLS[atoms_types[at]["nomFF"]].replace("ati", str(at))
+                    AtomTypesPot[at]["nomFF"] = atoms_types[at]["nomFF"]
+                else:
+                    print("Parameter not found:", at, atoms_types[at]["nomFF"])
+                    exit()
+
+        self.AtomTypesPot = AtomTypesPot
+
+    def check_newsFFpar(self):
+        """List the force field parameters from the newly added parameters."""
+        atypes = []
+        for at in self.AtomTypesPot:
+            atypes.append(self.AtomTypesPot[at]["nomFF"])
+
+        types_added = []
+        for par in self.ffparms:
+            if "bond_opls" in par:
+                types_added.append(tuple(par.split()[1:3]))
+
+        new_types = [at["nomFF"] for at in self.new_types]
+        for i, j in it.combinations(new_types, 2):
+            if (i, j) in types_added or (j, i) in types_added:
+                pass
+            elif i[0].upper() == "H" and j[0].upper() == "H":
+                pass
+            elif i == "HT" and j == "OH":
+                pass
+            elif j == "HT" and i == "OH":
+                pass
+            elif i == "CT" and j == "HO":
+                pass
+            elif j == "CT" and i == "HO":
+                pass
+            else:
+                try:
+                    self.ffparms.append(BONDS_par_OPLS[(i, j)])
+                    types_added.append((i, j))
+                except KeyError:
+                    self.ffparms.append(BONDS_par_OPLS[(j, i)])
+                    types_added.append((j, i))
+
+                # angles
+                for ang in ANGLES_par_OPLS:
+                    if i in ang or j in ang:
+                        if ANGLES_par_OPLS[ang] not in self.ffparms:
+                            self.ffparms.append(ANGLES_par_OPLS[ang])
+
+                # torsion
+                for dih in DIHEDRALS_par_OPLS:
+                    if i in dih or j in dih:
+                        if DIHEDRALS_par_OPLS[dih] not in self.ffparms:
+                            self.ffparms.append(DIHEDRALS_par_OPLS[dih])
+
     @decoTime
     def save_fatomes(self, name=None):
         """Save the fatomes in a file."""
@@ -360,20 +539,11 @@ class TOPOL:
         # header
         lines += header
 
+        self._verify_atomTypes()
+        atoms_types = self.atoms_types
         # Atoms types
         # ==============================
-        lines += "NbTypesAtomes %d\n" % len(self.atoms_types)
-
-        atoms_types = self.atoms_types
-        new_types = []
-        modified_atoms = self.connectivity.modified_atoms
-        if len(modified_atoms) > 0:
-            for at in modified_atoms:
-                if modified_atoms[at] not in new_types:
-                    new_types.append(modified_atoms[at])
-
-            for i, atyp in enumerate(new_types):
-                atoms_types[i + len(atoms_types)] = atyp
+        lines += "NbTypesAtomes %d\n" % len(atoms_types)
 
         for i in atoms_types:
             type_lines = f"* Description du type atomique    {i}\n"
@@ -390,7 +560,10 @@ class TOPOL:
 * Potentiels intermoleculaires 
 * ============================ 
 """
-        for pot in self.Intermol_potentials:
+        self.get_atomstypesPot()
+        AtomTypesPot = self.AtomTypesPot
+        for at in AtomTypesPot:
+            pot = AtomTypesPot[at]["lj"]
             lines += f"Potentiel {pot}\n"
 
         if self.comb_rules != "":
@@ -404,6 +577,7 @@ class TOPOL:
 * =============== 
 ChampDeForces
 """     
+        self.check_newsFFpar()
         ffparms = self.ffparms
         lines += "%d\n" % len(ffparms)
         for p in ffparms:

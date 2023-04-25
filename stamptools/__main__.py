@@ -230,9 +230,18 @@ csv file.",
         action="store_true"
     )
 
-    analysis.add_argument(
+    sysStructure = parser.add_argument_group(
+        "\033[1;36mStructural modification options\033[m")
+
+    sysStructure.add_argument(
         "--add_hydrogen",
         help="Reads a fatome and adds missing hydrogens to terminal carbon atoms.",
+        action="store_true"
+    )
+
+    sysStructure.add_argument(
+        "--add_OH",
+        help="Reads a fatome and adds an OH group to vacant terminal carbons.",
         action="store_true"
     )
 
@@ -322,6 +331,8 @@ elif args["top"] and args["xtc"]:
 
 elif args["fatomes"] and not args["donnees"]:
     print("Working with the system topology.")
+    fatomes = TOPOL(args["fatomes"])
+    print("FAtomes file:", fatomes.file)
 
 else:
     print("The state of the system must be defined.")
@@ -512,12 +523,27 @@ if args["rdf"] is not None:
     )
 
 
+# =============================================================================
+# Structural modifications
+# =============================================================================
+
 if args["add_hydrogen"]:
-    fatomes = TOPOL(args["fatomes"])
-    print("FAtomes file:", fatomes.file)
     fatomes.complete_with_H()
+    # NEW OPTION: ref
     # atomsref = list(range(0, 26))  # photochromo
     atomsref = [4, 10, 11, 12]
+    ###########################################################################
+    # NEW OPTION: center system (on/off)
+    fatomes.center_to(ref=atomsref, ref_type="atoms_ndx")
+    fatomes.export_xyz("translate_to")
+
+    # File
+    fatomes.save_fatomes()
+
+if args["add_OH"]:
+    fatomes.complete_with_OH()
+    atomsref = [4, 10, 11, 12]
+
     fatomes.center_to(ref=atomsref, ref_type="atoms_ndx")
     fatomes.export_xyz("translate_to")
 
