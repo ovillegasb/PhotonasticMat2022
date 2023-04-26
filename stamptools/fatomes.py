@@ -6,7 +6,6 @@ from molcraft import structure
 import itertools as it
 import numpy as np
 import pandas as pd
-import networkx as nx
 from datetime import datetime
 import re
 import os
@@ -19,29 +18,29 @@ cell_unit = os.path.join(location, "oplsaa.dat")
 
 # Some definitions
 POTENTIAL_par_OPLS = {
-    "OH": "LJ sigma 3.12 ang epsilon 0.066 kcal/mol rc 12.5 ang",
-    "HO": "LJ sigma 0.00 ang epsilon 0.000 kcal/mol rc 12.5 ang",
+    "OHopls": "LJ sigma 3.12 ang epsilon 0.066 kcal/mol rc 12.5 ang",
+    "HOopls": "LJ sigma 0.00 ang epsilon 0.000 kcal/mol rc 12.5 ang",
     "CT": "LJ sigma 3.50 ang epsilon 0.066 kcal/mol rc 12.5 ang",
     "HT": "LJ sigma 2.50 ang epsilon 0.030 kcal/mol rc 12.5 ang"
 }
 
 BONDS_par_OPLS = {
-    ("HO", "OH"): "bond_opls     HO  OH     0.945 ang   553.0 kcal/mol/ang2   0.0 -  0.0 -",
-    ("CT", "OH"): "bond_opls     CT  OH     1.410 ang   320.0 kcal/mol/ang2   0.0 -  0.0 -"
+    ("HOopls", "OHopls"): "bond_opls     HOopls  OHopls     0.945 ang   553.0 kcal/mol/ang2   0.0 -  0.0 -",
+    ("CT", "OHopls"): "bond_opls     CT  OHopls     1.410 ang   320.0 kcal/mol/ang2   0.0 -  0.0 -"
 }
 
 ANGLES_par_OPLS = {
-    ("CT", "OH", "OH"): "angle_opls     CT  OH  HO     108.5 degre  55.0  kcal/mol   0.0 -  0.0 -",
-    ("CM", "CT", "OH"): "angle_opls     CM  CT  OH     109.5 degre  50.0  kcal/mol   0.0 -  0.0 -",
-    ("HT", "CT", "OH"): "angle_opls     HT  CT  OH     109.5 degre  35.0  kcal/mol   0.0 -  0.0 -"
+    ("CT", "OHopls", "HOopls"): "angle_opls     CT  OHopls  HOopls     108.5 degre  55.0  kcal/mol   0.0 -  0.0 -",
+    ("CM", "CT", "OHopls"): "angle_opls     CM  CT  OHopls     109.5 degre  50.0  kcal/mol   0.0 -  0.0 -",
+    ("HT", "CT", "OHopls"): "angle_opls     HT  CT  OHopls     109.5 degre  35.0  kcal/mol   0.0 -  0.0 -"
 }
 
 # https://pubs-acs-org.inc.bib.cnrs.fr/doi/suppl/10.1021/ja9621760/suppl_file/ja11225.pdf
 DIHEDRALS_par_OPLS = {
-    ("CM", "CT", "OH", "HO"): "torsion_opls     CM  CT  OH  HO  -0.356 kcal/mol -0.174  kcal/mol   0.492  kcal/mol",  # amberTools 051
-    ("HT", "CT", "OH", "HO"): "torsion_opls     HT  CT  OH  HO   0.000 kcal/mol  0.000  kcal/mol   0.450  kcal/mol",  # oplsaa.dat
-    ("CM", "CM", "CT", "OH"): "torsion_opls     CM  CM  CT  OH   1.711 kcal/mol -0.500  kcal/mol   0.663  kcal/mol",
-    ("HM", "CM", "CT", "OH"): "torsion_opls     HM  CM  CT  OH   0.000 kcal/mol  0.000  kcal/mol   0.468  kcal/mol"
+    ("CM", "CT", "OHopls", "HOopls"): "torsion_opls     CM  CT  OHopls  HOopls  -0.356 kcal/mol -0.174  kcal/mol   0.492  kcal/mol",  # amberTools 051
+    ("HT", "CT", "OHopls", "HOopls"): "torsion_opls     HT  CT  OHopls  HOopls   0.000 kcal/mol  0.000  kcal/mol   0.450  kcal/mol",  # oplsaa.dat
+    ("CM", "CM", "CT", "OHopls"): "torsion_opls     CM  CM  CT  OHopls   1.711 kcal/mol -0.500  kcal/mol   0.663  kcal/mol",
+    ("HM", "CM", "CT", "OHopls"): "torsion_opls     HM  CM  CT  OHopls   0.000 kcal/mol  0.000  kcal/mol   0.468  kcal/mol"
 }
 
 Keywords = {}
@@ -388,9 +387,9 @@ class TOPOL:
             mol_conn.noPBC(self.box, center=np.zeros(3))
 
             # Search and add oxygens to vacant carbons
-            mol_conn.add_OH(type_add="terminal-C", mass=1.600e-02, atypes="OH", charge=-0.683)
+            mol_conn.add_OH(type_add="terminal-C", mass=1.600e-02, atypes="OHopls", charge=-0.683)
             # Search and add hydrogen to vacant atoms
-            mol_conn.add_hydrogen(type_add="OH", mass=1.008e-03, atypes="HO", charge=0.418)
+            mol_conn.add_hydrogen(type_add="OH", mass=1.008e-03, atypes="HOopls", charge=0.418)
             mol_xyz = mol_conn.get_df()
             structure.save_xyz(mol_xyz, "testOH")
             # Adding PBC
@@ -487,13 +486,13 @@ class TOPOL:
                 pass
             elif i[0].upper() == "H" and j[0].upper() == "H":
                 pass
-            elif i == "HT" and j == "OH":
+            elif i == "HT" and j == "OHopls":
                 pass
-            elif j == "HT" and i == "OH":
+            elif j == "HT" and i == "OHopls":
                 pass
-            elif i == "CT" and j == "HO":
+            elif i == "CT" and j == "HOopls":
                 pass
-            elif j == "CT" and i == "HO":
+            elif j == "CT" and i == "HOopls":
                 pass
             else:
                 try:

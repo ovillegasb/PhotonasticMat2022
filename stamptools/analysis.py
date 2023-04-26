@@ -357,6 +357,10 @@ def load_data(file, t="LNVT"):
         comment="#"
                       )
     data["Etot"] = data["Etot"] * N_A / 1000  # to kJ/mol
+    data["Epot"] = data["Epot"] * N_A / 1000  # to kJ/mol
+    data["Epot_intra"] = data["Epot_intra"] * N_A / 1000  # to kJ/mol
+    data["Epot_inter"] = data["Epot_inter"] * N_A / 1000  # to kJ/mol
+    data["Ekin"] = data["Ekin"] * N_A / 1000  # to kJ/mol
     data["time"] = data["time"] * 1e12  # to ps
     data["P"] = data["P"] * 1e-5  # to bar
 
