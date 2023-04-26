@@ -19,8 +19,10 @@ cell_unit = os.path.join(location, "oplsaa.dat")
 
 # Some definitions
 POTENTIAL_par_OPLS = {
-    "OH": "ati  ati LJ sigma 3.12 ang epsilon 0.066 kcal/mol rc 12.5 ang",
-    "HO": "ati  ati LJ sigma 0.00 ang epsilon 0.000 kcal/mol rc 12.5 ang"
+    "OH": "LJ sigma 3.12 ang epsilon 0.066 kcal/mol rc 12.5 ang",
+    "HO": "LJ sigma 0.00 ang epsilon 0.000 kcal/mol rc 12.5 ang",
+    "CT": "LJ sigma 3.50 ang epsilon 0.066 kcal/mol rc 12.5 ang",
+    "HT": "LJ sigma 2.50 ang epsilon 0.030 kcal/mol rc 12.5 ang"
 }
 
 BONDS_par_OPLS = {
@@ -260,7 +262,24 @@ class TOPOL:
         self.connects = connects
 
         self.atoms_types = atoms_types
+
+        pairsPot = {}
+        for pot in Intermol_potentials:
+            pot = pot.split()
+            iat = int(pot[0])
+            jat = int(pot[1])
+            itype = atoms_types[iat]["nomFF"]
+            jtype = atoms_types[jat]["nomFF"]
+            pars = "  ".join(pot[2:])
+
+            if (iat, itype) not in pairsPot:
+                pairsPot[(iat, itype)] = {}
+
+            if (jat, jtype) not in pairsPot[(iat, itype)]:
+                pairsPot[(iat, itype)][(jat, jtype)] = pars
+
         self.Intermol_potentials = Intermol_potentials
+        self.pairsPot = pairsPot
         self.comb_rules = comb_rules
         self.ffparms = ffparms
         self.ChargesMOD = ChargesMOD
@@ -433,41 +452,29 @@ class TOPOL:
     def get_atomstypesPot(self):
         """Check that each type of atom contains an intermolecular van der waals potential."""
         atoms_types = self.atoms_types
-        potentials = self.Intermol_potentials
-        AtomTypesPot = {}
-        not_reconized = []
-        types_num = {}
-        for at in atoms_types:
-            try:
-                AtomTypesPot[at] = {}
-                AtomTypesPot[at]["lj"] = potentials[at]
-                AtomTypesPot[at]["nomFF"] = atoms_types[at]["nomFF"]
-                types_num[atoms_types[at]["nomFF"]] = at
+        pairsPot = self.pairsPot
 
-            except IndexError:
-                not_reconized.append(at)
-                continue
+        for atom in atoms_types:
+            patom = (atom, atoms_types[atom]["nomFF"])
+            if patom not in pairsPot:
+                iatom = patom[0]
+                itype = patom[1]
+                if itype in POTENTIAL_par_OPLS:
+                    pairsPot[patom] = {}
+                    pairsPot[patom][patom] = POTENTIAL_par_OPLS[itype]
 
-        for at in not_reconized:
-            if atoms_types[at]["nomFF"] in types_num:
-                # Check if the Van der Waals parameters are already added.
-                AtomTypesPot[at].update(AtomTypesPot[types_num[atoms_types[at]["nomFF"]]])
-                AtomTypesPot[at]["lj"] = re.sub(r"\d+\s+\d+", f"{at}  {at}", AtomTypesPot[at]["lj"])
-            else:
-                if atoms_types[at]["nomFF"] in POTENTIAL_par_OPLS:
-                    AtomTypesPot[at]["lj"] = POTENTIAL_par_OPLS[atoms_types[at]["nomFF"]].replace("ati", str(at))
-                    AtomTypesPot[at]["nomFF"] = atoms_types[at]["nomFF"]
                 else:
-                    print("Parameter not found:", at, atoms_types[at]["nomFF"])
+                    print("Parameter not found:", iatom, itype)
                     exit()
 
-        self.AtomTypesPot = AtomTypesPot
+        self.pairsPot.update(pairsPot)
 
     def check_newsFFpar(self):
         """List the force field parameters from the newly added parameters."""
         atypes = []
-        for at in self.AtomTypesPot:
-            atypes.append(self.AtomTypesPot[at]["nomFF"])
+        pairsPot = self.pairsPot
+        for iat, itype in pairsPot:
+            atypes.append(itype)
 
         types_added = []
         for par in self.ffparms:
@@ -561,10 +568,13 @@ class TOPOL:
 * ============================ 
 """
         self.get_atomstypesPot()
-        AtomTypesPot = self.AtomTypesPot
-        for at in AtomTypesPot:
-            pot = AtomTypesPot[at]["lj"]
-            lines += f"Potentiel {pot}\n"
+        pairsPot = self.pairsPot
+        for patom1 in pairsPot:
+            for patom2 in pairsPot[patom1]:
+                pars = pairsPot[patom1][patom2]
+                iat = patom1[0]
+                jat = patom2[0]
+                lines += f"Potentiel  {iat}  {jat}  {pars}\n"
 
         if self.comb_rules != "":
             lines += "Regle_melange %s\n" % self.comb_rules
@@ -619,7 +629,7 @@ Zmatrice
 ModificationChargeDesAtomes e-
 """     
         ChargesMOD = self.ChargesMOD
-        lines += "%d\n" % (len(ChargesMOD) + len(self.connectivity.modified_atoms))
+        lines += "%d\n" % len(ChargesMOD)  # (len(ChargesMOD) + len(self.connectivity.modified_atoms))
         for le in ChargesMOD:
             lines += "%s\n" % le
 
