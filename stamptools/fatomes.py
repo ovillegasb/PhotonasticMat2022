@@ -17,6 +17,11 @@ cell_unit = os.path.join(location, "oplsaa.dat")
 
 
 # Some definitions
+
+NAMES_OPLS = [
+    "CT", "CM", "HT", "HM", "OHopls", "HOopls"
+]
+
 POTENTIAL_par_OPLS = {
     "OHopls": "LJ sigma 3.12 ang epsilon 0.066 kcal/mol rc 12.5 ang",
     "HOopls": "LJ sigma 0.00 ang epsilon 0.000 kcal/mol rc 12.5 ang",
@@ -67,6 +72,11 @@ atoms = re.compile(r"""
         (?P<y>[+-]?\d+\.\d+\w?[+-]?\d*)\s+      # Orthogonal coordinates for Y.
         (?P<z>[+-]?\d+\.\d+\w?[+-]?\d*)\s+      # Orthogonal coordinates for Z.
         """, re.X)
+
+
+def combRules_geom(par1, par2):
+    """Calculate the VDW parameters using the geometric combination rule."""
+    return np.sqrt(par1[0] * par2[0]), np.sqrt(par1[1] * par2[1])
 
 
 class TOPOL:
@@ -306,6 +316,45 @@ class TOPOL:
         print(f"Saved file: {file}")
 
     @decoTime
+    def noPBC(self, xyz=None, name="system_noPBC"):
+        """Return a system without periodic boundary conditions."""
+        print("No PBC system", end=" - ")
+        atoms_per_mol = self.atoms_per_mol
+        connectivity = self.connectivity
+
+        ###
+        newconnectivity = structure.connectivity()
+        conn_list = []
+        for resid in atoms_per_mol:
+            atoms = atoms_per_mol[resid]["index"]
+
+            # Extracts the connectivity of the residue.
+            mol_conn = connectivity.sub_connect(atoms)
+            mol_conn.simple_at_symbols()
+
+            # Reset index and symbols, and add mass
+            mol_conn = mol_conn.reset_nodes()
+
+            # If the residue has only one atom, it continues to the following.
+            if len(atoms) == 1:
+                conn_list.append(mol_conn)
+                continue
+
+            # whole molecule
+            mol_conn.noPBC(self.box, center=np.zeros(3))
+
+            # ncoords.append(mol_xyz)
+            conn_list.append(mol_conn)
+            
+        # Create a new connectivity object with the new information.
+        for mol in conn_list:
+            newconnectivity.add_residue(mol)
+
+        ncoords = newconnectivity.get_df()
+        structure.save_xyz(ncoords, name=name)
+        print(f"File save: {name}.xyz", end=" - ")
+
+    @decoTime
     def complete_with_H(self):
         """Verify and complete molecules missing terminal hydrogens."""
         print("Adding H atom", end=" - ")
@@ -467,6 +516,20 @@ class TOPOL:
                     exit()
 
         self.pairsPot.update(pairsPot)
+
+        # Find the cross terms by applying the geometric combination rule.
+        for (ati, typi), (atj, typj) in it.combinations(self.pairsPot, 2):
+            if typi in NAMES_OPLS and typj in NAMES_OPLS:
+                if (atj, typj) not in self.pairsPot[(ati, typi)]:
+                    lj_pari = self.pairsPot[(ati, typi)][(ati, typi)]
+                    lj_parj = self.pairsPot[(atj, typj)][(atj, typj)]
+
+                    newPar = combRules_geom(
+                        (float(lj_pari.split()[2]), float(lj_pari.split()[5])),
+                        (float(lj_parj.split()[2]), float(lj_parj.split()[5]))
+                    )
+
+                    self.pairsPot[(ati, typi)][(atj, typj)] = "LJ  sigma  %.3f  ang  epsilon  %.3f  kcal/mol  rc  12.5  ang" % newPar
 
     def check_newsFFpar(self):
         """List the force field parameters from the newly added parameters."""

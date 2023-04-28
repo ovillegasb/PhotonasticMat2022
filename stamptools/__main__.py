@@ -245,6 +245,12 @@ csv file.",
         action="store_true"
     )
 
+    sysStructure.add_argument(
+        "--noPBC",
+        help="Reads the FAtome or a frame and returns a coordinate file without PBC.",
+        action="store_true"
+    )
+
     gromacs = parser.add_argument_group(
         "\033[1;36mAnalysis GROMACS options\033[m")
 
@@ -549,6 +555,9 @@ if args["add_OH"]:
 
     # File
     fatomes.save_fatomes()
+
+if args["noPBC"]:
+    fatomes.noPBC()
 
 
 if args["top"] is not None and args["xtc"] is not None:
