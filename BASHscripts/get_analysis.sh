@@ -14,6 +14,7 @@ sleep 5
 
 # COLORS
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 
@@ -39,27 +40,41 @@ do
         echo "Isomer: ${iso} - replica ${r}"
         
         # UV-VIS sampling analysis
-        ## python -m stamptools -d DONNEES.in --mol_traj 0 --format gro
-        ## geomSampling_2gaus -s mol.gro -f traj_comp_mol_0.xtc -b 500 -e 2500 -sol PB -isomer $isomer --init_t 500.
+	echo -e "${BLUE}UV-VIS sampling analysis${NC}"
+	sleep 5
+        python -m stamptools -d DONNEES.in --mol_traj 0 --format gro
+        /home/ovillegas/.local/bin/geomSampling_2gaus -s mol.gro -f traj_comp_mol_0.xtc -dt 1.0  -b 500 -e 2500 -sol PB -isomer $iso --init_t 500.
+	sleep 5
 
         # Geometry analysis
-        ##python -m stamptools -d DONNEES.in --mol_traj 0
-        vmd mol_0_traj.xyz -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_geometry.tcl
+	echo -e "${BLUE}Geometry analysis${NC}"
+	sleep 5
+	python -m stamptools -d DONNEES.in --mol_traj 0
+        vmd mol_0_traj.xyz -dispdev text -e ~/.gitproyects/PhotonasticMat/VMDscripts/save_geometry.tcl
+	sleep 5
 
         # RDF all atoms analysis
-        vmd GRO/PasDeCalcul__Iteration_*.gro -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_RDF.tcl
+	echo -e "${BLUE}RDF all atoms analysis${NC}"
+	sleep 5
+        vmd GRO/PasDeCalcul__Iteration_*.gro -dispdev text -e ~/.gitproyects/PhotonasticMat/VMDscripts/save_RDF.tcl
+	sleep 5
 
         # Polymer properties
         # python -m stamptools -d DONNEES.in --molprop
         # python -m stamptools -d DONNEES.in -mref 0 --closestDist
 
         # GRO files
-        ##cd GRO
-        ##make_traj_gmx
-        ### MSD
-        ##echo "PHO" | gmx msd -s confout.gro -f traj_comp.xtc -n index.ndx -o ../msd.xvg -xvg none -mol
-        ##cd ..
+        cd GRO
+        make_traj_gmx
+        ## MSD
+	echo -e "${BLUE}MSD analysis${NC}"
+	sleep 5
+        echo "PHO" | gmx msd -s confout.gro -f traj_comp.xtc -n index.ndx -o ../msd.xvg -xvg none -mol
+        cd ..
+	sleep 5
 
+	sbatch ~/scripts/spython.sh python -m stamptools -d DONNEES.in --molprop
+	sbatch ~/scripts/spython.sh python -m stamptools -d DONNEES.in -mref 0 --closestDist
         echo "============================="
         cd ../
     done

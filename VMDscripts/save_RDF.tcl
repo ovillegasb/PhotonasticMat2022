@@ -3,7 +3,7 @@
 # vmd *.gro -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_RDF.tcl
 
 # load functions
-source /home/ovillegas/GITPROYECTS/PhotonasticMat/VMDscripts/FunctionsPhotoN.tcl
+source ~/.gitproyects/PhotonasticMat/VMDscripts/FunctionsPhotoN.tcl
 
 
 # call function

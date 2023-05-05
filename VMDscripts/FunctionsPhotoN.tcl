@@ -44,7 +44,7 @@ proc save_GEOMETRY_STAMP {} {
     set Nframes [molinfo 0 get numframes]
     set ofile [open "Geometry_mol.csv" w]
     puts $ofile "frame,r_cc,r_ar_1,r_ar_2,d_cnnc,d_ccnn_1,d_ccnn_2,d_ccnn_3,d_ccnn_4"
-    for {set i 1} {$i < $Nframes} {incr i} {
+    for {set i 0} {$i < $Nframes} {incr i} {
         puts $ofile "$i,[lindex $r_cc $i],[lindex $r_ar_1 $i],[lindex $r_ar_2 $i],[lindex $d_cnnc $i],[lindex $d_ccnn_1 $i],[lindex $d_ccnn_2 $i],[lindex $d_ccnn_3 $i],[lindex $d_ccnn_4 $i]"
     }
     close $ofile

@@ -856,7 +856,7 @@ def gen_centered_traj(
             mol_conn.simple_at_symbols()
 
             # Search and add hydrogen to vacant atoms
-            mol_conn.add_hydrogen(box, type_add="terminal")
+            mol_conn.add_hydrogen(type_add="terminal-C")
             new_mol_xyz = mol_conn.get_df()
             ncoords.append(new_mol_xyz)
             # ndf = mol_conn.get_df()
@@ -895,7 +895,7 @@ def mol_traj_analysis(index, mol_ndx, connectivity, traj, box_in_frame, o_format
         mol_conn.simple_at_symbols(add_mass=True)
 
         # Search and add hydrogen to vacant atoms
-        mol_conn.add_hydrogen(box, type_add="terminal")
+        mol_conn.add_hydrogen(type_add="terminal-C")
         new_mol_xyz = mol_conn.get_df()
 
         cm = center_of_mass(
@@ -914,7 +914,7 @@ def mol_traj_analysis(index, mol_ndx, connectivity, traj, box_in_frame, o_format
             new_mol_xyz["resname"] = "MOL"
             new_mol_xyz["resid"] = index + 1
             # CHAGE ########
-            time = i * 2.5 + 500
+            time = i * 1.0 + 501.0
             ################
             save_gro(new_mol_xyz, name=name, box=box, time=time)
 
@@ -1009,7 +1009,7 @@ def mol_traj_cut_distance(traj, atoms_per_mol, top, box, connectivity, ref, rcut
             mol_conn.simple_at_symbols()
 
             # Search and add hydrogen to vacant atoms
-            mol_conn.add_hydrogen(box, type_add="terminal")
+            mol_conn.add_hydrogen(type_add="terminal-C")
             new_mol_xyz = mol_conn.get_df()
             ncoords.append(new_mol_xyz)
             

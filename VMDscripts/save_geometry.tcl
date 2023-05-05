@@ -3,7 +3,7 @@
 
 
 # load functions
-source /home/ovillegas/GITPROYECTS/PhotonasticMat/VMDscripts/FunctionsPhotoN.tcl
+source /home/ovillegas/.gitproyects/PhotonasticMat/VMDscripts/FunctionsPhotoN.tcl
 
 # load the labels and arrays
 distances_STAMP

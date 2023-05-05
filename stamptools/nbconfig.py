@@ -253,9 +253,19 @@ def dnorm(values):
 def get_spectre_info(logs_files):
     """."""
     data = {}
+    info = []
     
     for i, file in enumerate(logs_files):
         data[i] = read_UVVis(file)
+        metadata = file.split("/")[4:]
+        # print(i, metadata[0], metadata[1], metadata[-1].split(".")[-2].split("_")[-1])
+        info.append({
+            "index": i,
+            "isomer": metadata[0],
+            "replica": int(metadata[1].split("_")[-1]),
+            "frame": int(metadata[-1].split(".")[-2].split("_")[-1])
+        })
+        # print(file.split("/")[-1].split(".")[-2].split("_")[-1])
         
     print("Number of files analyzed:", len(data))
     
@@ -270,8 +280,13 @@ def get_spectre_info(logs_files):
     spectra = np.array(spectra).mean(axis=0)
     w_s1 = np.array(w_s1)
     w_s2 = np.array(w_s2)
+
+    dfinfo = pd.DataFrame(info)
+    dfinfo.set_index("index", inplace=True)
+    dfinfo["s1"] = w_s1
+    dfinfo["s2"] = w_s2
     
-    return spectra, w_s1, w_s2
+    return spectra, dfinfo
 
 
 def showInfo():
