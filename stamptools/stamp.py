@@ -105,12 +105,12 @@ class STAMP:
                         boxs.append(line)
                         break
 
-        return np.array(boxs).astype(np.float)
+        return np.array(boxs).astype(np.float64)
 
     @property
     def vol(self):
         """Volume (nm3) from xyz file stamp."""
-        boxs = self.box_in_time
+        boxs = self.box_in_frame
         return boxs[:, 0] * boxs[:, 1] * boxs[:, 2] * 1e-3
 
     @property
