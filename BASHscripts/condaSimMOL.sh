@@ -16,6 +16,11 @@ conda install -c conda-forge/label/cf202003 nodejs
 jupyter labextension install nglview-js-widgets
 jupyter labextension install @jupyter-widgets/jupyterlab-manager jupyter-nglview-jsmol
 
+jupyter labextension update --all
+jupyter labextension list
+jupyter labextension install @jupyterlab/celltags
+jupyter serverextension enable --py jupyterlab --sys-prefix
+
 conda install mdanalysis
 
 # Others

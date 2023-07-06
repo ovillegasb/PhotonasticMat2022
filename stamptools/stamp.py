@@ -106,7 +106,7 @@ class STAMP:
                         boxs.append(line)
                         break
 
-        return np.array(boxs).astype(np.float)
+        return np.array(boxs).astype(np.float64)
 
     @property
     def vol(self):
