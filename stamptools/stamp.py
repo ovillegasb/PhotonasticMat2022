@@ -70,6 +70,7 @@ class STAMP:
 
         # Files xyz
         self.XYZs = self._xyz_list()
+        print("Number of frames", len(self.XYZs))
         self.b_frame = 0
         self.e_frame = None
         # if load_traj:
@@ -110,7 +111,7 @@ class STAMP:
     @property
     def vol(self):
         """Volume (nm3) from xyz file stamp."""
-        boxs = self.box_in_time
+        boxs = self.box_in_frame
         return boxs[:, 0] * boxs[:, 1] * boxs[:, 2] * 1e-3
 
     @property
