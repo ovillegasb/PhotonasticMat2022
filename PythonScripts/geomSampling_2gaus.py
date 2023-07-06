@@ -84,7 +84,7 @@ def options():
 
     analysis.add_argument(
         "-sol", "--solvent",
-        help="Additional comments for solvent.",
+        help="Additional comments for solvent, example: Tetrahidrofuran and CarbonTetraChloride",
         type=str,
         default=""
     )
@@ -190,7 +190,7 @@ def main():
                 basis_set="6-311+g(d,p)",
                 route_parameters={
                     "TD": "(NStates=6)",
-                    "SCRF": "(Solvent=CarbonTetraChloride)"
+                    "SCRF": "(Solvent=%s)" % solvent
                 },
                 link0_parameters={
                     "%mem": "8GB",
