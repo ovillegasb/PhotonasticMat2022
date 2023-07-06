@@ -834,7 +834,7 @@ def gen_centered_traj(
         print("The output foler was already created")
         
     for frame, coord in enumerate(traj):
-        name = "centered_mol_%04d" % frame
+        name = "centered_mol_%08d" % frame
         
         resid = [ref] + list(traj_resid_in_r["idx"][traj_resid_in_r["frame"] == frame].values)
         center = traj_center_ref[frame]
@@ -879,7 +879,7 @@ def mol_traj_analysis(index, mol_ndx, connectivity, traj, box_in_frame, o_format
     print("Gen trajectory for a mol, resid: ", index, end=" - ")
     name_last = ""
     for i, xyz in enumerate(traj):
-        name = "mol_%d_%005d" % (index, i)
+        name = "mol_%d_%08d" % (index, i)
         box = box_in_frame[i][0:3]
 
         mol_xyz = xyz.loc[mol_ndx["index"], :]
@@ -921,8 +921,8 @@ def mol_traj_analysis(index, mol_ndx, connectivity, traj, box_in_frame, o_format
         name_last = name
 
     if o_format == "xyz":
-        os.system(f"cat mol_{index}_0* > mol_{index}_traj.xyz")
-        os.system(f"rm mol_{index}_0*")
+        os.system(f"cat mol_{index}_* > mol_traj_{index}.xyz")
+        os.system(f"rm mol_{index}_*")
     elif o_format == "gro":
         print(f"Last frame: {name_last}", end=" - ")
         os.system(f"cp {name_last}.gro mol.gro")
@@ -957,7 +957,7 @@ def mol_traj_cut_distance(traj, atoms_per_mol, top, box, connectivity, ref, rcut
         print("The output foler was already created")
 
     for frame, coord in enumerate(traj):
-        name = "mol_around_%04d" % frame
+        name = "mol_around_%08d" % frame
         atoms_ref = atoms_per_mol[ref]["index"]
         mol_conn = connectivity.sub_connect(atoms_ref)
         mol_ref = coord.loc[atoms_ref, :]
