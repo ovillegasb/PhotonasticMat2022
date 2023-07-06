@@ -145,7 +145,7 @@ def options():
         "-b", "--b",
         help="Time of first frame to read from trajectory (default unit ps).",
         type=float,
-        default=0
+        default=0.0
     )
 
     analysis.add_argument(
@@ -284,12 +284,18 @@ csv file.",
 def read_traj(system, **kwargs):
     """Read the trajectory for specific limits in time (ps)."""
     time_per_frame = system.time_per_frame
-    b = time_per_frame[time_per_frame["time"] >= kwargs["b"]].index[0]
-    b = time_per_frame[time_per_frame["time"] >= kwargs["b"]].index[0]
+    if kwargs["b"] > 0.0:
+        b = time_per_frame[time_per_frame["time"] >= kwargs["b"]].index[0]
+        b = int(b)
+    else:
+        b = 0
     if kwargs["e"] is not None:
         e = list(time_per_frame[time_per_frame["time"] <= kwargs["e"]].index)[-1]
+        e = int(e)
     else:
         e = kwargs["e"]
+
+    print("Time init:", b, "Time end",e)
 
     return system.get_traj(b=b, e=e)
 
