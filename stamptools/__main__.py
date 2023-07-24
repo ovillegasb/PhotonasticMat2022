@@ -295,7 +295,7 @@ def read_traj(system, **kwargs):
     else:
         e = kwargs["e"]
 
-    print("Time init:", b, "Time end",e)
+    print("Time init:", b, "Time end", e)
 
     return system.get_traj(b=b, e=e)
 

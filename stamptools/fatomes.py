@@ -1,7 +1,7 @@
 """Module to define the FATOME class."""
 
 from stamptools.analysis import decoTime, change_atsb
-from stamptools.analysis import center_of_mass, translate_to
+from stamptools.analysis import center_of_mass_polar, translate_to
 from molcraft import structure
 import itertools as it
 import numpy as np
@@ -464,7 +464,11 @@ class TOPOL:
             print("Reference is atoms index", end=" - ")
             dfref = dfatoms.loc[ref, :]
             ref_xyz = dfref.loc[:, ["x", "y", "z"]].values
-            center = center_of_mass(ref_xyz, np.ones(ref_xyz.shape[0]))
+            center = center_of_mass_polar(
+                ref_xyz,
+                self.box[0:3],
+                np.ones(ref_xyz.shape[0]))
+
             dfatoms.loc[:, ["x", "y", "z"]] = translate_to(
                 dfatoms.loc[:, ["x", "y", "z"]].values,
                 center,

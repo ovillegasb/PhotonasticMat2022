@@ -213,6 +213,18 @@ def center_of_mass(coords, masses):
     return np.sum(coords * masses[:, np.newaxis], axis=0) / masses.sum()
 
 
+def center_of_mass_polar(coords, box, masses):
+    """Compute the center of mass, the mass weighterd barycenter."""
+    theta_i = coords / box * 2 * np.pi
+    xi_i = np.cos(theta_i)
+    eta_i = np.sin(theta_i)
+    xi_m = np.sum(xi_i * masses[:, np.newaxis], axis=0) / masses.sum()
+    eta_m = np.sum(eta_i * masses[:, np.newaxis], axis=0) / masses.sum()
+    theta_m = np.arctan2(-eta_m, -xi_m) + np.pi
+    
+    return box * theta_m / 2 / np.pi
+
+
 def get_properies_inFrame(frame, n_frame, molecules, top, connectivity, box):
     """Return the calculated properties for a particular frame."""
     lines = ""
@@ -243,7 +255,12 @@ def get_properies_inFrame(frame, n_frame, molecules, top, connectivity, box):
         line += f"{G.max_distance:.2f},"
 
         # Center of mass
-        mol_cm = center_of_mass(coord, masses)
+        mol_cm = center_of_mass_polar(
+            dfcoord.loc[:, ["x", "y", "z"]].values,
+            box[0:3],
+            masses
+        )
+
         line += f"{mol_cm[0]:.3f},"
         line += f"{mol_cm[1]:.3f},"
         line += f"{mol_cm[2]:.3f}"

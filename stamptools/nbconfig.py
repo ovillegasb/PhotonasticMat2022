@@ -289,7 +289,7 @@ def dnorm(values):
     return norm.pdf(values, values.mean(), values.std())
 
 
-def get_spectre_info(logs_files, dtype="cont"):
+def get_spectre_info(logs_files, dtype="cont", sigma=0.4):
     """."""
     data = {}
     info = []
@@ -345,7 +345,7 @@ def get_spectre_info(logs_files, dtype="cont"):
     f_s6 = []
 
     for i in data:
-        spectra.append(epsilon_tot(w_nm, data[i]))
+        spectra.append(epsilon_tot(w_nm, data[i], sigma))
         w_s1.append(data[i].loc[0, "wl"])
         w_s2.append(data[i].loc[1, "wl"])
         w_s3.append(data[i].loc[2, "wl"])

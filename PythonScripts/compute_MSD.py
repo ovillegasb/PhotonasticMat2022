@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 # -*- coding=utf-8 -*-
 
+"""Compute the MSD using the MDAnlysis module."""
+
 import argparse
 import numpy as np
 import MDAnalysis as mda
 import MDAnalysis.analysis.msd as msd
 import pandas as pd
+
 
 def options():
     """Generate command line interface."""
@@ -48,8 +51,14 @@ def options():
         default="msd.csv"
     )
 
-    return vars(parser.parse_args())
+    fileinput.add_argument(
+        "--select",
+        help="Selection type VMD",
+        nargs="+",
+        default=["index", "0" "to" "25"]
+    )
 
+    return vars(parser.parse_args())
 
 
 def main():
@@ -67,7 +76,7 @@ def main():
     universe = mda.Universe(top, traj, dt=dt)
 
     # Select Photochrome
-    select = "index 0 to 25"
+    select = " ".join(args["select"])  # "index 0 to 25"
 
     # Class MSD
     MSD = msd.EinsteinMSD(universe, select=select, msd_type='xyz', fft=True)
@@ -76,14 +85,13 @@ def main():
     MSD.run()
 
     # get msd
-    msd_data =  MSD.results.timeseries
+    msd_data = MSD.results.timeseries
     
     nframes = MSD.n_frames
-    lagtimes = np.arange(nframes)*dt # make the lag-time axis
+    lagtimes = np.arange(nframes)*dt  # make the lag-time axis
 
     dfmsd = pd.DataFrame({"time": lagtimes, "msd": msd_data})
     dfmsd.to_csv(out, float_format="%e", index=False)
-
 
 
 if __name__ == '__main__':

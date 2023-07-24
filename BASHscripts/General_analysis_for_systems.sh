@@ -74,3 +74,42 @@ gmx angle -f traj_comp.xtc -n index.ndx -type dihedral -od angdist.xvg -ov angav
 
 # Translate system
 echo 0 | gmx trjconv -f traj_comp.xtc -s confout.gro -o traj_translated.xtc -trans -3. -3. 3. -pbc atom
+
+# New MSD 
+# method STAMP
+cp `ls PasDeCalcul__Iteration_* | tail -n 1` confout.gro
+rm -fv traj.gro
+cat PasDeCalcul__Iteration_*.gro > traj.gro
+echo 0 | gmx trjconv -f traj.gro -s confout.gro -o traj_comp.xtc -pbc nojump
+python ~/.gitproyects/PhotonasticMat/PythonScripts/compute_MSD.py -f traj_comp.xtc -s confout.gro -dt 0.001 -o ../msd.csv
+rm -v traj.gro
+
+# method GROMACS
+rm -fv traj_nojump.gro
+echo 0 | gmx trjconv -f traj_comp.xtc -s confout.gro -o traj_nojump.xtc -pbc nojump
+python ~/.gitproyects/PhotonasticMat/PythonScripts/compute_MSD.py -f traj_comp.xtc -s confout.gro -dt 0.001 -o ../msd.csv
+
+# MSD from center of mass
+# stamp
+python ~/.gitproyects/PhotonasticMat/PythonScripts/CMtraj.py STAMP DONNEES.in
+echo 0 | gmx trjconv -f traj_cm.gro -s confout_cm.gro -o traj_nojump_cm.xtc -pbc nojump
+python ~/.gitproyects/PhotonasticMat/PythonScripts/compute_MSD.py -f traj_nojump_cm.xtc -s confout_cm.gro -dt 1.0 -o msd_cm.csv --select resid 1
+# gro
+python ~/.gitproyects/PhotonasticMat/PythonScripts/CMtraj.py GRO confout.gro traj_comp.xtc
+echo 0 | gmx trjconv -f traj_cm.gro -s confout_cm.gro -o traj_nojump_cm.xtc -pbc nojump
+python ~/.gitproyects/PhotonasticMat/PythonScripts/compute_MSD.py -f traj_nojump_cm.xtc -s confout_cm.gro -dt 1.0 -o msd_cm.csv --select resid 1
+
+
+# ADD Oh to FAtomes
+mkdir 7_eq3_0
+python -m stamptools -f FAtomes.in --add_OH
+# for i in {2..4}; do mkdir 7_eq3_${i}; cd 7_eq3_${i}/; cp ../6_prod_${i}/FAtomes.in .; python -m stamptools -f FAtomes.in --add_OH; cp ../7_eq3_0/DONNEES.in .; sbatch ~/scripts/stamp.sh DONNEES.in; cd ..; done
+
+mkdir 8_solOH_NPT_0
+cd 8_solOH_NPT_0
+cp ../7_eq3_0/FAtomes_modif.in FAtomes.in  # Modificar reatividad
+cp ../8_solOH_NPT_0/DONNEES.in .
+cp ../8_solOH_NPT_0/stamp.sh .
+ls ../7_eq3_0/PROTS/* | tail -n 1 > DerniereProtection
+
+cat Stamp.log | grep "Minimum global"
