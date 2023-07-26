@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 from scipy.constants import e, h, c, k
 from scipy.stats import norm
+from stamptools.analysis import load_log
 
 """ Matplotlib tools. """
 
@@ -85,12 +86,49 @@ POLPROP = {
 """ Some Functions. """
 
 
-def rot(x):
+def rot(x, deg=0.0):
     """Rotate the negative angles by 360 degrees."""
-    if x < 0:
+    if x < deg:
         return x + 360
     else:
         return x
+
+
+def format_time(seconds):
+    """Convert seconds to formated time."""
+    minutes, seconds = divmod(int(seconds), 60)
+    hours, minutes = divmod(minutes, 60)
+    days, hours = divmod(hours, 24)
+    return f"{days:02d}:{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+def status_logs(file):
+    """Return CPU time information from the log."""
+    logInfo, status = load_log(file, use_xyz=False)
+    # logInfo["time"] *= 1e12 # ps
+    
+    cpu = logInfo["cpu"].values
+    peaks, _ = find_peaks(cpu, distance=150)
+    last_peak = len(cpu)- 1
+    peaks = np.append(peaks, last_peak)
+    
+    time_secs = int(sum(cpu[peaks]))
+    formatted_time = format_time(time_secs)
+    
+    return {
+        "cpu": cpu,
+        "peaks": peaks,
+        "simulationTime": logInfo["time"].values[-1],
+        "elapsedTime": formatted_time,
+        "status": status
+    }
+
+
+def isFinished(x, color):
+    """Return a color."""
+    #   f"background: {color};"
+    #   f"color: {color};"
+    return np.where(x == "finished", f"background: {color};", None)
 
 
 def toTime(frame, freq=1, t0=0.0):
