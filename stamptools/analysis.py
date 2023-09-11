@@ -15,6 +15,8 @@ from scipy.spatial.distance import cdist
 from molcraft.clusters import GyrationTensor
 from multiprocessing import Pool
 
+NUMPROC = 12
+
 
 def show_Methodology():    
     """Print proposed methodology for performing analysis."""
@@ -41,7 +43,7 @@ or t="LNVT"
 """ Regular expression that extracts matrix XYZ """
 atoms = re.compile(r"""
         ^\s*
-        (?P<atsb>[A-Za-z]+\d?\d?)\s+      # Atom name.
+        (?P<atsb>[A-Za-z]+\d?\d?[A-Za-z]*)\s+      # Atom name.
         (?P<x>[+-]?\d+\.\d+\w?[+-]?\d*)\s+           # Orthogonal coordinates for X.
         (?P<y>[+-]?\d+\.\d+\w?[+-]?\d*)\s+           # Orthogonal coordinates for Y.
         (?P<z>[+-]?\d+\.\d+\w?[+-]?\d*)\s+           # Orthogonal coordinates for Z.
@@ -326,7 +328,7 @@ def traj_analysis(ndx_mol, top, traj, box_in_frame, connectivity, b=0, reset=Tru
         )
 
     lines = ""
-    with Pool() as pool:
+    with Pool(processes=NUMPROC) as pool:
         for lines_frame in pool.starmap(get_properies_inFrame, arguments):
             lines += lines_frame
     
@@ -663,7 +665,7 @@ def get_dist_from_closest_atom(resid, ndx_mol, top, traj, box_in_frame, connecti
         )
 
     lines = ""
-    with Pool() as pool:
+    with Pool(processes=NUMPROC) as pool:
         for lines_frame in pool.starmap(closest_distance_inFrame, arguments):
             lines += lines_frame
 

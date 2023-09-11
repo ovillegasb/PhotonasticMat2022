@@ -9,6 +9,11 @@ from pymatgen.io.gaussian import GaussianInput
 import os
 import glob
 
+SOLVETS = {
+    "THF": "THF",
+    "PB": "CarbonTetraChloride"
+}
+
 
 def options():
     """Generate command line interface."""
@@ -145,23 +150,25 @@ def main():
     dt = args["dt"]
     init_t = args["init_t"]
 
-    print("Time >=", b, "ps", end=" ")
+    print("Time >=", b, "ps", end=" - ")
     b -= init_t
     begin = int(b / dt)
-    print("Step ", begin)
+    print("index:", begin)
 
-    print("Time <", e, "ps", end=" ")
+    print("Time <", e, "ps", end=" - ")
     e -= init_t
     end = int(e / dt)
-    print("Step ", end)
+    print("index:", end)
 
     print("Resid:", resid)
 
     if top.endswith("gro"):
         # Reads the system trajectory
         t = md.load(trj, top=top)
+        print("Total frames in trajectory:", t.n_frames)
 
         traj = t[begin:end]
+        print("Frames selected:", traj.n_frames)
         frames_sample = np.random.choice(
             range(len(traj)), samples_number, replace=False
         )
@@ -190,7 +197,7 @@ def main():
                 basis_set="6-311+g(d,p)",
                 route_parameters={
                     "TD": "(NStates=6)",
-                    "SCRF": "(Solvent=%s)" % solvent
+                    "SCRF": "(Solvent=%s)" % SOLVETS[solvent]
                 },
                 link0_parameters={
                     "%mem": "8GB",

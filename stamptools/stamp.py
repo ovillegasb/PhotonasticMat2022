@@ -12,6 +12,8 @@ from stamptools.analysis import load_data, read_fatomes, save_plot, load_log
 from molcraft import structure
 from multiprocessing import Pool
 
+NUMPROC = 12
+
 setplots = {
     "T": {
         "xlb": "time (ps)", "ylb": "Temperature (K)",
@@ -26,6 +28,20 @@ setplots = {
         "name": "etot", "color": "b"
         }
 }
+
+toElements = {
+    "OHopls": "oh",
+    "HOopls": "ho",
+    "CTO": "CT",
+    "H1O": "HT"
+}
+
+
+def change_toType(at):
+    try:
+        return toElements[at]
+    except KeyError:
+        return at
 
 
 class STAMP:
@@ -60,6 +76,8 @@ class STAMP:
             topology, box, connects = read_fatomes(
                 os.path.join(hw_path, self.fatomes)
             )
+
+            topology["atsb"] = topology["atsb"].apply(change_toType)
 
             self.topology = topology
             self.box = box
@@ -143,7 +161,7 @@ class STAMP:
         t0 = time.time()
         print("Loading the system trajectory", end=" - ")
 
-        with Pool() as pool:
+        with Pool(processes=NUMPROC) as pool:
             for xyz in pool.map(structure.load_xyz, self.XYZs[b:e]):
                 traj.append(xyz)
 

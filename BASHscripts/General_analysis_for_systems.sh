@@ -25,6 +25,9 @@ vmd mol_0_traj.xyz -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save
 vmd XYZ/PasDeCalcul_Iteration_0* -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_RDF_data.tcl
 
 ## XTC from XYZs STAMP
+python ~/GITPROYECTS/PhotonasticMat/PythonScripts/getConfout.py ../DONNEES.in
+cat PasDeCalcul__Iteration_*.gro > traj.gro
+echo 0 | gmx trjconv -f traj.gro -s confout.gro -o traj_comp.xtc -pbc nojump
 vmd GRO_files/confout.gro GRO_files/traj_comp.xtc -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_RDF_data_GMX2.tcl
 
 # Geometry analysis
@@ -49,7 +52,7 @@ cat PasDeCalcul__Iteration_* >> traj.gro
 # cp PasDeCalcul__Iteration_10000000.gro confout.gro
 python ~/GITPROYECTS/PhotonasticMat/PythonScripts/getConfout.py ../DONNEES.in
 
-gmx trjconv -f traj.gro -o traj_comp.xtc
+gmx trjconv -f traj.gro -o traj_comp.xtc -pbc nojump
 echo -e "r 1\nq\n" | gmx make_ndx -f confout.gro -o index.ndx
 echo -e "3 \n 3 \n" | gmx editconf -f confout.gro -o mol.gro -n index.ndx -c
 echo -e "3\n 3\n" | gmx trjconv -f traj_comp.xtc -s confout.gro -o traj_nojump_mol.xtc -center -pbc nojump -n index.ndx

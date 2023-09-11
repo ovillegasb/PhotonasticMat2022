@@ -4,6 +4,7 @@
 """Generates a GRO trajectory of the centers of mass of the molecules."""
 
 import sys
+import os
 import pandas as pd
 import numpy as np
 import mdtraj as md
@@ -67,15 +68,24 @@ def center_of_mass(coords, box, masses):
     xi_m = np.sum(xi_i * masses[:, np.newaxis], axis=0) / masses.sum()
     eta_m = np.sum(eta_i * masses[:, np.newaxis], axis=0) / masses.sum()
     theta_m = np.arctan2(-eta_m, -xi_m) + np.pi
-    
+
     return box * theta_m / 2 / np.pi
 
 
 output = "traj_cm.gro"
 conf = "confout_cm.gro"
 lines = ""
-with open(output, "w") as GRO:
-    GRO.write(lines)
+begin = 0
+
+if os.path.exists(output):
+    print(f"Trajectory file {output} exist")
+    traj_cm = md.load(output, top=conf)
+    print("Number of frames analysed:", traj_cm.n_frames)
+    begin = traj_cm.n_frames - 1
+
+else:
+    with open(output, "w") as GRO:
+        GRO.write(lines)
 
 if sysType == "STAMP":
     system = STAMP(donnees)
@@ -92,6 +102,8 @@ if sysType == "STAMP":
     time = 0.0
     #####
     for n_frame, frame in enumerate(traj):
+        if n_frame < begin:
+            continue
         traj_cm = []
         box = box_in_frame[n_frame][0:3]
         ## time = time_per_frame.loc[n_frame, "time"]
@@ -105,7 +117,7 @@ if sysType == "STAMP":
             if imol == 0:
                 resname = "PHO"
                 symbol = "P"
-    
+
             mol_cm = center_of_mass(
                 coords.loc[:, ["x", "y", "z"]].values,
                 box,
@@ -119,13 +131,13 @@ if sysType == "STAMP":
                 "y": mol_cm[1],
                 "z": mol_cm[2]
                 })
-    
+
         traj_cm = pd.DataFrame(traj_cm)
         lines += save_gro(traj_cm, box, time=time)
         if n_frame == 0:
             with open(conf, "w") as GRO:
                 GRO.write(lines)
-    
+
         with open(output, "a") as GRO:
             GRO.write(lines)
         lines = ""
@@ -143,6 +155,8 @@ elif sysType == "GRO":
 
     nmol = len(table["resSeq"].unique())
     for n_frame, frame in enumerate(traj):
+        if n_frame < begin:
+            continue
         traj_cm = []
         box = boxs[n_frame] * 10
         time = n_frame * dt
