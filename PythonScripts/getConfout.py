@@ -74,7 +74,8 @@ for resid in atoms_per_mol:
         RESinfo[i] = {"resid": resid, "resname": resname}
 
 # get trajectory
-confout = system.get_traj(b=-1)[0]
+traj = system.get_traj()
+confout = traj[-1]
 
 # BOXs
 box = system.box_in_frame[0][0:3]

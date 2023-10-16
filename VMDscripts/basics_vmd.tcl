@@ -155,3 +155,29 @@ color change rgb 5 tan 0.390000 0.500000 0.200000
 # PBC in xyz files
 pbc set {65.002 60. 60.} -all
 pbc box -center origin
+
+# Labels styles
+# // '%a' atom name
+# // '%d' resid
+# // '%i' atom index (0-based)
+# // '%1i' atom index (1-based)
+# // '%e' atomic element
+# // '%b' beta
+# // '%c' chain
+# // '%C' conformation
+# // '%f' user-applied force
+# // '%F' current trajectory frame
+# // '%m' mass
+# // '%n' molecule index
+# // '%N' molecule name
+# // '%o' occupancy
+# // '%p' atom periodic element number
+# // '%q' atom charge
+# // '%R' resname in upper-case
+# // '%1R' 1-char resname in upper-case
+# // '%r' resname in camel case
+# // '%s' segname
+# // '%t' atom type
+# // '%T' physical time
+# // '%x', '%y', '%z' 
+

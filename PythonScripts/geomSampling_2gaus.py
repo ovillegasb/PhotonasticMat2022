@@ -162,6 +162,17 @@ def main():
 
     print("Resid:", resid)
 
+    #
+    route_parameters = {}
+    route_parameters["TD"] = "(NStates=6)"
+
+    if len(solvent) != 0:
+        try:
+            route_parameters["SCRF"] = "(Solvent=%s)" % SOLVETS[solvent]
+        except KeyError:
+            print("ERROR solvent not recognized in the list")
+            exit()
+
     if top.endswith("gro"):
         # Reads the system trajectory
         t = md.load(trj, top=top)
@@ -195,10 +206,7 @@ def main():
                 title="Azobenzene %s Sampling in %s - sample %d" % (isomer, solvent, i),
                 functional="Cam-B3LYP",
                 basis_set="6-311+g(d,p)",
-                route_parameters={
-                    "TD": "(NStates=6)",
-                    "SCRF": "(Solvent=%s)" % SOLVETS[solvent]
-                },
+                route_parameters=route_parameters,
                 link0_parameters={
                     "%mem": "8GB",
                     "%nprocshared": "12"

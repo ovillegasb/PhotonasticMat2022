@@ -17,8 +17,14 @@ try:
     donnees = sys.argv[2]
 except IndexError:
     print("Error")
-    print("CMtraj [STAMP or GRO] [donnees/gro] [optional traj]")
+    print("CMtraj [STAMP or GRO] [donnees/gro] [optional traj] [optional resid\
+from 0]")
     exit()
+
+try:
+    resid_select = int(sys.argv[4])
+except IndexError:
+    resid_select = None
 
 if sysType == "GRO":
     top = sys.argv[2]
@@ -109,6 +115,9 @@ if sysType == "STAMP":
         ## time = time_per_frame.loc[n_frame, "time"]
         time = n_frame * dt
         for imol, mol in enumerate(atoms_per_mol):
+            if resid_select is not None:
+                if imol != resid_select:
+                    continue
             mol_ndx = atoms_per_mol[mol]
             masses = top.loc[mol_ndx["index"], "mass"].values
             coords = frame.loc[mol_ndx["index"], :]
@@ -157,10 +166,15 @@ elif sysType == "GRO":
     for n_frame, frame in enumerate(traj):
         if n_frame < begin:
             continue
+        print("Frame:", n_frame, "Total:", len(traj))
         traj_cm = []
         box = boxs[n_frame] * 10
         time = n_frame * dt
         for mol in range(nmol):
+            if resid_select is not None:
+                if mol != resid_select:
+                    continue
+
             # The indices of the atoms of interest are selected.
             iat_res = top.select("resid %s" % mol)
             atoms = table.loc[iat_res, "element"]
@@ -199,5 +213,6 @@ elif sysType == "GRO":
 
 else:
     print("Error")
-    print("CMtraj [STAMP or GRO] [donnees/gro] [optional traj]")
+    print("CMtraj [STAMP or GRO] [donnees/gro] [optional traj] [optional resid\
+from 0]")
     exit()

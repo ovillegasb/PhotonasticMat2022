@@ -60,7 +60,10 @@ echo -e "2 \n 2 \n" | gmx trjconv -f traj_nojump_mol.xtc -s mol.gro -o traj_nopb
 
 
 # UV-VIS analysis
+geomSampling_2gaus -f traj_mol_translated.xtc -s mol.gro -b 8500 -e 10500 -dt 1.0 --init_t 2500. -sol PB -isomer trans -N 100
 geomSampling_2gaus -s GRO/mol.gro -f GRO/traj_nopbc_mol.xtc -b 500 -e 2500 -sol PB -isomer cis --init_t 500.
+
+
 
 # Geometry and RDF DATA in gromacs
 vmd confout.gro traj_nopbc.xtc -dispdev text -e ~/GITPROYECTS/PhotonasticMat/VMDscripts/save_geometry_data_GMX.tcl
@@ -84,7 +87,7 @@ cp `ls PasDeCalcul__Iteration_* | tail -n 1` confout.gro
 rm -fv traj.gro
 cat PasDeCalcul__Iteration_*.gro > traj.gro
 echo 0 | gmx trjconv -f traj.gro -s confout.gro -o traj_comp.xtc -pbc nojump
-python ~/.gitproyects/PhotonasticMat/PythonScripts/compute_MSD.py -f traj_comp.xtc -s confout.gro -dt 0.001 -o ../msd.csv
+python ~/.gitproyects/PhotonasticMat/PythonScripts/compute_MSD.py -f traj_comp.xtc -s confout.gro -dt ***0.001*** -o ../msd.csv --select resid 1
 rm -v traj.gro
 
 # method GROMACS
@@ -94,11 +97,11 @@ python ~/.gitproyects/PhotonasticMat/PythonScripts/compute_MSD.py -f traj_comp.x
 
 # MSD from center of mass
 # stamp
-python ~/.gitproyects/PhotonasticMat/PythonScripts/CMtraj.py STAMP DONNEES.in
+python ~/.gitproyects/PhotonasticMat/PythonScripts/CMtraj.py STAMP DONNEES.in 0 
 echo 0 | gmx trjconv -f traj_cm.gro -s confout_cm.gro -o traj_nojump_cm.xtc -pbc nojump
 python ~/.gitproyects/PhotonasticMat/PythonScripts/compute_MSD.py -f traj_nojump_cm.xtc -s confout_cm.gro -dt 1.0 -o msd_cm.csv --select resid 1
 # gro
-python ~/.gitproyects/PhotonasticMat/PythonScripts/CMtraj.py GRO confout.gro traj_comp.xtc
+python ~/.gitproyects/PhotonasticMat/PythonScripts/CMtraj.py GRO confout.gro traj_comp.xtc 0
 echo 0 | gmx trjconv -f traj_cm.gro -s confout_cm.gro -o traj_nojump_cm.xtc -pbc nojump
 python ~/.gitproyects/PhotonasticMat/PythonScripts/compute_MSD.py -f traj_nojump_cm.xtc -s confout_cm.gro -dt 1.0 -o msd_cm.csv --select resid 1
 
@@ -116,3 +119,7 @@ cp ../8_solOH_NPT_0/stamp.sh .
 ls ../7_eq3_0/PROTS/* | tail -n 1 > DerniereProtection
 
 cat Stamp.log | grep "Minimum global"
+
+
+# change timestep
+gmx trjconv -f traj_nopbc_mol.xtc -s mol.gro -o traj_nopbc_mol_1fs.xtc -dt 1.0

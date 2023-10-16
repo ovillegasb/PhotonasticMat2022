@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 from scipy.constants import e, h, c, k
 from scipy.stats import norm
+import statsmodels.api as sm
 from stamptools.analysis import load_log
 
 """ Matplotlib tools. """
@@ -94,6 +95,34 @@ def rot(x, deg=0.0):
         return x
 
 
+def get_log2_av(data):
+    msd = data["msd"].values
+    tau = data["time"].values
+    
+    log_av_msd = [msd[0]]
+    log_av_tau = [tau[0]]
+    
+    for j in range(1, int(np.log2(len(msd)) + 1)):
+        sumpar = [i for i in range(2**(j-1) , 2**j)]
+        log_av_msd.append((1/(2**j - 2**(j-1))) * sum(msd[sumpar]))
+        log_av_tau.append((1/(2**j - 2**(j-1))) * sum(tau[sumpar]))
+    
+    return pd.DataFrame({"logAv_msd": log_av_msd, "logAv_tau": log_av_tau})
+
+
+def get_dict2w(df):
+    DICT = {}
+    for i in df.index:
+        DICT[round(df.loc[i, "bin"], 2)] = df.loc[i, "distance"]
+    return DICT
+
+
+def isNotMSD(x, color):
+    #   f"background: {color};"
+    #   f"color: {color};"
+    return np.where(x == "x", f"background: {color};", None)
+
+
 def format_time(seconds):
     """Convert seconds to formated time."""
     minutes, seconds = divmod(int(seconds), 60)
@@ -158,12 +187,58 @@ def save_fig(name, outfig):
     )
 
 
-def format_time(seconds):
-    """Convert seconds to formated time."""
-    minutes, seconds = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    days, hours = divmod(hours, 24)
-    return f"{days:02d}:{hours:02d}:{minutes:02d}:{seconds:02d}"
+class ImagesCount:
+    def __init__(self, output):
+        self.output = output
+        self.count = 0
+        
+    def saveFig(self, name):
+        self.count += 1
+        name = "img_%04d_" % self.count + name
+        print("Image %d saved!" % self.count)
+        print(f"{self.output}/{name}")
+        return save_fig(name, self.output)
+    
+    def resetCount(self):
+        self.count = 0
+        
+    def subtract_one(self):
+        if self.count == 0:
+            pass
+        else:
+            self.count -= 1
+            
+    def set_count(self, count):
+        self.count = count
+
+
+def get_acorr(angle):
+    cos_a = np.cos(np.deg2rad(angle))
+    acorr = sm.tsa.acf(cos_a, nlags=len(cos_a)-1)
+    return acorr
+
+
+def stretched_exponetial(t, t_c, beta):
+    return np.exp(-(t/t_c)**beta)
+
+
+def stretched_exponetial2(t, A, t_c1, beta1, t_c2, beta2):
+    return A * np.exp(-(t/t_c1)**beta1) + (1 - A) * np.exp(-(t/t_c2)**beta2)
+
+# def format_time(seconds):
+#     """Convert seconds to formated time."""
+#     minutes, seconds = divmod(seconds, 60)
+#     hours, minutes = divmod(minutes, 60)
+#     days, hours = divmod(hours, 24)
+#     return f"{days:02d}:{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+def get_diff(ltime, lmsd):
+    # Agregar el log
+    alpha = np.diff(np.log(lmsd)) / np.diff(np.log(ltime))
+    time = ltime.values[1:len(alpha) + 1]
+    
+    return pd.DataFrame({"tau": time, "alpha": alpha})
 
 
 class dihedral_trans:
@@ -331,18 +406,39 @@ def get_spectre_info(logs_files, dtype="cont", sigma=0.4):
     """."""
     data = {}
     info = []
+
+    if len(logs_files) == 0:
+        return np.array([]), pd.DataFrame()
     
     for i, file in enumerate(logs_files):
-        data[i] = read_UVVis(file)
+        try:
+            data[i] = read_UVVis(file)
+        except KeyError:
+            print("ERROR in file:", end=" ")
+            print(file)
+            continue
         metadata = file.split("/")[4:]
         # print(i, metadata[0], metadata[1], metadata[-1].split(".")[-2].split("_")[-1])
         if dtype=="GMX":
-            info.append({
-                "index": i,
-                "isomer": metadata[0].split(".")[0].split("_")[1],
-                "replica": int(metadata[1].replace("md", "")),
-                "frame": int(metadata[-1].split(".")[-2].split("_")[-1])
-            })
+            try:
+                replica = int(metadata[1].replace("md", ""))
+            except ValueError:
+                replica = 0
+
+            try:
+                info.append({
+                    "index": i,
+                    "isomer": metadata[0].split(".")[0].split("_")[1],
+                    "replica": replica,
+                    "frame": int(metadata[-1].split(".")[-2].split("_")[-1])
+                })
+            except IndexError:
+                info.append({
+                    "index": i,
+                    "isomer": metadata[0].split(".")[0],
+                    "replica": metadata[1],
+                    "frame": int(metadata[-1].split(".")[-2].split("_")[-1])
+                })
         else:
             try:
                 info.append({

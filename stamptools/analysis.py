@@ -1036,11 +1036,15 @@ def mol_traj_cut_distance(traj, atoms_per_mol, top, box, connectivity, ref, rcut
         save_xyz(ncoords, name=f"{out_folder}/{name}")
 
 
-def rdf_from_dist(df, box_in_frame, rmin=0.0, rmax=6.0, binwidth=0.002, atoms_ref=1):
+def rdf_from_dist(df, box_in_frame, rmin=0.0, rmax=6.0, binwidth=0.002, atoms_ref=1, n_mol=72, n_replique=1):
     """Return rdf data and binned function."""
     def binned_distance(x):
         bins = np.arange(rmin, rmax, binwidth)
         index = np.digitize(x, bins)
+
+        if x < rmin - binwidth:
+            return np.NaN
+
         try:
             return bins[index]
         except IndexError:
@@ -1052,7 +1056,7 @@ def rdf_from_dist(df, box_in_frame, rmin=0.0, rmax=6.0, binwidth=0.002, atoms_re
 
     frames = df["frame"].unique()
     n_frames = len(frames)
-    n_mol = df["distance"].count() / n_frames
+    n_mol = n_mol * n_replique #  df["distance"].count() / n_frames
 
     # Box in nanometers
     box = np.mean(box_in_frame[:, 0:3], axis=0)
