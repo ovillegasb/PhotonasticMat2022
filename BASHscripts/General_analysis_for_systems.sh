@@ -11,7 +11,7 @@ conda activate SimMOL
 #---------
 
 # gen trajectory for a molecule
-python -m stamptools -d DONNEES.in --mol_traj 0
+python -m stamptools -d DONNEES.in --mol_traj 0 --traj_type XYZ[or GRO]
 
 # to convert XYZs files to XTC trajectory gromacs
 xyz2gro -d DONNEES.in
@@ -123,3 +123,6 @@ cat Stamp.log | grep "Minimum global"
 
 # change timestep
 gmx trjconv -f traj_nopbc_mol.xtc -s mol.gro -o traj_nopbc_mol_1fs.xtc -dt 1.0
+
+# Gen sampling from a system
+python -m stamptools -d DONNEES.in --mol_d_aa -b 1500 -e 2000 -i 10 -mref 0 --rcutoff 0.12 --out_folder sampling

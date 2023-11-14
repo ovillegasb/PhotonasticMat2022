@@ -64,6 +64,12 @@ out_xyz = re.compile(r"""
     -\sSortie\sXYZ
     """, re.X)
 
+out_gro = re.compile(r"""
+    ^\s+[\*]+\sIteration\s
+    (?P<frame>[\d,0]+)\s
+    -\sSortie\sGRO
+    """, re.X)
+
 """ Regular expression for FAtomes """
 
 noms = re.compile(r"""
@@ -386,7 +392,7 @@ def load_data(file, t="LNVT"):
     return data
 
 
-def load_log(file="Stamp.log", use_xyz=True):
+def load_log(file="Stamp.log", use_xyz=True, traj_type="XYZ"):
     """
     Load info from file log Stamp.
 
@@ -409,9 +415,14 @@ def load_log(file="Stamp.log", use_xyz=True):
                 m = out_mean.match(line)
                 out_g.append(m.groupdict())
 
-            if out_xyz.match(line):
-                m = out_xyz.match(line)
-                out_frame.append(m.groupdict())
+            if traj_type == "XYZ":
+                if out_xyz.match(line):
+                    m = out_xyz.match(line)
+                    out_frame.append(m.groupdict())
+            elif traj_type == "GRO":
+                if out_gro.match(line):
+                    m = out_gro.match(line)
+                    out_frame.append(m.groupdict())
 
             if "Arret normal du calcul" in line:
                 status = "finished"
@@ -427,14 +438,18 @@ def load_log(file="Stamp.log", use_xyz=True):
         out_frame.drop_duplicates(inplace=True, ignore_index=True)
 
         time_f = []
-        for t in out_frame["frame"]:
-            try:
-                if t == "0":
-                    time_f.append("0.000")
-                else:
-                    time_f.append(frame_dict[t])
-            except KeyError:
-                time_f.append(np.NaN)
+        try:
+            for t in out_frame["frame"]:
+                try:
+                    if t == "0":
+                        time_f.append("0.000")
+                    else:
+                        time_f.append(frame_dict[t])
+                except KeyError:
+                    time_f.append(np.NaN)
+        except KeyError:
+            print(f"No frame found, check the type of trajectory loaded. {traj_type}")
+            exit()
 
         # out_frame["time"] = out_g.loc[out_frame["frame"].values, "time"].unique()
         out_frame["time"] = time_f
@@ -1068,7 +1083,7 @@ def rdf_from_dist(df, box_in_frame, rmin=0.0, rmax=6.0, binwidth=0.002, atoms_re
     rdf["vshell"] = 4 * np.pi * ((binwidth + rdf["bin"])**3 - rdf["bin"]**3) / 3
     
     rdf["gr"] = rdf["distance"] * vol_per_com / rdf["vshell"] / n_frames / atoms_ref
-    rdf["weihts"] = vol_per_com / rdf["vshell"] / n_frames / atoms_ref
+    rdf["weight"] = vol_per_com / rdf["vshell"] / n_frames / atoms_ref
     
     try:
         return rdf.drop(columns=["frame", "idx", "at_i", "at_j", "distance"])

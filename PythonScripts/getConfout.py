@@ -5,6 +5,7 @@ import numpy as np
 from multiprocessing import Pool
 from stamptools.analysis import center_of_mass, minImagenC
 import sys
+from molcraft.structure import save_pdb
 
 
 def save_gro(table, name, box, title="GRO FILE", time=0.0, out="."):
@@ -48,15 +49,19 @@ def get_nopbc_mol(mol_ndx, confout, connectivity, box):
 print("Specify the donnees file.")
 try:
     donnees = sys.argv[1]
+    traj_type = sys.argv[2]
+    resid_PC = sys.argv[3]
 except IndexError:
     print("A Donnees.in file must be specified.")
-    print("\tgetConfout.py file.in")
+    print("trajectory type must be specified.")
+    print("PC resid[from 0] or None.")
+    print("\tgetConfout.py file.in XYZ[or GRO] None")
     exit()
 
 # Load System
-system = STAMP(donnees=donnees)
+system = STAMP(donnees=donnees, traj_type=traj_type)
 
-resid_PC = 0
+# resid_PC = 0
 atoms_per_mol = system.atoms_per_mol
 for resid in atoms_per_mol:
     if resid == resid_PC:
@@ -74,11 +79,11 @@ for resid in atoms_per_mol:
         RESinfo[i] = {"resid": resid, "resname": resname}
 
 # get trajectory
-traj = system.get_traj()
+traj = system.get_traj(e=1)
 confout = traj[-1]
 
 # BOXs
-box = system.box_in_frame[0][0:3]
+box = system.box_in_frame[-1][0:3]
 
 print("Saving GRO files")
 print("Generating a gro file without PBC")
@@ -88,29 +93,44 @@ confout["resname"] = confout.index.map(lambda x: RESinfo[x]["resname"])
 
 connectivity = system.connectivity
 
-pc_xyz = confout[confout["resid"] == 0]
-pc_conn = connectivity.sub_connect(atoms_per_mol[resid_PC]["index"])
-# update coordinates
-pc_conn.update_coordinates(pc_xyz)
-# remove PBC
-pc_conn.noPBC(box)
-# Reset index and symbols, and add mass
-pc_conn = pc_conn.reset_nodes()
-pc_conn.simple_at_symbols(add_mass=True)
+############
+# PDB
 
-new_pc_xyz = pc_conn.get_df()
-cm = center_of_mass(
+save_pdb(confout, "test")
+print("\nSaved pdb file: \033[1;36m%s\033[m writed\n" % "test.pdb")
+exit()
+
+############
+
+if resid_PC != "None":
+    pc_xyz = confout[confout["resid"] == 0]
+    pc_conn = connectivity.sub_connect(atoms_per_mol[resid_PC]["index"])
+    # update coordinates
+    pc_conn.update_coordinates(pc_xyz)
+    # remove PBC
+    pc_conn.noPBC(box)
+    # Reset index and symbols, and add mass
+    pc_conn = pc_conn.reset_nodes()
+    pc_conn.simple_at_symbols(add_mass=True)
+
+    new_pc_xyz = pc_conn.get_df()
+    cm = center_of_mass(
         new_pc_xyz.loc[:, ["x", "y", "z"]].values,
         new_pc_xyz.loc[:, "mass"].values
     )
 
-new_pc_xyz["x"] -= cm[0]
-new_pc_xyz["y"] -= cm[1]
-new_pc_xyz["z"] -= cm[2]
+    new_pc_xyz["x"] -= cm[0]
+    new_pc_xyz["y"] -= cm[1]
+    new_pc_xyz["z"] -= cm[2]
 
-confout["x"] = confout["x"].apply(lambda x: minImagenC(cm[0], x, box[0]))
-confout["y"] = confout["y"].apply(lambda x: minImagenC(cm[1], x, box[1]))
-confout["z"] = confout["z"].apply(lambda x: minImagenC(cm[2], x, box[2]))
+    confout["x"] = confout["x"].apply(lambda x: minImagenC(cm[0], x, box[0]))
+    confout["y"] = confout["y"].apply(lambda x: minImagenC(cm[1], x, box[1]))
+    confout["z"] = confout["z"].apply(lambda x: minImagenC(cm[2], x, box[2]))
+else:
+    confout["x"] = confout["x"].apply(lambda x: minImagenC(box[0] / 2, x, box[0]))
+    confout["y"] = confout["y"].apply(lambda x: minImagenC(box[1] / 2, x, box[1]))
+    confout["z"] = confout["z"].apply(lambda x: minImagenC(box[2] / 2, x, box[2]))
+
 
 arguments = []
 for i in atoms_per_mol:

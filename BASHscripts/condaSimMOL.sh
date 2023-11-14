@@ -93,3 +93,9 @@ pip install ipywidgets
 #jupyter nbextension enable --py widgetsnbextension --sys-prefix
 jupyter nbextension enable --py widgetsnbextension --sys-prefix
 jupyter labextension install jupyter-matplotlib
+
+
+# JupyterLab
+jupyter labextension --help
+jupyter labextension list
+jupyter lab build --minimize=False

@@ -239,6 +239,6 @@ def read_geometry_file(file, freq, t0=0.0):
         file,
         index_col=0
     )
-    geom["time"] = (geom.index.astype(float) - 1) * freq + t0
+    geom["time"] = geom.index.astype(float)*freq + t0
     
     return geom

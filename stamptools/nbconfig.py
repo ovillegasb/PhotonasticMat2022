@@ -14,8 +14,21 @@ from stamptools.analysis import load_log
 
 # Matplotlib parameters to change.
 MplotParam = {
+    "axes.labelsize": 12,
     "figure.dpi": 100,
-    "figure.figsize": [9, 6]
+    "figure.figsize": [9, 6],
+    "lines.linewidth": 2,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "axes.titlesize": 12
+}
+
+# axes.text parameters
+textKwargs = {
+    "ha": "left",
+    "rotation": 0,
+    "fontsize": 12
 }
 
 # Box on text in figures.
@@ -188,28 +201,41 @@ def save_fig(name, outfig):
 
 
 class ImagesCount:
+    """Image tracker."""
+
     def __init__(self, output):
+        """Initialize and define output folder."""
         self.output = output
-        self.count = 0
+        self._count = 0
+        print("Initialization of the image tracker")
+        print("Output folder:", output)
         
     def saveFig(self, name):
-        self.count += 1
-        name = "img_%04d_" % self.count + name
-        print("Image %d saved!" % self.count)
+        """Save figure to output folder."""
+        self._count += 1
+        name = "img_%04d_" % self._count + name
+        print("Image %d saved!" % self._count)
         print(f"{self.output}/{name}")
         return save_fig(name, self.output)
+
+    def showInfo(self):
+        """Print information concerning the status of the object."""
+        print("Output folder:", self.output)
+        print("Count:", self._count)
     
     def resetCount(self):
-        self.count = 0
+        self._count = 0
         
     def subtract_one(self):
-        if self.count == 0:
+        """Subtract one from the count."""
+        if self._count == 0:
             pass
         else:
-            self.count -= 1
+            self._count -= 1
             
     def set_count(self, count):
-        self.count = count
+        """Set the count to a defined value.."""
+        self._count = count
 
 
 def get_acorr(angle):

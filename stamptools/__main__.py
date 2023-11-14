@@ -108,6 +108,12 @@ def options():
         action="store_true"
     )
 
+    fileinput.add_argument(
+        "--traj_type",
+        help="Type of trajectory to work, XYZ and GRO can be used.",
+        default="XYZ"
+    )
+
     analysis = parser.add_argument_group(
         "\033[1;36mAnalysis options\033[m")
 
@@ -282,7 +288,7 @@ csv file.",
 
 
 def read_traj(system, **kwargs):
-    """Read the trajectory for specific limits in time (ps)."""
+    """Read the trajectory for specific limits in time (ps)."""    
     time_per_frame = system.time_per_frame
     if kwargs["b"] > 0.0:
         b = time_per_frame[time_per_frame["time"] >= kwargs["b"]].index[0]
@@ -296,7 +302,6 @@ def read_traj(system, **kwargs):
         e = kwargs["e"]
 
     print("Time init:", b, "Time end", e)
-
     return system.get_traj(b=b, e=e)
 
 
@@ -331,7 +336,7 @@ print(TITLE)
 args = options()
 
 if not args["load"] and args["donnees"]:
-    system = STAMP(donnees=args["donnees"], data=args["dataStamp"])
+    system = STAMP(donnees=args["donnees"], data=args["dataStamp"], traj_type=args["traj_type"])
     save_system(system)
 
 elif args["load"]:
