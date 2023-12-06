@@ -8,9 +8,10 @@ import os
 import numpy as np
 from scipy.constants import N_A
 from stamptools.stamptools import read_donnees
-from stamptools.analysis import load_data, read_fatomes, save_plot, load_log
+from stamptools.analysis import load_data, read_fatomes, load_log
 from molcraft import structure
 from multiprocessing import Pool
+from stamptools.gmxtools import read_xtc
 
 NUMPROC = 12
 
@@ -47,7 +48,7 @@ def change_toType(at):
 class STAMP:
     """Object describing a system and its features."""
 
-    def __init__(self, donnees, fatomes=None, data="Stamp.dat", ensamble="LNVT", loadConnect=True, traj_type="XYZ"):
+    def __init__(self, donnees, fatomes=None, data="Stamp.dat", ensamble="LNVT", loadConnect=True, traj_type="XYZ", use_xyz=True):
         """Initialize the class when loading the calculation information."""
         # Home path
         hw_path = os.path.split(os.path.abspath(donnees))[0]
@@ -70,7 +71,7 @@ class STAMP:
 
         # Load log information
         try:
-            self.time_per_frame, self.status = load_log(os.path.join(hw_path, "Stamp.log"), traj_type=traj_type)
+            self.time_per_frame, self.status = load_log(os.path.join(hw_path, "Stamp.log"), use_xyz=use_xyz, traj_type=traj_type)
         except FileNotFoundError:
             self.time_per_frame = None
 
@@ -103,23 +104,10 @@ class STAMP:
         # if load_traj:
         #     self._load_traj()
 
-    def save_plots(self, args):
-        """Save plot for parameters."""
-        dat = self.data
-        for a in args:
-            if a in setplots:
-                save_plot(
-                    dat["I"], dat[a],
-                    name=setplots[a]["name"],
-                    color=setplots[a]["color"],
-                    xlb=setplots[a]["xlb"],
-                    ylb=setplots[a]["ylb"]
-                )
-
-                print("plots {}.png saved".format(setplots[a]["name"]))
-
-            else:
-                print(f"Option {a} has not been configured.")
+    @property
+    def Natoms(self):
+        """Total number of atoms in the system."""
+        return len(self.topology)
 
     @property
     def box_in_frame(self):
@@ -133,14 +121,19 @@ class STAMP:
                             line = line.replace("\n", "").split()
                             boxs.append(line)
                             break
+            return np.array(boxs).astype(np.float64)
+
         elif self.traj_type == "GRO":
             for file in self.GROs[self.b_frame:self.e_frame]:
                 with open(file, 'r') as f:
                     last_line = f.readlines()[-1]
                     last_line = last_line.replace("\n", "").split()
                     boxs.append(last_line)
+            return np.array(boxs).astype(np.float64) * 10.
 
-        return np.array(boxs).astype(np.float64) * 10.
+        elif self.traj_type == "XTC":
+            boxs = self._box_xtc
+            return np.array(boxs).astype(np.float64) * 10.
 
     @property
     def vol(self):
@@ -177,7 +170,7 @@ class STAMP:
         elif self.traj_type == "GRO":
             self.GROs = self._gro_list()
 
-    def _load_traj(self, b=0, e=None):
+    def _load_traj(self, b=0, e=None, i=1):
         """Load trajectory system."""
         traj = list()
         t0 = time.time()
@@ -185,21 +178,31 @@ class STAMP:
 
         if self.traj_type == "XYZ":
             with Pool(processes=NUMPROC) as pool:
-                for xyz in pool.map(structure.load_xyz, self.XYZs[b:e]):
+                for xyz in pool.map(structure.load_xyz, self.XYZs[b:e:i]):
                     traj.append(xyz)
         elif self.traj_type == "GRO":
             with Pool(processes=NUMPROC) as pool:
-                for gro in pool.map(structure.load_gro, self.GROs[b:e]):
+                for gro in pool.map(structure.load_gro, self.GROs[b:e:i]):
                     traj.append(gro)
+        elif self.traj_type == "XTC":
+            params = {
+                "top": self.top,
+                "xtc": self.xtc,
+                "interval": i,
+                "b": b,
+                "e": e
+            }
+            traj, boxs = read_xtc(**params)
+            self._box_xtc = boxs
 
         self._traj = traj
         tf = time.time()
         print(f"Number of frames: {len(traj)}", end=" - ")
         print(f"done in {tf-t0:.2f} s")
 
-    def get_traj(self, b=0, e=None):
+    def get_traj(self, b=0, e=None, i=1):
         """Trajectory of system."""
-        self._load_traj(b, e)
+        self._load_traj(b, e, i)
         self.b_frame = b
         self.e_frame = e
 

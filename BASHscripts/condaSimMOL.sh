@@ -4,10 +4,21 @@
 conda create --name SimMOL scipy jupyterlab numpy matplotlib seaborn pandas
 conda activate SimMOL
 conda config --add channels conda-forge
-conda install --channel conda-forge pymatgen
-conda install -c conda-forge mdtraj
-# conda install -c conda-forge mdanalysis
-conda install -c anaconda networkx
+# conda install --channel conda-forge pymatgen
+conda install pymatgen
+conda install mdtraj
+conda install mdanalysis
+conda install networkx
+conda install statsmodels
+
+# python modules
+python -m site --user-site
+mkdir -p $(python -m site --user-site)
+
+# create new .pth file with our path
+echo "$HOME/foo/bar" > "$SITEDIR/somelib.pth"
+
+# Extra
 conda install -n SimMOL -c conda-forge nglview
 conda install -c conda-forge nodejs
 conda install -c conda-forge/label/gcc7 nodejs
@@ -20,8 +31,6 @@ jupyter labextension update --all
 jupyter labextension list
 jupyter labextension install @jupyterlab/celltags
 jupyter serverextension enable --py jupyterlab --sys-prefix
-
-conda install mdanalysis
 
 # Others
 sudo dnf install pandoc

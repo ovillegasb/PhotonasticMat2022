@@ -108,6 +108,16 @@ def rot(x, deg=0.0):
         return x
 
 
+def rot2(x, phase=0.0):
+    """Correction angle trans."""
+    theta = (x + phase) / 360 * 2 * np.pi
+    xi = np.cos(theta)
+    eta = np.sin(theta)
+    theta_n = np.arctan2(-eta, -xi) + np.pi
+
+    return 360. * theta_n / 2 / np.pi - phase
+
+
 def get_log2_av(data):
     msd = data["msd"].values
     tau = data["time"].values

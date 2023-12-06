@@ -1,6 +1,6 @@
 """Module to define the FATOME class."""
 
-from stamptools.analysis import decoTime, change_atsb
+from stamptools.analysis import decoTime
 from stamptools.analysis import center_of_mass_polar, translate_to
 from molcraft import structure
 import itertools as it
@@ -246,6 +246,23 @@ nf cb 0.0 0.0 0.50 0.0 0.0 0.8333"""
 Keywords = {}
 
 
+def change_atsb(x):
+    """Change atom types to simple symbols."""
+    if x in ["ca", "cb", "CT", "CM", "C", "CTO"]:
+        return "C"
+    elif x in ["ha", "ho", "HT", "HM", "H", "HOopls", "H1O"]:
+        return "H"
+    elif x in ["nf", "ne", "N"]:
+        return "N"
+    elif x in ["oh", "O", "OHopls"]:
+        return "O"
+    elif x in ["DU"]:
+        return "DU"
+    else:
+        print(f"WARNING: {x} atom not reconize.")
+        return x
+
+
 """ Regular expression for FAtomes """
 noms = re.compile(r"""
     nom\s+(?P<nom>\w+)
@@ -262,7 +279,7 @@ charges = re.compile(r"""
 """ Regular expression that extracts matrix XYZ """
 atoms = re.compile(r"""
         ^\s*
-        (?P<atypes>[A-Za-z]+\d?\d?)\s+            # Atom name.
+        (?P<atypes>\w{1,6})\s+            # Atom name.
         (?P<x>[+-]?\d+\.\d+\w?[+-]?\d*)\s+      # Orthogonal coordinates for X.
         (?P<y>[+-]?\d+\.\d+\w?[+-]?\d*)\s+      # Orthogonal coordinates for Y.
         (?P<z>[+-]?\d+\.\d+\w?[+-]?\d*)\s+      # Orthogonal coordinates for Z.
@@ -406,7 +423,10 @@ class FATOME:
         for i in atoms_types:
             atom = atoms_types[i]["nomFF"]
             pairsPot[atom] = {}
-            pairsPot[atom][atom] = POTENTIAL_par_OPLS[atom]
+            try:
+                pairsPot[atom][atom] = POTENTIAL_par_OPLS[atom]
+            except KeyError:
+                pairsPot[atom][atom] = POTENTIAL_par_GAFF[atom]
 
         for atom1 in pairsPot:
             for atom2 in pairsPot[atom1]:
@@ -535,10 +555,11 @@ class TOPOL:
             "maille_ref": ""
         }
         ntype = 0
+        natoms = 0
 
         # Intermolecular parameters
         Intermol_potentials = []
-        comb_rules = "" 
+        comb_rules = ""
 
         # Force field parameters
         ffparms = []
@@ -603,6 +624,9 @@ class TOPOL:
 
                         ffparms.append(lne.replace("\n", ""))
 
+                if "PositionDesAtomesCart" in line:
+                    natoms += int(FATM.readline())
+
                 if "Zmatrice" in line:
                     N = int(FATM.readline())
                     # print("N conectivity:", N)
@@ -611,6 +635,9 @@ class TOPOL:
                         zline = zline.split()
                         zline = [int(i) for i in zline]
                         connects[zline[0]] = zline[1:]
+                if "VitesseDesAtomes" in line:
+                    for _ in range(natoms):
+                        FATM.readline()
 
                 if "Regle_melange" in line:
                     comb_rules = line.replace("\n", "").split()[1]
@@ -636,17 +663,16 @@ class TOPOL:
                     Intermol_potentials.append(line.replace("Potentiel  ", "").replace("\n", ""))
 
         lcharges = {key: charge for (key, charge) in lcharges}
-        
+
         def from_lcharges(x):
             """Return partial charge for the atomic index."""
             try:
                 return lcharges[x]
             except KeyError:
                 return 0.0
-        
+
         lcharge_mod = pd.DataFrame(lcharge_mod)
         atomsM = dict()
-
         if len(lmass) == len(lnom):
             for i in range(len(lnom)):
                 atomsM[lnom[i]["nom"]] = np.float64(lmass[i]["mass"])
@@ -664,24 +690,23 @@ class TOPOL:
             "z": np.float64
         })
 
-        try:
-            tabXYZ["mass"] = tabXYZ["atypes"].apply(lambda x: atomsM[x])
-        except KeyError:
-            print("")
-            print(atomsM)
-            print(tabXYZ.loc[0:26, :])
-            print("ERROR")
-            exit()
+        tabXYZ["mass"] = 0.0
+        for i in tabXYZ.index:
+            try:
+                tabXYZ["mass"] = atomsM[tabXYZ.loc[i, "atypes"]]
+            except KeyError:
+                print("ERROR")
+                print("Atom type no reconize:", tabXYZ.loc[i, "atypes"])
+                exit()
 
         tabXYZ["charge"] = tabXYZ["atypes"].apply(from_lcharges)
+        if len(lcharge_mod) <= len(tabXYZ):
+            for i in lcharge_mod.index:
+                tabXYZ.loc[lcharge_mod.loc[i, "idx"], "charge"] = lcharge_mod.loc[i, "charge"]
 
-        for i in lcharge_mod.index:
-            tabXYZ.loc[lcharge_mod.loc[i, "idx"], "charge"] = lcharge_mod.loc[i, "charge"]
-
-        self.dfatoms = tabXYZ
+        self.dfatoms = tabXYZ.copy()
         self.box = box
         self.connects = connects
-
         self.atoms_types = atoms_types
         pairsPot = {}
         for pot in Intermol_potentials:
@@ -772,7 +797,7 @@ class TOPOL:
 
             # ncoords.append(mol_xyz)
             conn_list.append(mol_conn)
-            
+
         # Create a new connectivity object with the new information.
         for mol in conn_list:
             newconnectivity.add_residue(mol)
@@ -821,7 +846,7 @@ class TOPOL:
 
             # ncoords.append(mol_xyz)
             conn_list.append(mol_conn)
-            
+
         # Create a new connectivity object with the new information.
         for mol in conn_list:
             newconnectivity.add_residue(mol)
@@ -862,11 +887,10 @@ class TOPOL:
         for i in atoms_types:
             if atoms_types[i]["nom"] == "DU":
                 key_remove = i
-                
+
         if key_remove is not None:
             del atoms_types[key_remove]
             self.key_remove = key_remove
-
         news_atoms_types = {}
         for i, atp in enumerate(toAddtypes):
             news_atoms_types[i] = {}
@@ -1007,6 +1031,8 @@ class TOPOL:
         atoms_types = self.atoms_types
 
         if self.adding_PC_proc:
+            pairsPot = {}
+        elif self.adding_OH_proc:
             pairsPot = {}
         else:
             pairsPot = self.pairsPot
@@ -1246,35 +1272,48 @@ Zmatrice
 
         # Atomic charges
         # ==============================
-        lines += """*
+        lines_ch_title = """*
 * =================
 * Charges atomiques 
 * =================
 ModificationChargeDesAtomes e-
 """     
-        ChargesMOD = self.ChargesMOD
-        lines += "%d\n" % len(ChargesMOD)  # (len(ChargesMOD) + len(self.connectivity.modified_atoms))
-        for i, le in enumerate(ChargesMOD):
-            lines += "%d   %s\n" % (i, le)
+        if self.adding_OH_proc and not self.adding_PC_proc:
+            lines_ch = ""
+        else:
+            ChargesMOD = self.ChargesMOD
+            lines_ch = "%d\n" % len(ChargesMOD)  # (len(ChargesMOD) + len(self.connectivity.modified_atoms))
+            for i, le in enumerate(ChargesMOD):
+                lines_ch += "%d   %s\n" % (i, le)
 
-        # for at in self.connectivity.modified_atoms:
-        #     lines += "%d%10.3f\n" % (at, self.connectivity.nodes[at]["charge"])
+            # for at in self.connectivity.modified_atoms:
+            #     lines += "%d%10.3f\n" % (at, self.connectivity.nodes[at]["charge"])
+
+        if len(lines_ch) > 0:
+            lines += lines_ch_title
+            lines += lines_ch
 
         # Contribution to dispersion intramolecular
         # ==============================
-        lines += """*
+        lines_contr_title = """*
 * =========================================================
 * Contribution de dispersion repulsion en intramoleculaire 
 * =========================================================
 ContribDispRepIntra
 """     
         if self.adding_PC_proc:
-            lines += ContribDispRepIntra_PC
+            lines_contr = ContribDispRepIntra_PC
+        elif self.adding_OH_proc:
+            lines_contr = ""
         else:
             ContribDispRepIntra = self.ContribDispRepIntra
-            lines += "%d\n" % len(ContribDispRepIntra)
+            lines_contr = "%d\n" % len(ContribDispRepIntra)
             for le in ContribDispRepIntra:
-                lines += "%s\n" % le
+                lines_contr += "%s\n" % le
+
+        if len(lines_contr) > 0:
+            lines += lines_contr_title
+            lines += lines_contr
 
         # Save lines
         with open(out, "w") as FATM:

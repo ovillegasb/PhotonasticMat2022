@@ -2,17 +2,19 @@
 
 import time
 import mdtraj as md
+import pandas as pd
+from molcraft.structure import Elements
 
 
 def read_xtc(**kwargs):
     """Read the trajectrory using mdtraj module from the xtc file."""
     # set needed variables:
-    trajfile = kwargs["xtc"]
     top = kwargs["top"]
+    trajfile = kwargs["xtc"]
     interval = int(kwargs["interval"])
     begin = int(kwargs["b"])
-    end = int(kwargs["e"])
-
+    end = -1 if kwargs["e"] is None else int(kwargs["e"])
+    print("")
     print("Read trajectory file: ", trajfile)
     print("Read topology from:   ", top)
 
@@ -32,4 +34,26 @@ def read_xtc(**kwargs):
         trajectory = trajectory[begin: end: interval]
     print("  # frames selected: ", trajectory.n_frames, "\n")
 
-    return trajectory
+    xyz = trajectory.xyz.copy() * 10.
+    top, _ = trajectory.topology.to_dataframe()
+
+    traj = []
+    for coord in xyz:
+        table = pd.DataFrame(data=coord, columns=["x", "y", "z"])
+        table["idx"] = top["resSeq"]
+        table["resname"] = top["resName"]
+        table["atsb"] = top["name"]
+        try:
+            table["mass"] = table["atsb"].apply(lambda at: Elements[at]["mass"])
+            table["num"] = table["atsb"].apply(lambda at: Elements[at]["num"])
+        except KeyError:
+            print("Careful! the atomic symbols present were not recognized.")
+            pass
+        # This file has no partial charges .
+        table["charge"] = 0.0
+
+        traj.append(table)
+
+    boxs = trajectory.unitcell_lengths
+
+    return traj, boxs

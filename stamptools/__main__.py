@@ -6,15 +6,14 @@
 import argparse
 import os
 from stamptools.stamp import STAMP
-from stamptools.analysis import save_system, load_system
 from stamptools.analysis import traj_analysis, rdf_analysis
 from stamptools.analysis import get_distances_from
 from stamptools.analysis import gen_centered_traj, mol_traj_analysis
 from stamptools.analysis import mol_traj_cut_distance, get_angles_distance
 from stamptools.analysis import get_dist_from_closest_atom
+from stamptools.analysis import get_acorr_function_angle
 from stamptools.fatomes import TOPOL
-from stamptools.stamptools import clean_data
-from stamptools.gmxtools import read_xtc
+from stamptools.stamptools import clean_data, read_geometry_file
 import pandas as pd
 
 
@@ -34,17 +33,12 @@ Stamp: v4.220721
 
 Usage:
 
-    Create object:
-    python -m stamptools -d DONNEES.in
+    Save the trajectory of a molecule in xyz (mol_traj_0.xyz):
+        python -m stamptools -d DONNEES.in --mol_traj 0 --traj_type [XYZ default or GRO, XTC]
 
-    Thermo:
-    python -m stamptools -l -p T P Etot
+    Saving information about the size and shape of molecules (molprop.csv):
+        python -m stamptools -d DONNEES.in --molprop --traj_type [XYZ default or GRO, XTC]
 
-    Save traj mol 0:
-    python -m stamptools -l --mol 0
-
-    Save molecular information:
-    python -um stamptools -l --molprop > log &
 
     Analysis of distances with respect to a resid:
     python -um stamptools -l --centerm -mref 0 > dist.log &
@@ -68,6 +62,10 @@ ff 0.5
 
     RDF analysis:
     python -m stamptools [-d DONNEES.in or -l] --rdf [all,cm,i-j-k] -mref 0
+
+    MSD analysis
+
+    Center of mass analysis
 
 """
 
@@ -103,29 +101,19 @@ def options():
     )
 
     fileinput.add_argument(
-        "-l", "--load",
-        help="Loads a system status file.",
-        action="store_true"
+        "--traj_type",
+        help="Type of trajectory to work, XYZ, GRO and XTC can be used.",
+        default="XYZ"
     )
 
     fileinput.add_argument(
-        "--traj_type",
-        help="Type of trajectory to work, XYZ and GRO can be used.",
-        default="XYZ"
+        "--geom_file",
+        help="Input file with the geometry of the molecule.",
+        default=None
     )
 
     analysis = parser.add_argument_group(
         "\033[1;36mAnalysis options\033[m")
-
-    analysis.add_argument(
-        "-p", "--plots",
-        help="""Saves graphs of thermodynamic parameters.
-
-        Thermodynamic parameters: T, P or Etot, Several can be chosen
-        at the same time.""",  # action="store_true"
-        nargs="+",
-        default=None
-    )
 
     analysis.add_argument(
         "--mol_traj",
@@ -137,6 +125,13 @@ def options():
     analysis.add_argument(
         "--molprop",
         help="Analyze the shape and size of the molecules present.",
+        action="store_true"
+    )
+
+    analysis.add_argument(
+        "--autocorrelation",
+        help="Performs an autocorrelation analysis, generates an acf.csv file\
+for a chosen property.",
         action="store_true"
     )
 
@@ -166,6 +161,27 @@ def options():
         help="Interval time (default unit ps).",
         type=int,
         default=1
+    )
+
+    analysis.add_argument(
+        "-t0", "--t0",
+        help="Define an initial time for data processing (default unit ps).",
+        type=float,
+        default=0.0
+    )
+
+    analysis.add_argument(
+        "-freq", "--freq",
+        help="Defines a frame time frequency for data processing. (default unit ps).",
+        type=float,
+        default=1.0
+    )
+
+    analysis.add_argument(
+        "-angle", "--angle",
+        help="Select an angle defined in the geometry file.",
+        type=str,
+        default=None
     )
 
     analysis.add_argument(
@@ -264,14 +280,14 @@ csv file.",
         "--top",
         help="System topology, gro file.",
         type=str,
-        default=None
+        default="./XTC/confout.gro"
     )
 
     gromacs.add_argument(
         "--xtc",
         help="System trajectory, xtc file.",
         type=str,
-        default=None
+        default="./XTC/traj_comp.xtc"
     )
 
     fileout = parser.add_argument_group(
@@ -290,19 +306,22 @@ csv file.",
 def read_traj(system, **kwargs):
     """Read the trajectory for specific limits in time (ps)."""    
     time_per_frame = system.time_per_frame
+    interval = kwargs["interval"]
     if kwargs["b"] > 0.0:
         b = time_per_frame[time_per_frame["time"] >= kwargs["b"]].index[0]
         b = int(b)
     else:
-        b = 0
+        b = list(time_per_frame.index)[0]
     if kwargs["e"] is not None:
         e = list(time_per_frame[time_per_frame["time"] <= kwargs["e"]].index)[-1]
         e = int(e)
     else:
-        e = kwargs["e"]
+        e = list(time_per_frame.index)[-1]
 
-    print("Time init:", b, "Time end", e)
-    return system.get_traj(b=b, e=e)
+    print("Time init: {:>8} ps, index: {:>8}".format(time_per_frame.loc[b, "time"], time_per_frame.loc[b, "iframe"]))
+    print("Time end:  {:>8} ps, index: {:>8}".format(time_per_frame.loc[e, "time"], time_per_frame.loc[e, "iframe"]))
+    print("Interval:", interval)
+    return system.get_traj(b=b, e=e, i=interval)
 
 
 def to_Continue_analysis(system, output, **kwargs):
@@ -335,21 +354,23 @@ def to_Continue_analysis(system, output, **kwargs):
 print(TITLE)
 args = options()
 
-if not args["load"] and args["donnees"]:
+if args["donnees"]:
     system = STAMP(donnees=args["donnees"], data=args["dataStamp"], traj_type=args["traj_type"])
-    save_system(system)
 
-elif args["load"]:
-    print("The system status will be loaded")
-    system = load_system("system.chk")
-
-elif args["top"] and args["xtc"]:
-    print("Analysis will be performed for gromacs systems.")
+    if args["traj_type"] == "XTC":
+        print("Analysis will be performed using xtc file from gromacs.")
+        assert args["top"] is not None, "If you are going to use XTC you must define a topology (gro)"
+        assert args["xtc"] is not None, "There must be an xtc trajectory"
+        system.top = args["top"]
+        system.xtc = args["xtc"]
 
 elif args["fatomes"] and not args["donnees"]:
     print("Working with the system topology.")
     fatomes = TOPOL(args["fatomes"])
     print("FAtomes file:", fatomes.file)
+
+elif args["autocorrelation"]:
+    print("Data processing analysis")
 
 else:
     print("The state of the system must be defined.")
@@ -359,9 +380,6 @@ else:
 traj = None
 
 # Others options:
-
-if args["plots"]:
-    system.save_plots(args["plots"])
 
 if isinstance(args["mol_traj"], int):
     resid = args["mol_traj"]
@@ -382,6 +400,10 @@ if isinstance(args["mol_traj"], int):
         box_in_frame,
         o_format=args["format"]
     )
+
+# =============================================================================
+# Structural analysis functions
+# =============================================================================
 
 if args["molprop"]:
     # output name
@@ -412,6 +434,40 @@ if args["molprop"]:
     )
     # save information in file
     print(f"file {output} saved.")
+
+
+if args["autocorrelation"]:
+    geom = args["geom_file"]
+    assert geom is not None, "You must select a geometry file using: --geom_file"
+    print("Geometry file:", geom)
+    t0 = args["t0"]
+    freq = args["freq"]
+
+    data = read_geometry_file(
+        geom,
+        freq=freq,
+        t0=t0
+    )
+
+    print(data)
+    resid = ""
+    try:
+        resid = int(geom.split(".")[0].split("_")[-1])
+    except ValueError:
+        pass
+
+    angle = args["angle"]
+    assert angle is not None, "You must define a angle from geometry file using: -angle/--angle"
+    assert angle in data.columns, "The angle you selected is not found in the geometry file: " + " ".join(list(data.columns))
+    print("Selected angle:", angle)
+
+    acorr = {}
+    acorr["acorr"] = get_acorr_function_angle(data[angle].values)
+    acorr["time"] = data["time"].values
+    acorrDF = pd.DataFrame(acorr)
+    file = f"acf_{angle}_{resid}.csv"
+    acorrDF.to_csv(file, float_format="%.6f", index=None)
+    print(f"file {file} saved.")
 
 
 if args["closestDist"]:
@@ -569,51 +625,3 @@ if args["add_OH"]:
 
 if args["noPBC"]:
     fatomes.noPBC()
-
-
-if args["top"] is not None and args["xtc"] is not None:
-    ## import numpy as np
-    # read trajectory 
-    trajectory = read_xtc(**args)
-
-    # make index for models
-    resid = args["mref"]
-    ## print(trajectory.top.select(f"resid {resid}"))
-    ## models_ndx = np.array(
-    ##     [trajectory.top.select(f"resid {ires}") for ires in range(n_models)]
-    ## )
-
-    ### compute clusters data
-    ##clusters = get_clusters(trajectory, models_ndx, **args)
-    ##masses = np.array([atom.element.mass for atom in trajectory.topology.atoms])
-
-    ##print("Save data into files.")
-
-    ### file with gyration data
-    ##lines = GyrationTensor.get_data_header()
-    ##lines += "# column 8: number of models in the cluster\n"
-    ##lines += "# column 9: frame number\n"
-
-    ### file with the number of cluster per frame
-    ##nclust_lines = "# Number of clusters in each frame\n"
-
-    ### file with the residue id for each cluster and each frame
-    ##resid_lines = "# Residue id for each frame and for each cluster\n"
-    ##resid_lines += "# iframe   nmol   [resid]\n"
-    ##for iframe, frame_clusters in enumerate(clusters):
-    ##    true_frame = iframe * args["interval"]
-
-    ##    nclust_lines += f"{true_frame:8d} {len(frame_clusters):5d}\n"
-
-    ##    for cluster in frame_clusters:
-    ##        ndx = np.hstack(cluster["ndx"])
-    ##        gyr = GyrationTensor(coords=trajectory.xyz[iframe, ndx],
-    ##                             masses=masses[ndx],
-    ##                             box=trajectory.unitcell_lengths)
-    ##        lines += gyr.get_data()
-    ##        lines += f"{cluster['nmol']:4d}"
-    ##        lines += f"{true_frame:8d}\n"
-
-    ##        resid_lines += f"{true_frame:8d}{cluster['nmol']:4d}"
-    ##        resid_lines += "".join([f"{resid + 1:4d}" for resid in cluster["imol"]])
-    ##        resid_lines += "\n"

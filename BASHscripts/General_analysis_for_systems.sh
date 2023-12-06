@@ -10,8 +10,14 @@ conda activate SimMOL
 # STAMP
 #---------
 
+# gen XTC trajectory
+bash ~/.gitproyects/PhotonasticMat/BASHscripts/gro_to_xtc.sh
+
 # gen trajectory for a molecule
-python -m stamptools -d DONNEES.in --mol_traj 0 --traj_type XYZ[or GRO]
+python -m stamptools -d DONNEES.in --mol_traj 0 --traj_type XYZ[or GRO, XTC]
+
+# Closest
+python -m stamptools -d DONNEES.in -mref 0 --closestDist --reset --traj_type XYZ[or GRO, XTC]
 
 # to convert XYZs files to XTC trajectory gromacs
 xyz2gro -d DONNEES.in
@@ -109,6 +115,8 @@ python ~/.gitproyects/PhotonasticMat/PythonScripts/compute_MSD.py -f traj_nojump
 # ADD Oh to FAtomes
 mkdir 7_eq3_0
 python -m stamptools -f FAtomes.in --add_OH
+python -m stamptools -f FAtomes.in --add_H
+python -m stamptools -f FAtomes.in --noPBC
 # for i in {2..4}; do mkdir 7_eq3_${i}; cd 7_eq3_${i}/; cp ../6_prod_${i}/FAtomes.in .; python -m stamptools -f FAtomes.in --add_OH; cp ../7_eq3_0/DONNEES.in .; sbatch ~/scripts/stamp.sh DONNEES.in; cd ..; done
 
 mkdir 8_solOH_NPT_0
@@ -126,3 +134,12 @@ gmx trjconv -f traj_nopbc_mol.xtc -s mol.gro -o traj_nopbc_mol_1fs.xtc -dt 1.0
 
 # Gen sampling from a system
 python -m stamptools -d DONNEES.in --mol_d_aa -b 1500 -e 2000 -i 10 -mref 0 --rcutoff 0.12 --out_folder sampling
+
+# For N PC in the system
+bash ~/.gitproyects/PhotonasticMat/BASHscripts/gro_to_xtc.sh
+for i in {0..N-1}; do python -m stamptools -d DONNEES.in --mol_traj $i --traj_type XTC; done
+for i in {0..N-1}; do vmd mol_traj_$i.xyz -dispdev text -e ~/.gitproyects/PhotonasticMat/VMDscripts/save_geometry_N_pc.tcl; done
+
+for i in {0..1}; do python -m stamptools -d DONNEES.in --mol_traj $i --traj_type GRO; vmd mol_traj_$i.xyz -dispdev text -e ~/.gitproyects/PhotonasticMat/VMDscripts/save_geometry_N_pc.tcl; done
+
+vmd XTC/confout.gro XTC/traj_comp.xtc -dispdev text -e ~/.gitproyects/PhotonasticMat/VMDscripts/save_hbonds.tcl

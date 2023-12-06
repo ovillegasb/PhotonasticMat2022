@@ -5,40 +5,15 @@ import time
 import numpy as np
 import pandas as pd
 from scipy.constants import N_A
-import pickle
-import matplotlib.pyplot as plt
-import seaborn as sns
 import os
 from molcraft.structure import save_xyz, save_gro
-from scipy.stats import linregress
 from scipy.spatial.distance import cdist
 from molcraft.clusters import GyrationTensor
 from multiprocessing import Pool
+import statsmodels.api as sm
 
+# Maximum number of processors
 NUMPROC = 12
-
-
-def show_Methodology():    
-    """Print proposed methodology for performing analysis."""
-    Methodology = """
-STAMPTOOLS
-
-Proposed methodology for performing analysis, importants files.
-
-0) Functions to import
-----------------------
-
-from stamptools.analysis import load_data
-
-
-1) Thermodynamic analysis
--------------------------
-data = load_data("path/Stamp.dat", t="NPT")
-or t="LNVT"
-
-    """
-    print(Methodology)
-
 
 """ Regular expression that extracts matrix XYZ """
 atoms = re.compile(r"""
@@ -66,7 +41,7 @@ out_xyz = re.compile(r"""
 
 out_gro = re.compile(r"""
     ^\s+[\*]+\sIteration\s
-    (?P<frame>[\d,0]+)\s
+    (?P<frame>\d+)\s
     -\sSortie\sGRO
     """, re.X)
 
@@ -408,7 +383,8 @@ def load_log(file="Stamp.log", use_xyz=True, traj_type="XYZ"):
     out_g = []
     out_frame = []
     status = "Not finished"
-
+    dt = 0
+    frame_init = 0
     with open(file, "r") as LOG:
         for line in LOG:
             if out_mean.match(line):
@@ -419,16 +395,36 @@ def load_log(file="Stamp.log", use_xyz=True, traj_type="XYZ"):
                 if out_xyz.match(line):
                     m = out_xyz.match(line)
                     out_frame.append(m.groupdict())
-            elif traj_type == "GRO":
+            elif traj_type == "GRO" or traj_type == "XTC":
                 if out_gro.match(line):
                     m = out_gro.match(line)
                     out_frame.append(m.groupdict())
 
+            if "Nom du fichier de reprise" in line:
+                frame_init = int(line.split()[-1].split("_")[-1].split(".")[0])
+
+            if "Deltatemps" in line:
+                dt = float(line.split()[-1]) * 1e12  # to ps
+
             if "Arret normal du calcul" in line:
                 status = "finished"
 
+    print("time step detected (ps):", dt)
     out_g = pd.DataFrame(out_g)
     out_g.drop_duplicates(inplace=True, ignore_index=True)
+    print("Initial time detected (ps):", out_g["time"].values[0])
+    print("Initial frame:", frame_init)
+
+    ### MODIFICATION
+    out_frame = pd.DataFrame(out_frame)
+    out_frame.drop_duplicates(inplace=True, ignore_index=True)
+    out_frame = out_frame.astype({"frame": np.int64})
+    out_frame["iframe"] = np.arange(len(out_frame))
+    out_frame["step_frame"] = out_frame["frame"] - frame_init
+    out_frame["time"] = out_frame["step_frame"] * dt
+     
+    return out_frame, status
+    """
 
     if use_xyz:
         out_g.set_index("frame", inplace=True)
@@ -458,6 +454,7 @@ def load_log(file="Stamp.log", use_xyz=True, traj_type="XYZ"):
             {"frame": np.int64, "time": np.float64}
         )
         out_frame["time"] = out_frame["time"] * 1e12  # to ps
+        out_frame["iframe"] = np.arange(len(out_frame))
 
         print(f"done in {time.time()-t0:.2f} s")
         return out_frame, status
@@ -468,40 +465,10 @@ def load_log(file="Stamp.log", use_xyz=True, traj_type="XYZ"):
         )
         out_g.set_index("frame", inplace=True)
         out_g["time"] *= 1e12  # to ps
+        out_g["iframe"] = np.arange(len(out_g))
         print(f"done in {time.time()-t0:.2f} s")
         return out_g, status
-
-
-def save_system(obj, file="system.chk"):
-    """Save the status of an object stamp."""
-    with open(file, "wb") as CHK:
-        pickle.dump(obj, CHK)
-
-    print("Saved system status.")
-
-
-def load_system(file):
-    """Load the status of an objecto stamp."""
-    with open(file, "rb") as CHK:
-        system = pickle.load(CHK)
-
-    return system
-
-
-def save_plot(x, y, name, color="b", xlb="", ylb=""):
-    """Save plots."""
-    fig, ax = plt.subplots()
-
-    ax.plot(x, y, color=color, alpha=0.8)
-    # ax.hist(y, bins=100, orientation='horizontal', alpha=0.4, color=color)
-
-    ax.set_xlabel(xlb)
-    ax.set_ylabel(ylb)
-
-    ax.set_title("Mean {:.3f} - std {:.3f}".format(y.mean(), y.std()))
-
-    plt.savefig(f"{name}.png", dpi=300)
-    plt.close()
+    """
 
 
 def get_density(XYSs):
@@ -912,11 +879,30 @@ def mol_traj_analysis(index, mol_ndx, connectivity, traj, box_in_frame, o_format
     """Analyze trajectory of a particular molecule."""
     print("Gen trajectory for a mol, resid: ", index, end=" - ")
     name_last = ""
+
+    def test_coor_mol(x, L):
+        theta = x / L * 2 * np.pi
+        xi = np.cos(theta)
+        eta = np.sin(theta)
+        theta_n = np.arctan2(-eta, -xi) + np.pi
+        return L * theta_n / 2 / np.pi
+
     for i, xyz in enumerate(traj):
         name = "mol_%d_%08d" % (index, i)
         box = box_in_frame[i][0:3]
 
         mol_xyz = xyz.loc[mol_ndx["index"], :]
+        ###TEST TRANSLATION
+        mol_xyz.loc[:, ["x", "y", "z"]] = translate_to(
+            mol_xyz.loc[:, ["x", "y", "z"]].values,
+            np.array([30., 30., 30.]),
+            box
+        )
+        ###TEST trigonometric correction
+        mol_xyz["x"] = mol_xyz["x"].apply(test_coor_mol, L=box[0])
+        mol_xyz["y"] = mol_xyz["y"].apply(test_coor_mol, L=box[1])
+        mol_xyz["z"] = mol_xyz["z"].apply(test_coor_mol, L=box[2])
+
         mol_conn = connectivity.sub_connect(mol_ndx["index"])
         # update coordinates
         mol_conn.update_coordinates(mol_xyz)
@@ -1237,763 +1223,8 @@ def rdf_analysis(ref, atoms, traj, atoms_per_mol, connectivity, top, box, vol, r
     print(f"file {file} saved.", end=" - ")
 
 
-""" PLOTS FUNCTIONS """
-
-
-confIsomer = {
-        "cis": {"color": "#699deb", "lim": [-40, 40]},
-        "trans": {"color": "#734f96", "lim": [-190, 190]}
-    }
-
-
-def thermo_plots(data):
-    """Thermodynamic Analysis."""
-    fig, axs = plt.subplots(ncols=3, figsize=(12,4))
-    (ax1, ax2, ax3) = axs
-
-    sns.lineplot(data=data, x="I", y="T", color="red", ax=ax1, alpha=0.8)
-    ax1.set_ylabel("Temperature (K)")
-    ax1.set_xlabel("time (ps)")
-    ax1.set_title(
-        r"$\bar T =$ {:.2f} $\pm$ {:.2f} K".format(
-            data["T"].mean(),
-            data["T"].std())
-        )
-
-    sns.lineplot(data=data, x="I", y="P", color="purple", ax=ax2, alpha=0.8)
-    ax2.set_ylabel("Pressure (bar)")
-    ax2.set_xlabel("time (ps)")
-    ax2.set_title(
-        r"$\bar P =$ {:.2f} $\pm$ {:.2f} bar".format(
-            data["P"].mean(),
-            data["P"].std())
-        )
-
-    sns.lineplot(data=data, x="I", y="Etot", color="green", ax=ax3, alpha=0.8)
-    ax3.set_ylabel("Total Energy (kJ/mol)")
-    ax3.set_xlabel("time (ps)")
-    ax3.set_title(
-        r"$\bar Etot =$ {:.2f} $\pm$ {:.2f} kJ/mol".format(
-            data["Etot"].mean(),
-            data["Etot"].std())
-        )
-
-    return fig, axs
-
-
-def dih_plots(data, isomer):
-    """Dihedrals Analysis."""
-    fig, axs = plt.subplots(ncols=3, figsize=(12, 4))
-
-    (ax1, ax2, ax3) = axs
-    ylim = confIsomer[isomer]["lim"]
-
-    sns.regplot(
-        data=data,
-        x="t", 
-        y="torsion",
-        ax=ax1,
-        label=isomer,
-        scatter_kws={"alpha": 0.6},
-        line_kws={"color": "k"},
-        color=confIsomer[isomer]["color"]
-    )
-    ax1.set_title("per time")
-    ax1.set_ylabel("angle (degree)")
-    ax1.set_xlabel("time (ps)")
-    ax1.set_ylim(ylim)
-    ax1.legend()
-
-    sns.histplot(
-        data=data,
-        y="torsion",
-        ax=ax2,
-        label=isomer,
-        binwidth=2,
-        color=confIsomer[isomer]["color"]
-    )
-    ax2.set_title("histogram")
-    ax2.set_ylabel("angle (degree)")
-    ax2.set_xlabel("count")
-    ax2.set_ylim(ylim)
-    ax2.legend()
-
-    sns.histplot(
-        data=data,
-        y="abs",
-        ax=ax3,
-        label=isomer,
-        binwidth=2,
-        color=confIsomer[isomer]["color"]
-    )
-    ax3.set_title("histogram (module)")
-    ax3.set_ylabel("angle (degree)")
-    ax3.set_xlabel("count")
-    ax3.legend()
-
-    box = {
-        "facecolor": "0.85",
-        "edgecolor": "k",
-        "boxstyle": "round"
-    }
-
-    ax2.text(0.5, 0.2, r"{} - dih $=$ {:.2f} $\pm$ {:.2f} degre".format(
-        isomer, data["torsion"].mean(),
-        data["torsion"].std()
-        ),
-        transform=ax2.transAxes,
-        bbox=box,
-        ha="center")
-
-    ax3.text(0.5, 0.2, r"{} - dih $=$ {:.2f} $\pm$ {:.2f} degre".format(
-        isomer, data["abs"].mean(),
-        data["abs"].std()
-        ),
-        transform=ax3.transAxes,
-        bbox=box,
-        ha="center")
-
-    return fig, axs
-
-
-def poly_plots_general(data):
-    """Polymers analysis."""
-    fig, axs = plt.subplots(ncols=3, figsize=(12, 4))
-
-    sns.histplot(
-        data=data,
-        x="Rg",
-        ax=axs[0],
-        kde=True,
-        color="#2a90a6",
-        binwidth=0.5,
-        stat="count",
-        weights=1/data["frame"].max(),
-        alpha=0.5
-    )
-    axs[0].set_xlabel("Radius of gyration ($\AA$)")
-    axs[0].set_xlim(7, 25)
-
-    sns.histplot(
-        data=data,
-        x="dmax",
-        ax=axs[1],
-        kde=True,
-        color="#5b557b",
-        binwidth=2.,
-        stat="count",
-        weights=1/data["frame"].max(),
-        alpha=0.5
-    )
-    axs[1].set_xlabel("Max. distance ($\AA$)")
-    axs[1].set_xlim(20, 90)
-
-    sns.histplot(
-        data=data,
-        x="k2",
-        ax=axs[2],
-        kde=True,
-        color="#fea6ad",
-        binwidth=0.05,
-        stat="count",
-        weights=1/data["frame"].max()
-    )
-    axs[2].set_xlabel("Shape anisotropy")
-    axs[2].set_xlim(0, 1)
-
-    return fig, axs
-
-
-def poly_plots_temporal(data):
-    """Analysis of polymers in the time."""
-    label = list(data["time"].unique())
-
-    fig, axs = plt.subplots(nrows=len(label), ncols=3, figsize=(12, 2*len(label)))
-    fig.subplots_adjust(hspace=0.1, wspace=0.2)
-
-    box = {
-        "facecolor": "0.85",
-        "edgecolor": "k",
-        "boxstyle": "round"
-    }
-
-    Analysis = {
-        "Rg": {"color": "#2a90a6", "binw": 0.5, "xlim": [7, 22], "title": "Radius of gyration ($\AA$)"},
-        "dmax": {"color": "#5b557b", "binw": 2.0, "xlim": [20, 80], "title": "Max. distance ($\AA$)"},
-        "k2": {"color": "#fea6ad", "binw": 0.05, "xlim": [0, 1], "title": "Shape anisotropy"}
-    }
-
-    for i, t in enumerate(label):
-        subdata = data[data["time"] == t]
-        for j, anl in enumerate(Analysis):
-            sns.histplot(
-                data=subdata,
-                x=anl,
-                ax=axs[i, j],
-                kde=True,
-                color=Analysis[anl]["color"],
-                binwidth=Analysis[anl]["binw"],
-                stat="density",
-                alpha=0.5
-            )
-            axs[i, j].set_xlim(Analysis[anl]["xlim"])
-            axs[i, j].set_xlabel(Analysis[anl]["title"])
-            axs[i, j].axvline(x=subdata[anl].mean(), color="k", ls="--", lw=2)
-
-            if i != len(label)-1:
-                axs[i, j].get_xaxis().set_visible(False)
-
-        axs[i, 0].text(
-            0.8, 0.8,
-            "{}".format(t),
-            transform=axs[i, 0].transAxes,
-            bbox=box,
-            ha="center"
-        )
-
-    return fig, axs
-
-
-def dist_plots_general(data_prop):
-    """Distances analysis."""
-    fig, axs = plt.subplots(ncols=3, figsize=(12, 4))
-    (ax1, ax2, ax3) = axs
-
-    sns.histplot(
-        data=data_prop,
-        x="distance",
-        binwidth=.1,
-        kde=True,
-        color="#9c89e8",
-        stat="density",
-        ax=ax1,
-        cbar_kws={"alpha": 0.5}
-    )
-    ax1.axvline(x=1.5, ls="--", color="k", lw=2.0, alpha=0.7)
-    ax1.axvline(x=2.5, ls="--", color="k", lw=2.0, alpha=0.7)
-    ax1.axvline(x=3.5, ls="--", color="k", lw=2.0, alpha=0.7)
-    ax1.set_xlabel("distance (nm)")
-    ax1.set_xlim(0, 5)
-
-    sns.histplot(
-        data=data_prop,
-        x="distance",
-        y="Rg",
-        binwidth=[0.1, 0.5],
-        ax=ax2, color="#537f6b"
-        )
-    ax2.axvline(x=1.5, ls="--", color="k", lw=2.0, alpha=0.7)
-    ax2.axvline(x=2.5, ls="--", color="k", lw=2.0, alpha=0.7)
-    ax2.axvline(x=3.5, ls="--", color="k", lw=2.0, alpha=0.7)
-    ax2.axhline(y=data_prop["Rg"].mean(), ls="--", color="#537f6b", lw=2.0, alpha=1.0)
-    ax2.set_xlabel("distance (nm)")
-    ax2.set_ylabel("Radius of gyration ($\AA$)")
-    ax2.set_xlim(0, 5)
-    ax2.set_ylim(7, 25)
-
-    sns.histplot(data=data_prop, x="distance", y="k2", binwidth=[0.1, 0.05], ax=ax3, color="#5d3954")
-    ax3.axvline(x=1.5, ls="--", color="k", lw=2.0, alpha=0.7)
-    ax3.axvline(x=2.5, ls="--", color="k", lw=2.0, alpha=0.7)
-    ax3.axvline(x=3.5, ls="--", color="k", lw=2.0, alpha=0.7)
-    ax3.axhline(y=data_prop["k2"].mean(), ls="--", color="#5d3954", lw=2.0, alpha=1.0)
-    ax3.set_xlabel("distance (nm)")
-    ax3.set_ylabel("Shape anisotropy")
-    ax3.set_xlim(0, 5)
-    ax3.set_ylim(0, 1)
-
-    return fig, axs
-
-
-def dist_plots_temporal(data):
-    """Distances analysis in time."""
-    label = list(data["time"].unique())
-    
-    fig, axs = plt.subplots(nrows=len(label), ncols=3, figsize=(12, 2*len(label)))
-    fig.subplots_adjust(hspace=0.1, wspace=0.2)
-    
-    box = {
-        "facecolor": "0.85",
-        "edgecolor": "k",
-        "boxstyle": "round"
-    }
-    
-    Analysis = {
-        "Rg": {"color": "#2a90a6", "binw": 0.5, "xlim": [7, 22], "title": "Radius of gyration ($\AA$)"},
-        "dmax": {"color": "#5b557b", "binw": 2.0, "xlim": [20, 80], "title": "Max. distance ($\AA$)"},
-        "k2": {"color": "#fea6ad", "binw": 0.05, "xlim": [0, 1], "title": "Shape anisotropy"}
-    }
-    
-    for i, t in enumerate(label):
-        subdata = data[data["time"] == t]
-        for j, anl in enumerate(Analysis):
-            if j == 0:
-                sns.histplot(
-                    data=subdata,
-                    x="distance",
-                    binwidth=.1,
-                    kde=True,
-                    color="#9c89e8",
-                    stat="density",
-                    ax=axs[i, j],
-                    cbar_kws={"alpha": 0.5}
-                )
-                axs[i, j].axvline(x=1.5, ls="--", color="k", lw=2.0, alpha=0.7)
-                #ax1.axvline(x=2.5, ls="--", color="k", lw=2.0, alpha=0.7)
-                #ax1.axvline(x=3.5, ls="--", color="k", lw=2.0, alpha=0.7)
-                axs[i, j].set_xlabel("distance (nm)")
-                axs[i, j].set_xlim(0, 5)
-                
-            elif j == 1:
-                sns.histplot(
-                    data=subdata,
-                    x="distance",
-                    y="Rg",
-                    binwidth=[0.1, 0.5],
-                    ax=axs[i, j],
-                    color="#537f6b"
-                )
-                axs[i, j].axvline(x=1.5, ls="--", color="k", lw=2.0, alpha=0.7)
-                axs[i, j].axhline(y=subdata["Rg"].mean(), ls="--", color="#537f6b", lw=2.0, alpha=1.0)
-                axs[i, j].set_xlabel("distance (nm)")
-                axs[i, j].set_ylabel("Rg ($\AA$)")
-                axs[i, j].set_xlim(0, 5)
-                axs[i, j].set_ylim(7, 25)
-                
-            elif j == 2:
-                sns.histplot(
-                    data=subdata,
-                    x="distance",
-                    y="k2",
-                    binwidth=[0.1, 0.05],
-                    ax=axs[i, j],
-                    color="#5d3954"
-                )
-                axs[i, j].axvline(x=1.5, ls="--", color="k", lw=2.0, alpha=0.7)
-                axs[i, j].axhline(y=subdata["k2"].mean(), ls="--", color="#5d3954", lw=2.0, alpha=1.0)
-                axs[i, j].set_xlabel("distance (nm)")
-                axs[i, j].set_ylabel("Shape anisotropy")
-                axs[i, j].set_xlim(0, 5)
-                axs[i, j].set_ylim(0, 1)
-
-            if i != len(label)-1:
-                axs[i, j].get_xaxis().set_visible(False)
-                
-        axs[i, 0].text(
-            0.85, 0.8,
-            "{}".format(t),
-            transform=axs[i, 0].transAxes,
-            bbox=box,
-            ha="center"
-        )
-    
-    return fig, axs
-
-
-def rdf_plots_general(data_prop):
-    """Distance analysis using rdf normalization."""
-    fig, axs = plt.subplots(ncols=3, figsize=(12, 4))
-    
-    (ax1, ax2, ax3) = axs
-    
-    sns.lineplot(
-        data=data_prop,
-        x="distance",
-        y="gr",
-        ax=ax1,
-        color="#9c89e8"
-    )
-    ax1.axhline(y=1.0, ls="--", color="gray")
-    ax1.axvline(x=1.7, ls="--", color="black")
-    ax1.set_xlabel("r (nm)")
-    ax1.set_ylabel("g (r)")
-    ax1.set_xlim(0, 3)
-    
-    sns.histplot(
-        data=data_prop,
-        x="distance",
-        y="Rg",
-        binwidth=[0.1, 0.5],
-        weights="w",
-        ax=ax2,
-        color="#537f6b"
-    )
-    ax2.set_xlim(0, 3)
-    ax2.set_ylim(7, 25)
-    ax2.set_xlabel("r (nm)")
-    ax2.set_ylabel("Radius of gyration ($\AA$)")
-    
-    ax2.axhline(y=data_prop["Rg"].mean(), ls="--", color="#537f6b", lw=2.0, alpha=1.0)
-    ax2.axvline(x=1.7, ls="--", color="black")
-    
-    sns.histplot(
-        data=data_prop,
-        x="distance",
-        y="k2",
-        binwidth=[0.1, 0.05],
-        weights="w",
-        ax=ax3,
-        color="#5d3954"
-    )
-    ax3.set_xlim(0, 3)
-    ax3.set_ylim(0, 1)
-    ax3.set_xlabel("r (nm)")
-    ax3.set_ylabel("Shape anisotropy")
-    ax3.axhline(y=data_prop["k2"].mean(), ls="--", color="#5d3954", lw=2.0, alpha=1.0)
-    ax3.axvline(x=1.7, ls="--", color="black")
-
-    return fig, axs
-
-
-def rdf_plots_temporal(data, L):
-    """Distances rdf analysis in time."""
-    label = list(data["time"].unique())
-    
-    fig, axs = plt.subplots(nrows=len(label), ncols=3, figsize=(12, 2*len(label)))
-    fig.subplots_adjust(hspace=0.1, wspace=0.2)
-    
-    box = {
-        "facecolor": "0.85",
-        "edgecolor": "k",
-        "boxstyle": "round"
-    }
-    
-    Analysis = {
-        "Rg": {"color": "#2a90a6", "binw": 0.5, "xlim": [7, 22], "title": "Radius of gyration ($\AA$)"},
-        "dmax": {"color": "#5b557b", "binw": 2.0, "xlim": [20, 80], "title": "Max. distance ($\AA$)"},
-        "k2": {"color": "#fea6ad", "binw": 0.05, "xlim": [0, 1], "title": "Shape anisotropy"}
-    }
-
-    for i, t in enumerate(label):
-        subdata = data[data["time"] == t].copy()
-        rdf, binned_distance = rdf_from_dist(subdata.copy(), L * 0.1, rmax=3.1, binwidth=0.05)
-        rdf.set_index("bin", inplace=True)
-        subdata.loc[:, "distance"] = subdata["distance"].apply(binned_distance)
-        subdata.dropna(axis=0, inplace=True)
-
-        subdata.loc[:, "gr"] = subdata["distance"].apply(lambda x: rdf.loc[x, "gr"])
-        subdata.loc[:, "w"] = subdata["distance"].apply(lambda x: rdf.loc[x, "weihts"])
-
-        for j, anl in enumerate(Analysis):
-            if j == 0:
-                """RDF"""
-                sns.lineplot(
-                    data=subdata,
-                    x="distance",
-                    y="gr",
-                    ax=axs[i, j],
-                    color="#9c89e8"
-                )
-                axs[i, j].axhline(y=1.0, ls="--", color="gray")
-                axs[i, j].axvline(x=1.7, ls="--", color="black")
-                axs[i, j].set_xlabel("r (nm)")
-                axs[i, j].set_ylabel("g (r)")
-                axs[i, j].set_xlim(0, 3)
-
-            elif j == 1:
-                """Rg vs distance"""
-                sns.histplot(
-                    data=subdata,
-                    x="distance",
-                    y="Rg",
-                    binwidth=[0.1, 0.5],
-                    weights="w",
-                    ax=axs[i, j],
-                    color="#537f6b"
-                )
-                axs[i, j].set_xlim(0, 3)
-                axs[i, j].set_ylim(7, 25)
-                axs[i, j].set_xlabel("r (nm)")
-                axs[i, j].set_ylabel("Radius of gyration ($\AA$)")
-    
-                axs[i, j].axhline(y=subdata["Rg"].mean(), ls="--", color="#537f6b", lw=2.0, alpha=1.0)
-                axs[i, j].axvline(x=1.7, ls="--", color="black")
-
-            elif j == 2:
-                """shape anisotrope"""
-                sns.histplot(
-                    data=subdata,
-                    x="distance",
-                    y="k2",
-                    binwidth=[0.1, 0.05],
-                    weights="w",
-                    ax=axs[i, j],
-                    color="#5d3954"
-                )
-                axs[i, j].set_xlim(0, 3)
-                axs[i, j].set_ylim(0, 1)
-                axs[i, j].set_xlabel("r (nm)")
-                axs[i, j].set_ylabel("Shape anisotropy")
-                axs[i, j].axhline(y=subdata["k2"].mean(), ls="--", color="#5d3954", lw=2.0, alpha=1.0)
-                axs[i, j].axvline(x=1.7, ls="--", color="black")
-
-            if i != len(label)-1:
-                axs[i, j].get_xaxis().set_visible(False)
-
-        axs[i, 0].text(
-            0.85, 0.8,
-            "{}".format(t),
-            transform=axs[i, 0].transAxes,
-            bbox=box,
-            ha="center"
-        )
-
-    return fig, axs
-
-
-def plots_mean_per_time(data):
-    """Means per time groups."""
-    fig, axs = plt.subplots(ncols=3, figsize=(12, 4))
-
-    box = {
-        "facecolor": "0.85",
-        "edgecolor": "k",
-        "boxstyle": "round"
-    }
-
-    (ax1, ax2, ax3) = axs
-
-    ax1.errorbar(
-        data["t"], data["Rg"]["mean"],
-        yerr=data["Rg"]["std"], fmt="o", capsize=4,
-        color="black", ecolor="#2a90a6"
-    )
-    regress = linregress(data["t"], y=data["Rg"]["mean"])
-    ax1.plot(data["t"], data["t"] * regress.slope + regress.intercept)
-    ax1.set_ylim(7, 25)
-    ax1.set_xlabel("time (ps)")
-    ax1.set_ylabel("Radius of gyration ($\AA$)")
-
-    ax1.text(
-        0.5, 0.8,
-        "{:.2f}x+{:.2f} - R2 = {:.3f}".format(regress.slope, regress.intercept, regress.rvalue**2),
-        transform=ax1.transAxes,
-        bbox=box,
-        ha="center"
-    )
-
-    ax2.errorbar(
-        data["t"], data["dmax"]["mean"],
-        yerr=data["dmax"]["std"], fmt="o", capsize=4,
-        color="black", ecolor="#5b557b"
-    )
-    regress = linregress(data["t"], y=data["dmax"]["mean"])
-    ax2.plot(data["t"], data["t"] * regress.slope + regress.intercept)
-    ax2.set_ylim(20, 90)
-    ax2.set_xlabel("time (ps)")
-    ax2.set_ylabel("Max. distance ($\AA$)")
-
-    ax2.text(
-        0.5, 0.8,
-        "{:.2f}x+{:.2f} - R2 = {:.3f}".format(regress.slope, regress.intercept, regress.rvalue**2),
-        transform=ax2.transAxes,
-        bbox=box,
-        ha="center"
-    )
-
-    ax3.errorbar(
-        data["t"], data["k2"]["mean"],
-        yerr=data["k2"]["std"], fmt="o", capsize=4,
-        color="black", ecolor="#5b557b"
-    )
-    regress = linregress(data["t"], y=data["k2"]["mean"])
-    ax3.plot(data["t"], data["t"] * regress.slope + regress.intercept)
-    ax3.set_ylim(0, 1)
-    ax3.set_xlabel("time (ps)")
-    ax3.set_ylabel("Shape anisotropy")
-
-    ax3.text(
-        0.5, 0.8,
-        "{:.2f}x+{:.2f} - R2 = {:.3f}".format(regress.slope, regress.intercept, regress.rvalue**2),
-        transform=ax3.transAxes,
-        bbox=box,
-        ha="center"
-    )
-
-    return fig, axs
-
-
-def plots_mean_per_dist(data):
-    """Means per distance groups."""
-    fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(12, 4))
-
-    cols = {
-        "Rg": {"label": "Radius of gyration ($\AA$)"},
-        "dmax": {"label": "Max. distance ($\AA$)"},
-        "k2": {"label": "Shape anisotropy"}
-    }
-
-    for i, name in enumerate(cols):
-        axs[i].errorbar(
-            data["d"],
-            y=data[name]["mean"],
-            yerr=data[name]["std"],
-            fmt="o",
-            capsize=4,
-            color="black",
-            ecolor="#fd9283"
-        )
-        axs[i].set_ylabel(cols[name]["label"])
-        axs[i].set_xlabel("distance (nm)")
-
-    return fig, axs
-
-
-def GenPlots(
-    home, pc,  step, replica, isomer, name, out, t_min=500, t_max=2500,
-    t_step=500, rmin=0, rmax=3.1, binwidth=0.5, thermo=True, dihedrals=True, polymer=True, distances=True,
-    rdfs=True, means=True, not_plots=False, return_data=False
-):
-    """Graph and save all analyses."""
-    sys = load_system(f"{home}/{pc}_procedure/{step}_prod_{replica}/system.chk")
-    lims = np.arange(t_min, t_max + t_step, t_step)
-    alldata = {}
-
-    def binned_time(x):
-        ind = np.digitize(x, lims)
-        try:
-            return f"{lims[ind]}ps"
-        except IndexError:
-            return np.NaN
-
-    def binned_distance(x):
-        bins = np.arange(rmin, rmax, binwidth)
-        index = np.digitize(x, bins)
-        try:
-            return bins[index]
-        except IndexError:
-            return np.NaN
-
-    """Termodynamics."""
-    alldata["thermo"] = sys.data
-    if thermo and not not_plots:
-        fig, axs = thermo_plots(sys.data)
-        fig.suptitle(
-            f"Thermodynamic properties - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-        plt.tight_layout()
-        plt.savefig(f"{out}/{name}_thermo_s{step}r{replica}.png", dpi=300)
-
-    """Dihedrals."""
-    sys_dih = pd.read_csv(f"{home}/{pc}_procedure/{step}_prod_{replica}/dihedrals.dat", sep="\s+", header=None, index_col=0, names=["torsion"])
-    sys_dih["t"] = sys.time_per_frame["time"]
-    sys_dih["abs"] = sys_dih["torsion"].abs()
-    alldata["dihedral"] = sys_dih
-    if dihedrals and not not_plots:
-        fig, axs = dih_plots(sys_dih, isomer)
-        fig.suptitle(f"Torsion angles in polymer matrix - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-        plt.tight_layout()
-        plt.savefig(f"{out}/{name}_dihs_s{step}r{replica}.png", dpi=300)
-
-    """Polymers."""
-    sys_pol = pd.read_csv(f"{home}/{pc}_procedure/{step}_prod_{replica}/polymers.csv")
-    # frame_to_time = dict(enumerate(sys.data["I"][::10].values[1:]))
-    frame_to_time = {i: sys.time_per_frame.loc[i, "time"] for i in sys.time_per_frame.index}
-    sys_pol["time"] = sys_pol["frame"].apply(lambda x: frame_to_time[x])
-    pol_c = sys_pol[sys_pol["idx"] != 0].copy()
-    pol_c["time"] = pol_c["time"].apply(binned_time)
-    pol_t = pol_c.dropna(axis=0)
-    alldata["pol_g"] = pol_c
-    alldata["pol_t"] = pol_t
-
-    if polymer and not not_plots:
-        fig, axs = poly_plots_general(pol_c)
-        fig.suptitle(f"Global analysis of the polymeric matrix - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-        plt.tight_layout()
-        plt.savefig(f"{out}/{name}_poly_g_s{step}r{replica}.png", dpi=300)
-
-        """Polymer by time."""
-        fig, axs = poly_plots_temporal(pol_t)
-        fig.suptitle(f"Polymeric analysis by time period - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-        plt.tight_layout()
-        plt.savefig(f"{out}/{name}_poly_t_s{step}r{replica}.png", dpi=300)
-
-    """Distances."""
-    sys_dist = pd.read_csv(f"{home}/{pc}_procedure/{step}_prod_{replica}/mol_dist_from_0.csv")
-    sys_dist["distance"] *= 0.1
-
-    dprop = pd.DataFrame({
-        "distance": sys_dist["distance"].values,
-        "Rg": pol_c["Rg"].values,
-        "k2": pol_c["k2"].values,
-        "dmax": pol_c["dmax"].values,
-        "time": pol_c["time"].values
-    })
-
-    dprop.dropna(axis=0, inplace=True)
-    alldata["distance"] = dprop
-    if distances and not not_plots:
-        fig, axs = dist_plots_general(dprop)
-        fig.suptitle(f"Global analysis of the distances from the PC - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-        plt.tight_layout()
-        plt.savefig(f"{out}/{name}_dist_g_s{step}r{replica}.png", dpi=300)
-
-        # Distance by time
-        fig, axs = dist_plots_temporal(dprop)
-        fig.suptitle(f"Distances analysis by time period - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-        plt.tight_layout()
-        plt.savefig(f"{out}/{name}_dist_t_s{step}r{replica}.png", dpi=300)
-
-    """ RDF distances general."""
-    dprop = pd.DataFrame({
-        "distance": sys_dist["distance"].values,
-        "Rg": pol_c["Rg"].values,
-        "k2": pol_c["k2"].values,
-        "dmax": pol_c["dmax"].values,
-        "time": pol_c["time"].values,
-        "frame": pol_c["frame"].values
-    })
-
-    rdf, bindistance = rdf_from_dist(sys_dist, sys.box * 0.1, rmax=3.1, binwidth=0.05)
-    rdf.set_index("bin", inplace=True)
-    dprop["distance"] = dprop["distance"].apply(bindistance)
-    dprop.dropna(axis=0, inplace=True)
-    dprop["gr"] = dprop["distance"].apply(lambda x: rdf.loc[x, "gr"])
-    dprop["w"] = dprop["distance"].apply(lambda x: rdf.loc[x, "weihts"])
-
-    alldata["rdf"] = dprop
-
-    if rdfs and not not_plots:
-        fig, axs = rdf_plots_general(dprop)
-        fig.suptitle(f"RDF analysis from the PC - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-        plt.tight_layout()
-        plt.savefig(f"{out}/{name}_rdf_g_s{step}r{replica}.png", dpi=300)
-
-        # sys_dist["time"] = sys_dist["frame"].apply(lambda x: frame_to_time[x])
-        # sys_dist["time"] = sys_dist["time"].apply(binned_time)
-        # sys_dist.dropna(axis=0, inplace=True)
-
-        fig, axs = rdf_plots_temporal(dprop, sys.box)
-        fig.suptitle(f"RDF analysis of the distances by time period - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-        plt.tight_layout()
-        plt.savefig(f"{out}/{name}_rdf_t_s{step}r{replica}.png", dpi=300)
-
-    aggregation = {
-        "Rg": ["mean", "std"],
-        "k2": ["mean", "std"],
-        "dmax": ["mean", "std"]
-    }
-
-    dprop_resume = dprop.groupby("time").agg(aggregation)
-    dprop_resume["t"] = [int(i.replace("ps", "")) for i in dprop_resume.index]
-
-    alldata["resume_t"] = dprop_resume
-
-    dfdist = alldata["distance"]
-    dfdist["d"] = dfdist["distance"].apply(binned_distance)
-    dfresume = dfdist.groupby("d").agg(aggregation)
-    dfresume.reset_index(inplace=True)
-    alldata["resume_d"] = dfresume
-
-    if means and not not_plots:
-        fig, axs = plots_mean_per_time(dprop_resume)
-        fig.suptitle(f"Mean analysis of polymer per time - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-        plt.tight_layout()
-        plt.savefig(f"{out}/{name}_means_t_s{step}r{replica}.png", dpi=300)
-
-        fig, axs = plots_mean_per_dist(dfresume)
-        fig.suptitle(f"Mean analysis of polymer per distance - step {step} replica {replica} - AzoO {isomer}", fontweight="bold")
-        plt.tight_layout()
-        plt.savefig(f"{out}/{name}_means_d_s{step}r{replica}.png", dpi=300)
-
-    if return_data:
-        return alldata
-
+def get_acorr_function_angle(angle):
+    """Return autocorrelation function."""
+    cos_a = np.cos(np.deg2rad(angle))
+    acorr = sm.tsa.acf(cos_a, nlags = len(cos_a)-1)
+    return acorr

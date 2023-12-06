@@ -3,9 +3,9 @@
 from stamptools.stamp import STAMP
 import numpy as np
 from multiprocessing import Pool
-from stamptools.analysis import center_of_mass, minImagenC
+from stamptools.analysis import center_of_mass, minImagenC, translate_to
 import sys
-from molcraft.structure import save_pdb
+# from molcraft.structure import save_pdb
 
 
 def save_gro(table, name, box, title="GRO FILE", time=0.0, out="."):
@@ -37,7 +37,23 @@ def save_gro(table, name, box, title="GRO FILE", time=0.0, out="."):
 
 def get_nopbc_mol(mol_ndx, confout, connectivity, box):
     """Return the structure complet fo a molecule."""
+    def test_coor_mol(x, L):
+        theta = x / L * 2 * np.pi
+        xi = np.cos(theta)
+        eta = np.sin(theta)
+        theta_n = np.arctan2(-eta, -xi) + np.pi
+        return L * theta_n / 2 / np.pi
     mol_xyz = confout.loc[mol_ndx, :]
+    ###TEST TRANSLATION
+    ###mol_xyz.loc[:, ["x", "y", "z"]] = translate_to(
+    ###    mol_xyz.loc[:, ["x", "y", "z"]].values,
+    ###    np.array([30., 30., 30.]),
+    ###    box
+    ###)
+    ###TEST trigonometric correction
+    mol_xyz["x"] = mol_xyz["x"].apply(test_coor_mol, L=box[0])
+    mol_xyz["y"] = mol_xyz["y"].apply(test_coor_mol, L=box[1])
+    mol_xyz["z"] = mol_xyz["z"].apply(test_coor_mol, L=box[2])
     mol_conn = connectivity.sub_connect(mol_ndx)
     mol_conn.update_coordinates(mol_xyz)
     mol_conn.noPBC(box, center=np.zeros(3))
@@ -79,7 +95,10 @@ for resid in atoms_per_mol:
         RESinfo[i] = {"resid": resid, "resname": resname}
 
 # get trajectory
-traj = system.get_traj(e=1)
+time_per_frame = system.time_per_frame
+end = time_per_frame["iframe"].values[-1]
+
+traj = system.get_traj(b=end-1, e=end)
 confout = traj[-1]
 
 # BOXs
@@ -92,18 +111,27 @@ confout["resid"] = confout.index.map(lambda x: RESinfo[x]["resid"])
 confout["resname"] = confout.index.map(lambda x: RESinfo[x]["resname"])
 
 connectivity = system.connectivity
+atoms_connects = connectivity.atoms_map
 
-############
-# PDB
-
-save_pdb(confout, "test")
-print("\nSaved pdb file: \033[1;36m%s\033[m writed\n" % "test.pdb")
-exit()
-
-############
 
 if resid_PC != "None":
     pc_xyz = confout[confout["resid"] == 0]
+    def test_coor_mol(x, L):
+        theta = x / L * 2 * np.pi
+        xi = np.cos(theta)
+        eta = np.sin(theta)
+        theta_n = np.arctan2(-eta, -xi) + np.pi
+        return L * theta_n / 2 / np.pi
+    ###TEST TRANSLATION
+    ###pc_xyz.loc[:, ["x", "y", "z"]] = translate_to(
+    ###    pc_xyz.loc[:, ["x", "y", "z"]].values,
+    ###    np.array([30., 30., 30.]),
+    ###    box
+    ###)
+    ###TEST trigonometric correction
+    pc_xyz["x"] = pc_xyz["x"].apply(test_coor_mol, L=box[0])
+    pc_xyz["y"] = pc_xyz["y"].apply(test_coor_mol, L=box[1])
+    pc_xyz["z"] = pc_xyz["z"].apply(test_coor_mol, L=box[2])
     pc_conn = connectivity.sub_connect(atoms_per_mol[resid_PC]["index"])
     # update coordinates
     pc_conn.update_coordinates(pc_xyz)
@@ -144,7 +172,11 @@ with Pool() as pool:
         confout.loc[mol_ndx, "y"] = new_mol_xyz["y"].values
         confout.loc[mol_ndx, "z"] = new_mol_xyz["z"].values
 
+
 confout["resid"] += 1
+
+# save_pdb(confout, connect=atoms_connects, name="topol")
+# print("\nSaved pdb file: \033[1;36m%s\033[m writed\n" % "topol.pdb")
 
 save_gro(confout, "confout", box)
 print("\nSaved gro file: \033[1;36m%s\033[m writed\n" % "confout.gro")
