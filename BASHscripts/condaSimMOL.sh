@@ -15,6 +15,7 @@ conda install statsmodels
 python -m site --user-site
 mkdir -p $(python -m site --user-site)
 
+
 # create new .pth file with our path
 echo "$HOME/foo/bar" > "$SITEDIR/somelib.pth"
 

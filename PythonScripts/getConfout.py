@@ -115,7 +115,8 @@ atoms_connects = connectivity.atoms_map
 
 
 if resid_PC != "None":
-    pc_xyz = confout[confout["resid"] == 0]
+    resid_PC = int(resid_PC)
+    pc_xyz = confout[confout["resid"] == resid_PC].copy()
     def test_coor_mol(x, L):
         theta = x / L * 2 * np.pi
         xi = np.cos(theta)

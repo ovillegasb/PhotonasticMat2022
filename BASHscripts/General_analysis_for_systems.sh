@@ -48,10 +48,32 @@ echo -e "q\n" | gmx make_ndx -f confout.gro -o index.ndx
 echo -e "2 \n 0 \n" | gmx trjconv -f traj_comp.xtc -s run.tpr -o traj_nojump.xtc -center -pbc nojump -n index.ndx
 echo -e "2 \n 0 \n" | gmx trjconv -f traj_nojump.xtc -s run.tpr -o traj_nopbc.xtc -center -pbc mol -ur compact -n index.ndx
 
+
+
 # trajectory for a molecule
-echo -e "2 \n 2 \n" | gmx editconf -f confout.gro -o mol.gro -n index.ndx -c
-echo -e "2 \n 2 \n" | gmx trjconv -f traj_comp.xtc -s run.tpr -o traj_nojump_mol.xtc -center -pbc nojump -n index.ndx
-echo -e "2 \n 2 \n" | gmx trjconv -f traj_nojump_mol.xtc -s run.tpr -o traj_nopbc_mol.xtc -center -pbc mol -ur compact
+# Generation confout.gro
+python ~/GITPROYECTS/PhotonasticMat/PythonScripts/getConfout.py ../DONNEES.in GRO [None, 0]
+# To create a index
+echo -e "r 1\n q\n" | gmx make_ndx -f confout.gro -o index.ndx
+# Generation mol.gro
+echo -e "3\n 3\n" | gmx editconf -f confout.gro -o mol.gro -n index.ndx -c
+# new trajectory for a molecule from new gro trajectory
+cat PasDeCalcul__Iteration_* >> traj.gro
+gmx trjconv -f traj.gro -o traj_comp.xtc
+
+echo -e "3\n 3\n" | gmx trjconv -f traj_comp.xtc -s confout.gro -o traj_comp_mol.xtc -center -pbc nojump -n index.ndx
+
+# Si on dois traslate
+# Translate system
+echo 0 | gmx trjconv -f traj_comp.xtc -s confout.gro -o traj_translated.xtc -trans -3. -3. 3. -pbc atom
+
+
+
+#echo -e "2 \n 2 \n" | gmx trjconv -f traj_comp.xtc -s run.tpr -o traj_nojump_mol.xtc -center -pbc nojump -n index.ndx
+#echo -e "2 \n 2 \n" | gmx trjconv -f traj_nojump_mol.xtc -s run.tpr -o traj_nopbc_mol.xtc -center -pbc mol -ur compact
+
+
+
 
 # new trajectory for a molecule from new gro trajectory
 cat PasDeCalcul__Iteration_* >> traj.gro
@@ -134,6 +156,10 @@ gmx trjconv -f traj_nopbc_mol.xtc -s mol.gro -o traj_nopbc_mol_1fs.xtc -dt 1.0
 
 # Gen sampling from a system
 python -m stamptools -d DONNEES.in --mol_d_aa -b 1500 -e 2000 -i 10 -mref 0 --rcutoff 0.12 --out_folder sampling
+
+# UV-VIS analysis
+geomSampling_2gaus -s mol.gro -f traj_mol_translated.xtc -b 8500 -e 10500 -dt 1.0 --init_t 2500. -sol PB -isomer trans -N 100
+geomSampling_2gaus -s GRO/mol.gro -f GRO/traj_nopbc_mol.xtc -b 500 -e 2500 -sol PB -isomer cis --init_t 500.
 
 # For N PC in the system
 bash ~/.gitproyects/PhotonasticMat/BASHscripts/gro_to_xtc.sh

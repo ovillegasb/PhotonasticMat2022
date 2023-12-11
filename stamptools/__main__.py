@@ -31,6 +31,10 @@ Author: Orlando VILLEGAS
 Date: 2022-09-08
 Stamp: v4.220721
 
+Description:
+
+    Suite of tools for working with Stamp4 output and input files.
+
 Usage:
 
     Save the trajectory of a molecule in xyz (mol_traj_0.xyz):
@@ -351,277 +355,280 @@ def to_Continue_analysis(system, output, **kwargs):
     return b
 
 
-print(TITLE)
-args = options()
-
-if args["donnees"]:
-    system = STAMP(donnees=args["donnees"], data=args["dataStamp"], traj_type=args["traj_type"])
-
-    if args["traj_type"] == "XTC":
-        print("Analysis will be performed using xtc file from gromacs.")
-        assert args["top"] is not None, "If you are going to use XTC you must define a topology (gro)"
-        assert args["xtc"] is not None, "There must be an xtc trajectory"
-        system.top = args["top"]
-        system.xtc = args["xtc"]
-
-elif args["fatomes"] and not args["donnees"]:
-    print("Working with the system topology.")
-    fatomes = TOPOL(args["fatomes"])
-    print("FAtomes file:", fatomes.file)
-
-elif args["autocorrelation"]:
-    print("Data processing analysis")
-
-else:
-    print("The state of the system must be defined.")
-    exit()
-
-# Initializes the trajectory variable
-traj = None
-
-# Others options:
-
-if isinstance(args["mol_traj"], int):
-    resid = args["mol_traj"]
-    print("Resid:", resid)
-    if traj is None:
-        traj = read_traj(system, **args)
-
-    mol_ndx = system.atoms_per_mol[resid]
-    connectivity = system.connectivity
-    box_in_frame = system.box_in_frame
-    time_per_frame = system.time_per_frame
-
-    mol_traj_analysis(
-        resid,
-        mol_ndx,
-        connectivity,
-        traj,
-        box_in_frame,
-        o_format=args["format"]
-    )
-
-# =============================================================================
-# Structural analysis functions
-# =============================================================================
-
-if args["molprop"]:
-    # output name
-    output = "molprop.csv"
-    if args["reset"]:
-        os.remove(output)
-        print(f"File {output} removed.")
-
-    # Run from the last frame analyzed
-    b = to_Continue_analysis(system, output, **args)
-
-    if b == 0 and not args["reset"]:
-        args["reset"] = True
-    elif b > 0:
-        traj = system.get_traj(b=b)
-
-    if traj is None:
-        traj = read_traj(system, **args)
-
-    traj_analysis(
-        system.atoms_per_mol,
-        system.topology, 
-        traj,
-        system.box_in_frame,
-        system.connectivity,
-        b=b,
-        reset=args["reset"]
-    )
-    # save information in file
-    print(f"file {output} saved.")
-
-
-if args["autocorrelation"]:
-    geom = args["geom_file"]
-    assert geom is not None, "You must select a geometry file using: --geom_file"
-    print("Geometry file:", geom)
-    t0 = args["t0"]
-    freq = args["freq"]
-
-    data = read_geometry_file(
-        geom,
-        freq=freq,
-        t0=t0
-    )
-
-    print(data)
-    resid = ""
-    try:
-        resid = int(geom.split(".")[0].split("_")[-1])
-    except ValueError:
-        pass
-
-    angle = args["angle"]
-    assert angle is not None, "You must define a angle from geometry file using: -angle/--angle"
-    assert angle in data.columns, "The angle you selected is not found in the geometry file: " + " ".join(list(data.columns))
-    print("Selected angle:", angle)
-
-    acorr = {}
-    acorr["acorr"] = get_acorr_function_angle(data[angle].values)
-    acorr["time"] = data["time"].values
-    acorrDF = pd.DataFrame(acorr)
-    file = f"acf_{angle}_{resid}.csv"
-    acorrDF.to_csv(file, float_format="%.6f", index=None)
-    print(f"file {file} saved.")
-
-
-if args["closestDist"]:
-    resid = args["mref"]
-    # output name
-    output = "closest_d_To_%d.csv" % resid
-    if args["reset"]:
-        os.remove(output)
-        print(f"File {output} removed.")
-
-        # Run from the last frame analyzed
-    b = to_Continue_analysis(system, output, **args)
-
-    if b == 0 and not args["reset"]:
-        args["reset"] = True
-    elif b > 0:
-        traj = system.get_traj(b=b)
+def main():
+    """Run main function."""
+    print(TITLE)
+    args = options()
     
-    if traj is None:
-        traj = read_traj(system, **args)
+    if args["donnees"]:
+        system = STAMP(donnees=args["donnees"], data=args["dataStamp"], traj_type=args["traj_type"])
+    
+        if args["traj_type"] == "XTC":
+            print("Analysis will be performed using xtc file from gromacs.")
+            assert args["top"] is not None, "If you are going to use XTC you must define a topology (gro)"
+            assert args["xtc"] is not None, "There must be an xtc trajectory"
+            system.top = args["top"]
+            system.xtc = args["xtc"]
+    
+    elif args["fatomes"] and not args["donnees"]:
+        print("Working with the system topology.")
+        fatomes = TOPOL(args["fatomes"])
+        print("FAtomes file:", fatomes.file)
+    
+    elif args["autocorrelation"]:
+        print("Data processing analysis")
+    
+    else:
+        print("The state of the system must be defined.")
+        exit()
+    
+    # Initializes the trajectory variable
+    traj = None
+    
+    # Others options:
+    
+    if isinstance(args["mol_traj"], int):
+        resid = args["mol_traj"]
+        print("Resid:", resid)
+        if traj is None:
+            traj = read_traj(system, **args)
+    
+        mol_ndx = system.atoms_per_mol[resid]
+        connectivity = system.connectivity
+        box_in_frame = system.box_in_frame
+        time_per_frame = system.time_per_frame
+    
+        mol_traj_analysis(
+            resid,
+            mol_ndx,
+            connectivity,
+            traj,
+            box_in_frame,
+            o_format=args["format"]
+        )
+    
+    # =============================================================================
+    # Structural analysis functions
+    # =============================================================================
+    
+    if args["molprop"]:
+        # output name
+        output = "molprop.csv"
+        if args["reset"]:
+            os.remove(output)
+            print(f"File {output} removed.")
+    
+        # Run from the last frame analyzed
+        b = to_Continue_analysis(system, output, **args)
+    
+        if b == 0 and not args["reset"]:
+            args["reset"] = True
+        elif b > 0:
+            traj = system.get_traj(b=b)
+    
+        if traj is None:
+            traj = read_traj(system, **args)
+    
+        traj_analysis(
+            system.atoms_per_mol,
+            system.topology, 
+            traj,
+            system.box_in_frame,
+            system.connectivity,
+            b=b,
+            reset=args["reset"]
+        )
+        # save information in file
+        print(f"file {output} saved.")
+    
+    if args["autocorrelation"]:
+        geom = args["geom_file"]
+        assert geom is not None, "You must select a geometry file using: --geom_file"
+        print("Geometry file:", geom)
+        t0 = args["t0"]
+        freq = args["freq"]
+    
+        data = read_geometry_file(
+            geom,
+            freq=freq,
+            t0=t0
+        )
+    
+        print(data)
+        resid = ""
+        try:
+            resid = int(geom.split(".")[0].split("_")[-1])
+        except ValueError:
+            pass
+    
+        angle = args["angle"]
+        assert angle is not None, "You must define a angle from geometry file using: -angle/--angle"
+        assert angle in data.columns, "The angle you selected is not found in the geometry file: " + " ".join(list(data.columns))
+        print("Selected angle:", angle)
+    
+        acorr = {}
+        acorr["acorr"] = get_acorr_function_angle(data[angle].values)
+        acorr["time"] = data["time"].values
+        acorrDF = pd.DataFrame(acorr)
+        file = f"acf_{angle}_{resid}.csv"
+        acorrDF.to_csv(file, float_format="%.6f", index=None)
+        print(f"file {file} saved.")
+    
+    if args["closestDist"]:
+        resid = args["mref"]
+        # output name
+        output = "closest_d_To_%d.csv" % resid
+        if args["reset"]:
+            os.remove(output)
+            print(f"File {output} removed.")
+    
+            # Run from the last frame analyzed
+        b = to_Continue_analysis(system, output, **args)
+    
+        if b == 0 and not args["reset"]:
+            args["reset"] = True
+        elif b > 0:
+            traj = system.get_traj(b=b)
+        
+        if traj is None:
+            traj = read_traj(system, **args)
+    
+        get_dist_from_closest_atom(
+            resid,
+            system.atoms_per_mol,
+            system.topology, 
+            traj,
+            system.box_in_frame,
+            system.connectivity,
+            b=b,
+            reset=args["reset"]
+        )
+        # save information in file
+        print(f"file {output} saved.")
+    
+    if args["mol_d_aa"]:
+        if traj is None:
+            traj = read_traj(system, **args)
+    
+        mol_traj_cut_distance(
+            traj,
+            system.atoms_per_mol,
+            system.topology,
+            system.box,
+            system.connectivity,
+            ref=args["mref"],
+            rcutoff=args["rcutoff"],
+            out_folder=args["out_folder"]
+        )
+    
+    if args["mol_d"]:
+        print("Resid:", args["mref"])
+        get_distances_from(args["mref"], system.box)
+        print("file mol_dist_from_{}.csv saved.".format(args["mref"]))
+    
+    if args["centered_traj"]:
+        # distances file
+        mol_dist = pd.read_csv("mol_dist_from_{}.csv".format(args["mref"]))
+        mol_dist["distance"] = mol_dist["distance"] * 0.1  # to nm
+    
+        # load center of mass file
+        c_mass = pd.read_csv("molprop.csv")
+    
+        if traj is None:
+            traj = read_traj(system, **args)
+    
+        gen_centered_traj(
+            traj,
+            system.atoms_per_mol,
+            system.connectivity,
+            system.box_in_frame,
+            mol_dist,
+            c_mass,
+            rcutoff=args["rcutoff"],
+            ref=args["mref"],
+            out_folder=args["out_folder"])
+    
+    if args["ref_plane"]:
+        print("Analysis using a plane")
+    
+        # Reference molecule using mref
+        mref = args["mref"]
+        print("Resid:", mref)
+    
+        # References atoms indexs
+        atref = args["atref"]
+        print("Index:", " ".join([str(i) for i in atref]))
+    
+        # File traj center of mass
+        file = "molprop.csv"
+    
+        # Coordinates
+        box = system.box
+    
+        time_per_frame = system.time_per_frame
+        b = time_per_frame[time_per_frame["time"] >= args["b"]].index[0]
+        if traj is None:
+            traj = read_traj(system, **args)
+    
+        get_angles_distance(mref, atref, box, traj, file, b=b)
+        print(f"file mol_angles_d_{mref}.csv saved.")
+    
+    if args["rdf"] is not None:
+        # Reference molecule using mref
+        mref = args["mref"]
+        print("Resid:", mref)
+    
+        atoms_per_mol = system.atoms_per_mol
+        connectivity = system.connectivity
+        top = system.topology
+        box = system.box
+        vol = system.vol
+        time_per_frame = system.time_per_frame
+        if traj is None:
+            traj = read_traj(system, **args)
+    
+        rdf_analysis(
+            mref,
+            args["rdf"],
+            traj,
+            atoms_per_mol,
+            connectivity,
+            top,
+            box,
+            vol,
+            rmin=0.15,
+        )
+    
+    # =============================================================================
+    # Structural modifications
+    # =============================================================================
+    
+    if args["add_hydrogen"]:
+        fatomes.complete_with_H()
+        # NEW OPTION: ref
+        # atomsref = list(range(0, 26))  # photochromo
+        atomsref = [4, 10, 11, 12]
+        ###########################################################################
+        # NEW OPTION: center system (on/off)
+        fatomes.center_to(ref=atomsref, ref_type="atoms_ndx")
+        fatomes.export_xyz("translate_to")
+    
+        # File
+        fatomes.save_fatomes()
+    
+    if args["add_OH"]:
+        fatomes.complete_with_OH()
+        atomsref = [4, 10, 11, 12]
+    
+        fatomes.center_to(ref=atomsref, ref_type="atoms_ndx")
+        fatomes.export_xyz("translate_to")
+    
+        # File
+        fatomes.save_fatomes()
+    
+    if args["noPBC"]:
+        fatomes.noPBC()
 
-    get_dist_from_closest_atom(
-        resid,
-        system.atoms_per_mol,
-        system.topology, 
-        traj,
-        system.box_in_frame,
-        system.connectivity,
-        b=b,
-        reset=args["reset"]
-    )
-    # save information in file
-    print(f"file {output} saved.")
 
-if args["mol_d_aa"]:
-    if traj is None:
-        traj = read_traj(system, **args)
-
-    mol_traj_cut_distance(
-        traj,
-        system.atoms_per_mol,
-        system.topology,
-        system.box,
-        system.connectivity,
-        ref=args["mref"],
-        rcutoff=args["rcutoff"],
-        out_folder=args["out_folder"]
-    )
-
-if args["mol_d"]:
-    print("Resid:", args["mref"])
-    get_distances_from(args["mref"], system.box)
-    print("file mol_dist_from_{}.csv saved.".format(args["mref"]))
-
-if args["centered_traj"]:
-    # distances file
-    mol_dist = pd.read_csv("mol_dist_from_{}.csv".format(args["mref"]))
-    mol_dist["distance"] = mol_dist["distance"] * 0.1  # to nm
-
-    # load center of mass file
-    c_mass = pd.read_csv("molprop.csv")
-
-    if traj is None:
-        traj = read_traj(system, **args)
-
-    gen_centered_traj(
-        traj,
-        system.atoms_per_mol,
-        system.connectivity,
-        system.box_in_frame,
-        mol_dist,
-        c_mass,
-        rcutoff=args["rcutoff"],
-        ref=args["mref"],
-        out_folder=args["out_folder"])
-
-if args["ref_plane"]:
-    print("Analysis using a plane")
-
-    # Reference molecule using mref
-    mref = args["mref"]
-    print("Resid:", mref)
-
-    # References atoms indexs
-    atref = args["atref"]
-    print("Index:", " ".join([str(i) for i in atref]))
-
-    # File traj center of mass
-    file = "molprop.csv"
-
-    # Coordinates
-    box = system.box
-
-    time_per_frame = system.time_per_frame
-    b = time_per_frame[time_per_frame["time"] >= args["b"]].index[0]
-    if traj is None:
-        traj = read_traj(system, **args)
-
-    get_angles_distance(mref, atref, box, traj, file, b=b)
-    print(f"file mol_angles_d_{mref}.csv saved.")
-
-if args["rdf"] is not None:
-    # Reference molecule using mref
-    mref = args["mref"]
-    print("Resid:", mref)
-
-    atoms_per_mol = system.atoms_per_mol
-    connectivity = system.connectivity
-    top = system.topology
-    box = system.box
-    vol = system.vol
-    time_per_frame = system.time_per_frame
-    if traj is None:
-        traj = read_traj(system, **args)
-
-    rdf_analysis(
-        mref,
-        args["rdf"],
-        traj,
-        atoms_per_mol,
-        connectivity,
-        top,
-        box,
-        vol,
-        rmin=0.15,
-    )
-
-
-# =============================================================================
-# Structural modifications
-# =============================================================================
-
-if args["add_hydrogen"]:
-    fatomes.complete_with_H()
-    # NEW OPTION: ref
-    # atomsref = list(range(0, 26))  # photochromo
-    atomsref = [4, 10, 11, 12]
-    ###########################################################################
-    # NEW OPTION: center system (on/off)
-    fatomes.center_to(ref=atomsref, ref_type="atoms_ndx")
-    fatomes.export_xyz("translate_to")
-
-    # File
-    fatomes.save_fatomes()
-
-if args["add_OH"]:
-    fatomes.complete_with_OH()
-    atomsref = [4, 10, 11, 12]
-
-    fatomes.center_to(ref=atomsref, ref_type="atoms_ndx")
-    fatomes.export_xyz("translate_to")
-
-    # File
-    fatomes.save_fatomes()
-
-if args["noPBC"]:
-    fatomes.noPBC()
+if __name__ == '__main__':
+    main()
