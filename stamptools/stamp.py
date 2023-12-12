@@ -98,8 +98,9 @@ class STAMP:
             # Files gro
             self.GROs = self._gro_list()
             print("Number of frames", len(self.GROs))
-        self.b_frame = 0
+        self.b_frame = None
         self.e_frame = None
+        self.i_frame = None
         self.traj_type = traj_type
         # if load_traj:
         #     self._load_traj()
@@ -114,7 +115,7 @@ class STAMP:
         """Box [ang, ang, ang] in times from xyz files."""
         boxs = []
         if self.traj_type == "XYZ":
-            for file in self.XYZs[self.b_frame:self.e_frame]:
+            for file in self.XYZs[self.b_frame:self.e_frame:self.i_frame]:
                 with open(file, "r") as xyz:
                     for i, line in enumerate(xyz):
                         if i == 1:
@@ -124,7 +125,7 @@ class STAMP:
             return np.array(boxs).astype(np.float64)
 
         elif self.traj_type == "GRO":
-            for file in self.GROs[self.b_frame:self.e_frame]:
+            for file in self.GROs[self.b_frame:self.e_frame:self.i_frame]:
                 with open(file, 'r') as f:
                     last_line = f.readlines()[-1]
                     last_line = last_line.replace("\n", "").split()
@@ -170,19 +171,26 @@ class STAMP:
         elif self.traj_type == "GRO":
             self.GROs = self._gro_list()
 
-    def _load_traj(self, b=0, e=None, i=1):
+    def _load_traj(self, b=None, e=None, i=None):
         """Load trajectory system."""
         traj = list()
         t0 = time.time()
         print("Loading the system trajectory", end=" - ")
 
+        b = b if b is not None else 0
+        i = i if i is not None else 1
+
         if self.traj_type == "XYZ":
+            XYZs = self.XYZs
+            e = e if e is not None else len(XYZs)
             with Pool(processes=NUMPROC) as pool:
-                for xyz in pool.map(structure.load_xyz, self.XYZs[b:e:i]):
+                for xyz in pool.map(structure.load_xyz, XYZs[b:e:i]):
                     traj.append(xyz)
         elif self.traj_type == "GRO":
+            GROs = self.GROs
+            e = e if e is not None else len(GROs)
             with Pool(processes=NUMPROC) as pool:
-                for gro in pool.map(structure.load_gro, self.GROs[b:e:i]):
+                for gro in pool.map(structure.load_gro, GROs[b:e:i]):
                     traj.append(gro)
         elif self.traj_type == "XTC":
             params = {
@@ -196,16 +204,16 @@ class STAMP:
             self._box_xtc = boxs
 
         self._traj = traj
+        self.b_frame = b
+        self.e_frame = e
+        self.i_frame = i
         tf = time.time()
         print(f"Number of frames: {len(traj)}", end=" - ")
         print(f"done in {tf-t0:.2f} s")
 
-    def get_traj(self, b=0, e=None, i=1):
+    def get_traj(self, b=None, e=None, i=None):
         """Trajectory of system."""
         self._load_traj(b, e, i)
-        self.b_frame = b
-        self.e_frame = e
-
         return self._traj        
 
     def _get_connectivity(self):
