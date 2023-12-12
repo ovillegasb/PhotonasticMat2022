@@ -115,7 +115,7 @@ class STAMP:
         """Box [ang, ang, ang] in times from xyz files."""
         boxs = []
         if self.traj_type == "XYZ":
-            for file in self.XYZs[self.b_frame:self.e_frame:self.i_frame]:
+            for file in self.XYZs[self.b_frame:self.e_frame+1:self.i_frame]:
                 with open(file, "r") as xyz:
                     for i, line in enumerate(xyz):
                         if i == 1:
@@ -125,7 +125,7 @@ class STAMP:
             return np.array(boxs).astype(np.float64)
 
         elif self.traj_type == "GRO":
-            for file in self.GROs[self.b_frame:self.e_frame:self.i_frame]:
+            for file in self.GROs[self.b_frame:self.e_frame+1:self.i_frame]:
                 with open(file, 'r') as f:
                     last_line = f.readlines()[-1]
                     last_line = last_line.replace("\n", "").split()
@@ -184,13 +184,13 @@ class STAMP:
             XYZs = self.XYZs
             e = e if e is not None else len(XYZs)
             with Pool(processes=NUMPROC) as pool:
-                for xyz in pool.map(structure.load_xyz, XYZs[b:e:i]):
+                for xyz in pool.map(structure.load_xyz, XYZs[b:e+1:i]):
                     traj.append(xyz)
         elif self.traj_type == "GRO":
             GROs = self.GROs
             e = e if e is not None else len(GROs)
             with Pool(processes=NUMPROC) as pool:
-                for gro in pool.map(structure.load_gro, GROs[b:e:i]):
+                for gro in pool.map(structure.load_gro, GROs[b:e+1:i]):
                     traj.append(gro)
         elif self.traj_type == "XTC":
             params = {
