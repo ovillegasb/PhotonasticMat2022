@@ -1,0 +1,34 @@
+[ bondtypes ]
+;  i     j   func             b0                kb
+#ifdef ExcitedState
+  ne    nf      1     1.2480e-01      7.027900e+05
+#else
+  ne    nf      1     1.2475e-01      6.676700e+05
+#endif
+
+[ angletypes ]
+;  i     j     k    func       th0         cth
+#ifdef ExcitedState
+  ne    nf    ca       1     124.1      433.37
+  nf    ne    ca       1     124.1      433.37
+  ne    ca    ca       1     123.5      569.39
+  nf    ca    ca       1     123.5      569.39
+#else
+  ne    nf    ca       1     110.1      640.15
+  nf    ne    ca       1     110.1      640.15
+  ne    ca    ca       1     103.4      445.33
+  nf    ca    ca       1     103.4      445.33
+#endif
+
+[ dihedraltypes ]
+;  i      j      k      l    func     phase        kd      pn
+  ne     nf     ca     ca       9     180.0    10.779       2
+  nf     ne     ca     ca       9     180.0    10.779       2
+#ifdef ExcitedState
+  ca     ne     nf     ca       9       0.0     3.567       3
+  ca     ne     nf     ca       9       0.0    18.168       2
+  ca     ne     nf     ca       9       0.0    19.400       1
+#else
+  ca     ne     nf     ca       9     180.0    73.791       2
+  ca     ne     nf     ca       9       0.0    19.671       1
+#endif

@@ -1,0 +1,18 @@
+integrator  = steep
+emtol       = 500.0
+emstep      = 0.01 
+nsteps      = 50000
+
+cutoff-scheme   = Verlet    ; Buffered neighbor searching
+
+ns-type         = grid      ; Method to determine neighbor list (simple, grid)
+
+coulombtype     = Reaction-Field  ; Treatment of long range electrostatic interactions
+epsilon-rf      = 7.5
+rcoulomb        = 1.5       ; Short-range electrostatic cut-off
+
+vdwtype         = cutoff
+rvdw            = 1.5       ; Short-range Van der Waals cut-off
+DispCorr        = EnerPres
+
+pbc             = xyz       ; Periodic Boundary Conditions in all 3 dimensions

@@ -1,8 +1,0 @@
-
-[ bondtypes ]
-; i    j  func       b0           kb
- c3   hc     1  0.10970    157276.56
-
-[ angletypes ]
-;  i    j    k  func       th0       cth
-  hc   c3   hc     1   109.500    163.176
