@@ -1,0 +1,8 @@
+numpy>=1.25.0
+networkx==2.8.2
+pandas==1.4.2
+python-dateutil==2.8.2
+scipy>=1.10.0
+packaging==21.3
+pymatgen>=2023.10.11
+mdtraj>=1.9.7

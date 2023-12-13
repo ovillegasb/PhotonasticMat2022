@@ -9,8 +9,12 @@ import glob
 from molcraft.structure import load_xyz
 
 
+files_xyz = sys.argv()[1]
+
 XYZs = glob.glob("xyz_center_0.3/*.xyz")
-print(len(XYZs))
+print("Number of files:", len(XYZs))
+
+exit()
 
 for conf in XYZs:
     print(conf)

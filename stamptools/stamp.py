@@ -98,9 +98,13 @@ class STAMP:
             # Files gro
             self.GROs = self._gro_list()
             print("Number of frames", len(self.GROs))
-        self.b_frame = None
+        elif traj_type == "XTC":
+            self.top = os.path.join(hw_path, "XTC/confout.gro")
+            self.xtc = os.path.join(hw_path, "XTC/traj_comp.xtc")
+            self._box_xtc = None
+        self.b_frame = 0
         self.e_frame = None
-        self.i_frame = None
+        self.i_frame = 1
         self.traj_type = traj_type
         # if load_traj:
         #     self._load_traj()
@@ -115,7 +119,8 @@ class STAMP:
         """Box [ang, ang, ang] in times from xyz files."""
         boxs = []
         if self.traj_type == "XYZ":
-            for file in self.XYZs[self.b_frame:self.e_frame+1:self.i_frame]:
+            e = self.e_frame if self.e_frame is not None else len(self.XYZs)
+            for file in self.XYZs[self.b_frame:e+1:self.i_frame]:
                 with open(file, "r") as xyz:
                     for i, line in enumerate(xyz):
                         if i == 1:
@@ -125,7 +130,8 @@ class STAMP:
             return np.array(boxs).astype(np.float64)
 
         elif self.traj_type == "GRO":
-            for file in self.GROs[self.b_frame:self.e_frame+1:self.i_frame]:
+            e = self.e_frame if self.e_frame is not None else len(self.GROs)
+            for file in self.GROs[self.b_frame:e+1:self.i_frame]:
                 with open(file, 'r') as f:
                     last_line = f.readlines()[-1]
                     last_line = last_line.replace("\n", "").split()
@@ -133,6 +139,7 @@ class STAMP:
             return np.array(boxs).astype(np.float64) * 10.
 
         elif self.traj_type == "XTC":
+            assert self._box_xtc is not None, "To read the box information using XTC you must load the system trajectory. STAMP.get_traj"
             boxs = self._box_xtc
             return np.array(boxs).astype(np.float64) * 10.
 
@@ -177,9 +184,6 @@ class STAMP:
         t0 = time.time()
         print("Loading the system trajectory", end=" - ")
 
-        b = b if b is not None else 0
-        i = i if i is not None else 1
-
         if self.traj_type == "XYZ":
             XYZs = self.XYZs
             e = e if e is not None else len(XYZs)
@@ -193,6 +197,8 @@ class STAMP:
                 for gro in pool.map(structure.load_gro, GROs[b:e+1:i]):
                     traj.append(gro)
         elif self.traj_type == "XTC":
+            b = b if b is not None else 0
+            i = i if i is not None else 1
             params = {
                 "top": self.top,
                 "xtc": self.xtc,

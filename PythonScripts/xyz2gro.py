@@ -72,7 +72,7 @@ def save_frame(i, frame, RESinfo, box, time, title, out):
     frame["resname"] = frame.index.map(lambda x: RESinfo[x]["resname"])
     save_gro(
         frame,
-        "frame_%005d" % i,
+        "PasDeCalcul__Iteration_%008d" % i,
         box,
         title,
         time=time,
@@ -115,7 +115,7 @@ def clean_folder(folder):
 def main():
     """Run program."""
     args = options()
-    out = "GRO_files"
+    out = "GRO"
 
     if not os.path.exists(out):
         os.mkdir(out)
@@ -137,19 +137,20 @@ def main():
     resid_PC = 0
     atoms_per_mol = system.atoms_per_mol
     for resid in atoms_per_mol:
-        if resid == resid_PC:
-            atoms_per_mol[resid]["resname"] = "PHO"
-        elif len(atoms_per_mol[resid]["index"]) == 1:
-            atoms_per_mol[resid]["resname"] = "PHO"
-        else:
-            atoms_per_mol[resid]["resname"] = "POL"
+        atoms_per_mol[resid]["resname"] = "MOL"
+        # if resid == resid_PC:
+        #     atoms_per_mol[resid]["resname"] = "MOL"
+        # elif len(atoms_per_mol[resid]["index"]) == 1:
+        #     atoms_per_mol[resid]["resname"] = "PHO"
+        # else:
+        #     atoms_per_mol[resid]["resname"] = "POL"
 
     RESinfo = {}
     for resid in atoms_per_mol:
         resname = atoms_per_mol[resid]["resname"]
         index = atoms_per_mol[resid]["index"]
         for i in index:
-            RESinfo[i] = {"resid": resid, "resname": resname}
+            RESinfo[i] = {"resid": resid + 1, "resname": resname}
 
     time_per_frame = system.time_per_frame
 
@@ -166,7 +167,7 @@ def main():
                 frame["x"] -= translate_x
 
     # BOXs
-    boxs = system.box_in_time
+    boxs = system.box_in_frame
 
     print("Saving GRO files", end=" - ")
     t0 = time.perf_counter()
@@ -175,74 +176,72 @@ def main():
     t1 = time.perf_counter()
     print("done in", str(round(t1 - t0, 2)) + "s")
 
-    # Save a conf final with all atoms complets
-    print("Generating a gro file without PBC", end=" - ")
-    t0 = time.perf_counter()
-    confout = traj[-1]
-    confout["resid"] = confout.index.map(lambda x: RESinfo[x]["resid"])
-    confout["resname"] = confout.index.map(lambda x: RESinfo[x]["resname"])
+    ## # Save a conf final with all atoms complets
+    ## print("Generating a gro file without PBC", end=" - ")
+    ## t0 = time.perf_counter()
+    ## confout = traj[-1]
+    ## confout["resid"] = confout.index.map(lambda x: RESinfo[x]["resid"])
+    ## confout["resname"] = confout.index.map(lambda x: RESinfo[x]["resname"])
 
-    box = boxs[-1]
-    connectivity = system.connectivity
-    pc_xyz = confout[confout["resname"] == "PHO"]
-    pc_conn = connectivity.sub_connect(atoms_per_mol[resid_PC]["index"])
-    # update coordinates
-    pc_conn.update_coordinates(pc_xyz)
-    # remove PBC
-    pc_conn.noPBC(box)
-    # Reset index and symbols, and add mass
-    pc_conn = pc_conn.reset_nodes()
-    pc_conn.simple_at_symbols(add_mass=True)
+    ## box = boxs[-1]
+    ## connectivity = system.connectivity
+    ## pc_xyz = confout[confout["resname"] == "PHO"]
+    ## pc_conn = connectivity.sub_connect(atoms_per_mol[resid_PC]["index"])
+    ## # update coordinates
+    ## pc_conn.update_coordinates(pc_xyz)
+    ## # remove PBC
+    ## pc_conn.noPBC(box)
+    ## # Reset index and symbols, and add mass
+    ## pc_conn = pc_conn.reset_nodes()
+    ## pc_conn.simple_at_symbols(add_mass=True)
 
-    new_pc_xyz = pc_conn.get_df()
-    cm = center_of_mass(
-            new_pc_xyz.loc[:, ["x", "y", "z"]].values,
-            new_pc_xyz.loc[:, "mass"].values
-        )
+    ## new_pc_xyz = pc_conn.get_df()
+    ## cm = center_of_mass(
+    ##         new_pc_xyz.loc[:, ["x", "y", "z"]].values,
+    ##         new_pc_xyz.loc[:, "mass"].values
+    ##     )
 
-    new_pc_xyz["x"] -= cm[0]
-    new_pc_xyz["y"] -= cm[1]
-    new_pc_xyz["z"] -= cm[2]
+    ## new_pc_xyz["x"] -= cm[0]
+    ## new_pc_xyz["y"] -= cm[1]
+    ## new_pc_xyz["z"] -= cm[2]
 
-    confout["x"] = confout["x"].apply(lambda x: minImagenC(cm[0], x, box[0]))
-    confout["y"] = confout["y"].apply(lambda x: minImagenC(cm[1], x, box[1]))
-    confout["z"] = confout["z"].apply(lambda x: minImagenC(cm[2], x, box[2]))
+    ## confout["x"] = confout["x"].apply(lambda x: minImagenC(cm[0], x, box[0]))
+    ## confout["y"] = confout["y"].apply(lambda x: minImagenC(cm[1], x, box[1]))
+    ## confout["z"] = confout["z"].apply(lambda x: minImagenC(cm[2], x, box[2]))
 
-    arguments = []
-    for i in atoms_per_mol:
-        arguments.append(
-            (atoms_per_mol[i]["index"], confout, connectivity, box)
-        )
+    ## arguments = []
+    ## for i in atoms_per_mol:
+    ##     arguments.append(
+    ##         (atoms_per_mol[i]["index"], confout, connectivity, box)
+    ##     )
 
-    with Pool() as pool:
-        for new_mol_xyz, mol_ndx in pool.starmap(get_nopbc_mol, arguments):
-            confout.loc[mol_ndx, "x"] = new_mol_xyz["x"].values
-            confout.loc[mol_ndx, "y"] = new_mol_xyz["y"].values
-            confout.loc[mol_ndx, "z"] = new_mol_xyz["z"].values
+    ## with Pool() as pool:
+    ##     for new_mol_xyz, mol_ndx in pool.starmap(get_nopbc_mol, arguments):
+    ##         confout.loc[mol_ndx, "x"] = new_mol_xyz["x"].values
+    ##         confout.loc[mol_ndx, "y"] = new_mol_xyz["y"].values
+    ##         confout.loc[mol_ndx, "z"] = new_mol_xyz["z"].values
 
-    save_gro(confout, "confout", box, out=out)
-    t1 = time.perf_counter()
-    print("done in", str(round(t1 - t0, 2)) + "s")
+    ## save_gro(confout, "confout", box, out=out)
+    ## t1 = time.perf_counter()
+    ## print("done in", str(round(t1 - t0, 2)) + "s")
+    ## ---------------------------------------------------------
+    ## os.chdir(out)
+    ## os.system("cat frame_* > traj.gro")
+    ## os.system("rm frame_*")
 
-    os.chdir(out)
-    os.system("cat frame_* > traj.gro")
-    os.system("rm frame_*")
+    ## gmx_cmd = None
+    ## if which("gmx") is not None:
+    ##     gmx_cmd = "gmx"
+    ## elif which("gmx_mpi") is not None:
+    ##     gmx_cmd = "gmx_mpi"
 
-    gmx_cmd = None
-    if which("gmx") is not None:
-        gmx_cmd = "gmx"
-    elif which("gmx_mpi") is not None:
-        gmx_cmd = "gmx_mpi"
-
-    if gmx_cmd is not None:
-        os.system(f"echo 0 | {gmx_cmd} trjconv -f traj.gro -s confout.gro -o traj_comp.xtc")
-        os.system("rm traj.gro")
-        print("Saved trajectory gro in traj_comp.xtc")
-
-    else:
-        print("Could not convert the gro trajectory to xtc, the gromacs executable could not be found.")
-
-    os.system("cd ..")
+    ## if gmx_cmd is not None:
+    ##     os.system(f"echo 0 | {gmx_cmd} trjconv -f traj.gro -s confout.gro -o traj_comp.xtc")
+    ##     os.system("rm traj.gro")
+    ##     print("Saved trajectory gro in traj_comp.xtc")
+    ## else:
+    ##     print("Could not convert the gro trajectory to xtc, the gromacs executable could not be found.")
+    ## os.system("cd ..")
 
 
 if __name__ == '__main__':

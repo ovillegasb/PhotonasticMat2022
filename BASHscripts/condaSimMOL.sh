@@ -11,6 +11,14 @@ conda install mdanalysis
 conda install networkx
 conda install statsmodels
 
+# Install MolCraft
+cd molcraft/
+python setup.py install
+
+# Install StampTools
+cd PhotonasticMat/
+python setup.py install
+
 # python modules
 python -m site --user-site
 mkdir -p $(python -m site --user-site)
@@ -18,6 +26,9 @@ mkdir -p $(python -m site --user-site)
 
 # create new .pth file with our path
 echo "$HOME/foo/bar" > "$SITEDIR/somelib.pth"
+
+# Some conda commands
+conda env remove --name SimMOL``
 
 # Extra
 conda install -n SimMOL -c conda-forge nglview
