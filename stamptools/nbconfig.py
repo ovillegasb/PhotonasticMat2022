@@ -484,16 +484,22 @@ def get_spectre_info(logs_files, dtype="cont", sigma=0.4):
                     "frame": int(metadata[-1].split(".")[-2].split("_")[-1])
                 })
             except ValueError:
-                metadata = [
-                    file.split("/")[2].split(".")[0].split("_")[1],
-                    0,
-                    file.split("/")[-1].split(".")[0].split("_")[-1]
-                ]
+                # metadata = [
+                #     file.split("/")[2].split(".")[0].split("_")[1],
+                #     0,
+                #     file.split("/")[-1].split(".")[0].split("_")[-1]
+                # ]
+                # info.append({
+                #     "index": i,
+                #     "isomer": metadata[0],
+                #     "replica": metadata[1],
+                #     "frame": int(metadata[2])
+                # })
                 info.append({
                     "index": i,
-                    "isomer": metadata[0],
-                    "replica": metadata[1],
-                    "frame": int(metadata[2])
+                    "isomer": "UNW",
+                    "replica": "UNW",
+                    "frame": int(file.split("/")[-1].split(".")[0].split("_")[-1])
                 })
         # print(file.split("/")[-1].split(".")[-2].split("_")[-1])
         

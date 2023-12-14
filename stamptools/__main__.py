@@ -182,6 +182,13 @@ for a chosen property.",
     )
 
     analysis.add_argument(
+        "--NUMPROC",
+        help="Number of processors to be used.",
+        type=int,
+        default=12
+    )
+
+    analysis.add_argument(
         "-angle", "--angle",
         help="Select an angle defined in the geometry file.",
         type=str,
@@ -335,6 +342,10 @@ def to_Continue_analysis(system, output, **kwargs):
 
     if os.path.exists(output):
         dat = pd.read_csv(output)
+        if len(dat) == 0:
+            print("Blank file")
+        return b
+
         # Remove incomplete frames.
         dat = clean_data(dat)
         dat.to_csv(output, index=False)
@@ -361,7 +372,12 @@ def main():
     args = options()
     
     if args["donnees"]:
-        system = STAMP(donnees=args["donnees"], data=args["dataStamp"], traj_type=args["traj_type"])
+        system = STAMP(
+            donnees=args["donnees"],
+            data=args["dataStamp"],
+            traj_type=args["traj_type"],
+            nproc=args["NUMPROC"]
+        )
     
         if args["traj_type"] == "XTC":
             print("Analysis will be performed using xtc file from gromacs.")
@@ -420,7 +436,7 @@ def main():
     
         # Run from the last frame analyzed
         b = to_Continue_analysis(system, output, **args)
-    
+
         if b == 0 and not args["reset"]:
             args["reset"] = True
         elif b > 0:
@@ -436,7 +452,8 @@ def main():
             system.box_in_frame,
             system.connectivity,
             b=b,
-            reset=args["reset"]
+            reset=args["reset"],
+            nproc=args["NUMPROC"]
         )
         # save information in file
         print(f"file {output} saved.")

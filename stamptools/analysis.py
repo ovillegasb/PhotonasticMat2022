@@ -255,7 +255,7 @@ def get_properies_inFrame(frame, n_frame, molecules, top, connectivity, box):
 
 
 @decoTime
-def traj_analysis(ndx_mol, top, traj, box_in_frame, connectivity, b=0, reset=True):
+def traj_analysis(ndx_mol, top, traj, box_in_frame, connectivity, b=0, reset=True, nproc=NUMPROC):
     """
     Analyze properties during a simulation.
 
@@ -291,6 +291,9 @@ def traj_analysis(ndx_mol, top, traj, box_in_frame, connectivity, b=0, reset=Tru
     print(f"Number of frames: {Nframes}", end=" - ")
 
     if reset:
+        if os.path.exists("molprop.csv"):
+            os.remove("molprop.csv")
+            print("File molprop.csv removed.")
         out = open("molprop.csv", "w")
         out.write("frame,idx,Natoms,Rg,k2,dmax,x,y,z\n")
         out.close()
@@ -309,7 +312,7 @@ def traj_analysis(ndx_mol, top, traj, box_in_frame, connectivity, b=0, reset=Tru
         )
 
     lines = ""
-    with Pool(processes=NUMPROC) as pool:
+    with Pool(processes=nproc) as pool:
         for lines_frame in pool.starmap(get_properies_inFrame, arguments):
             lines += lines_frame
     

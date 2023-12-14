@@ -1,1 +1,0 @@
-cmake .. -DGMX_BUILD_OWN_FFTW=ON -DCMAKE_INSTALL_PREFIX=/home/ovillegas/.applications/gromacs

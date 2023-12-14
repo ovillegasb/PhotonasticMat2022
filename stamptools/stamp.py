@@ -48,11 +48,14 @@ def change_toType(at):
 class STAMP:
     """Object describing a system and its features."""
 
-    def __init__(self, donnees, fatomes=None, data="Stamp.dat", ensamble="LNVT", loadConnect=True, traj_type="XYZ", use_xyz=True):
+    def __init__(self, donnees, fatomes=None, data="Stamp.dat", ensamble="LNVT", loadConnect=True, traj_type="XYZ", use_xyz=True, nproc=NUMPROC):
         """Initialize the class when loading the calculation information."""
         # Home path
         hw_path = os.path.split(os.path.abspath(donnees))[0]
         self.hw_path = hw_path
+
+        # Number of cpus
+        self.NUMPROC = nproc
 
         # Load donnees informations
         self.donnees = read_donnees(donnees)
@@ -169,7 +172,7 @@ class STAMP:
 
     def _gro_list(self):
         """Load list of file gro."""
-        return sorted(glob.glob(f"{self.hw_path}/GRO/PasDeCalcul__Iteration*.gro"))
+        return sorted(glob.glob(f"{self.hw_path}/GRO/PasDeCalcul_*.gro"))
 
     def update_xyz(self):
         """Reload list of files and traj."""
@@ -187,13 +190,13 @@ class STAMP:
         if self.traj_type == "XYZ":
             XYZs = self.XYZs
             e = e if e is not None else len(XYZs)
-            with Pool(processes=NUMPROC) as pool:
+            with Pool(processes=self.NUMPROC) as pool:
                 for xyz in pool.map(structure.load_xyz, XYZs[b:e+1:i]):
                     traj.append(xyz)
         elif self.traj_type == "GRO":
             GROs = self.GROs
             e = e if e is not None else len(GROs)
-            with Pool(processes=NUMPROC) as pool:
+            with Pool(processes=self.NUMPROC) as pool:
                 for gro in pool.map(structure.load_gro, GROs[b:e+1:i]):
                     traj.append(gro)
         elif self.traj_type == "XTC":

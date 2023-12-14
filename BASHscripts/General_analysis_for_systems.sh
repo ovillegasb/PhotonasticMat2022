@@ -16,6 +16,9 @@ bash ~/.gitproyects/PhotonasticMat/BASHscripts/gro_to_xtc.sh
 # gen trajectory for a molecule
 python -m stamptools -d DONNEES.in --mol_traj 0 --traj_type XYZ[or GRO, XTC]
 
+# extract mol properties (Rg, k2, dmax,..)
+python -m stamptools -d DONNEES.in --molprop --traj_type XYZ[or GRO, XTC]
+
 # Closest
 python -m stamptools -d DONNEES.in -mref 0 --closestDist --reset --traj_type XYZ[or GRO, XTC]
 

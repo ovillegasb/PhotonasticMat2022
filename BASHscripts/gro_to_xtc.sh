@@ -22,7 +22,7 @@ then
     rm -v traj.gro
 fi
 
-cat ../GRO/PasDeCalcul__Iteration_* > traj.gro
+cat ../GRO/PasDeCalcul_* > traj.gro
 echo 0 | gmx trjconv -f traj.gro -s confout.gro -o traj_comp.xtc
 rm -v traj.gro
  
