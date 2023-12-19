@@ -1,6 +1,5 @@
 
 from setuptools import setup, find_packages
-from Cython.Build import cythonize
 
 with open('requirements.txt') as f:
     install_requires = f.read().strip().split('\n')
