@@ -93,6 +93,8 @@ class STAMP:
             # searching conectivity
             self.connectivity = self._get_connectivity()
 
+        self.XYZs = []
+        self.GROs = []
         if traj_type == "XYZ":
             # Files xyz
             self.XYZs = self._xyz_list()
@@ -105,6 +107,7 @@ class STAMP:
             self.top = os.path.join(hw_path, "XTC/confout.gro")
             self.xtc = os.path.join(hw_path, "XTC/traj_comp.xtc")
             self._box_xtc = None
+
         self.b_frame = 0
         self.e_frame = None
         self.i_frame = 1
@@ -223,7 +226,7 @@ class STAMP:
     def get_traj(self, b=None, e=None, i=None):
         """Trajectory of system."""
         self._load_traj(b, e, i)
-        return self._traj        
+        return self._traj
 
     def _get_connectivity(self):
         """Brings system connectivity."""

@@ -172,3 +172,6 @@ for i in {0..N-1}; do vmd mol_traj_$i.xyz -dispdev text -e ~/.gitproyects/Photon
 for i in {0..1}; do python -m stamptools -d DONNEES.in --mol_traj $i --traj_type GRO; vmd mol_traj_$i.xyz -dispdev text -e ~/.gitproyects/PhotonasticMat/VMDscripts/save_geometry_N_pc.tcl; done
 
 vmd XTC/confout.gro XTC/traj_comp.xtc -dispdev text -e ~/.gitproyects/PhotonasticMat/VMDscripts/save_hbonds.tcl
+
+# Aggregates
+python -m stamptools -d DONNEES.in --aggregate 0:19 --traj_type GRO

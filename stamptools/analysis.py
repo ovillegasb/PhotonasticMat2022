@@ -254,6 +254,96 @@ def get_properies_inFrame(frame, n_frame, molecules, top, connectivity, box):
     return lines
 
 
+def test_coor_mol(x, L):
+    theta = x / L * 2 * np.pi
+    xi = np.cos(theta)
+    eta = np.sin(theta)
+    theta_n = np.arctan2(-eta, -xi) + np.pi
+    return L * theta_n / 2 / np.pi
+
+
+def get_properies_inFrame_agg(frame, n_frame, molecules, top, connectivity, box):
+    """Return the calculated properties for a particular frame."""
+    lines = ""
+    all_masses = []
+    all_coords = []
+    for mol in molecules:
+        masses = top.loc[molecules[mol], "mass"].values
+        dfcoord = frame.loc[molecules[mol], :]
+
+        all_masses.append(masses)
+        all_coords.append(dfcoord)
+
+    masses = np.concatenate(all_masses)
+    dfcoord_original = pd.concat(all_coords, ignore_index=True)
+
+    # Center of mass
+    agg_cm = center_of_mass_polar(
+            dfcoord_original.loc[:, ["x", "y", "z"]].values,
+            box[0:3],
+            masses
+        )
+
+    all_coords = []
+
+    for mol in molecules:
+        dfcoord = frame.loc[molecules[mol], :]
+
+        # Connectivity in the molecule
+        connect = connectivity.sub_connect(molecules[mol])
+
+        # update coordinates
+        connect.update_coordinates(dfcoord)
+        # remove PBC
+        # connect.noPBC(box, center=agg_cm)
+        connect.noPBC(box, center=None)
+        connect.simple_at_symbols()
+        newdfcoord = connect.get_df()
+
+        ###TEST TRANSLATION
+        newdfcoord.loc[:, ["x", "y", "z"]] = translate_to(
+            newdfcoord.loc[:, ["x", "y", "z"]].values,
+            agg_cm,
+            box
+        )
+        ###TEST trigonometric correction
+        # newdfcoord["x"] = newdfcoord["x"].apply(test_coor_mol, L=box[0])
+        # newdfcoord["y"] = newdfcoord["y"].apply(test_coor_mol, L=box[1])
+        # newdfcoord["z"] = newdfcoord["z"].apply(test_coor_mol, L=box[2])
+
+        all_coords.append(newdfcoord)
+
+    dfcoord = pd.concat(all_coords, ignore_index=True)
+
+    lines_xyz = save_xyz(dfcoord, name=f"agg_{len(molecules)}", get_lines=True)
+
+    coord = dfcoord.loc[:, ["x", "y", "z"]].values
+    G = GyrationTensor(coord, masses, box, pbc=False)
+
+    line = ""
+    line += f"{n_frame},"
+    line += "{},".format(len(molecules))
+    line += f"{G.iso_w_rg:.2f},"
+    line += f"{G.shape_anisotropy:.3f},"
+    line += f"{G.max_distance:.2f},"
+
+    # Center of mass
+    mol_cm = center_of_mass_polar(
+        dfcoord_original.loc[:, ["x", "y", "z"]].values,
+        box[0:3],
+        masses
+    )
+
+    line += f"{mol_cm[0]:.3f},"
+    line += f"{mol_cm[1]:.3f},"
+    line += f"{mol_cm[2]:.3f}"
+    line += "\n"
+
+    lines += line
+
+    return lines, lines_xyz
+
+
 @decoTime
 def traj_analysis(ndx_mol, top, traj, box_in_frame, connectivity, b=0, reset=True, nproc=NUMPROC):
     """
@@ -315,9 +405,79 @@ def traj_analysis(ndx_mol, top, traj, box_in_frame, connectivity, b=0, reset=Tru
     with Pool(processes=nproc) as pool:
         for lines_frame in pool.starmap(get_properies_inFrame, arguments):
             lines += lines_frame
-    
+
     with open("molprop.csv", "a") as out:
         out.write(lines)
+
+
+@decoTime
+def traj_analysis_agg(ndx_mols_atoms, top, traj, box_in_frame, connectivity, b=0, reset=True, nproc=NUMPROC):
+    """
+    Analyze aggregate properties during a simulation.
+
+    Parameters
+    ----------
+    ndx_mols_atoms : dict
+        Dictionary with the indexes of each molecule to be analyzed.
+
+    top : DataFrame
+        File with the system topology.
+
+    traj : list(DataFrame)
+        Defines the trajectory of the system in a list of Dataframes.
+
+    box : numpy.array (1x3)
+        Vector box.
+
+    connectivity : molcraft.structure.connectivity
+        System connectivity.
+
+    b : int
+        initial frame.
+
+    reset : boolean
+        Write a new file.
+
+    """
+    print("Trajectory analysis", end=" - ")
+    ndx_atoms = []
+    for imol in ndx_mols_atoms:
+        ndx_atoms += ndx_mols_atoms[imol]
+
+    # Number of frames read
+    Nframes = len(traj)
+    print(f"Frame initial {b}", end=" - ")
+    print(f"Number of frames: {Nframes}", end=" - ")
+
+    if reset:
+        if os.path.exists("aggprop.csv"):
+            os.remove("aggprop.csv")
+            print("File aggprop.csv removed.")
+        out = open("aggprop.csv", "w")
+        out.write("frame,Nmols,Rg,k2,dmax,x,y,z\n")
+        out.close()
+
+    # List molecules present
+    molecules = ndx_mols_atoms.copy()
+
+    arguments = []
+    for i, frame in enumerate(traj):
+        arguments.append(
+            (frame, i + b, molecules, top, connectivity, box_in_frame[i])
+        )
+
+    lines = ""
+    traj_xyz = ""
+    with Pool(processes=nproc) as pool:
+        for lines_frame, lines_xyz in pool.starmap(get_properies_inFrame_agg, arguments):
+            lines += lines_frame
+            traj_xyz += lines_xyz
+
+    with open("aggprop.csv", "a") as out:
+        out.write(lines)
+
+    with open("agg_traj.xyz", "w") as out:
+        out.write(traj_xyz)
 
 
 def load_data(file, t="LNVT"):
@@ -421,11 +581,16 @@ def load_log(file="Stamp.log", use_xyz=True, traj_type="XYZ"):
     ### MODIFICATION
     out_frame = pd.DataFrame(out_frame)
     out_frame.drop_duplicates(inplace=True, ignore_index=True)
-    out_frame = out_frame.astype({"frame": np.int64})
+    try:
+        out_frame = out_frame.astype({"frame": np.int64})
+    except KeyError:
+        mess = "The system frames have not been recognized, check that the typ\
+e of trajectory is correct. option: --traj_type [XYZ, GRO, XTC]"
+        raise KeyError(mess)
     out_frame["iframe"] = np.arange(len(out_frame))
     out_frame["step_frame"] = out_frame["frame"] - frame_init
     out_frame["time"] = out_frame["step_frame"] * dt
-     
+
     return out_frame, status
     """
 

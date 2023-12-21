@@ -141,6 +141,8 @@ def clean_data(df):
         df.drop(df[df["frame"] >= frame_from_rm].index, inplace=True)
     except IndexError:
         pass
+    except KeyError:
+        pass
 
     return df
 

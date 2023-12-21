@@ -9,6 +9,7 @@ from stamptools.stamp import STAMP
 from stamptools.analysis import traj_analysis, rdf_analysis
 from stamptools.analysis import get_distances_from
 from stamptools.analysis import gen_centered_traj, mol_traj_analysis
+from stamptools.analysis import traj_analysis_agg
 from stamptools.analysis import mol_traj_cut_distance, get_angles_distance
 from stamptools.analysis import get_dist_from_closest_atom
 from stamptools.analysis import get_acorr_function_angle
@@ -43,33 +44,20 @@ Usage:
     Saving information about the size and shape of molecules (molprop.csv):
         python -m stamptools -d DONNEES.in --molprop --traj_type [XYZ default or GRO, XTC]
 
-
-    Analysis of distances with respect to a resid:
-    python -um stamptools -l --centerm -mref 0 > dist.log &
-
-    System center from a reference:
-    python -m stamptools -l --centered_traj --rcutoff 1.0 -mref 0
-
     Molecules around from a distance cut
-    python -m stamptools -l --mol_d_aa -mref 0 --out_folder distances --rcuto\
-ff 0.5
+        python -m stamptools -l --mol_d_aa -mref 0 --out_folder distances --rcutoff 0.5
 
     On server:
-    python -um stamptools -l > log &
+        python -um stamptools [OPTIONS] > log &
 
     Combined analysis:
-    python -m stamptools -l --centered_traj --rcutoff 1.0 -mref 0\
- --out_folder test0 --centerm
+        python -m stamptools -l --centered_traj --rcutoff 1.0 -mref 0 --out_folder test0 --centerm
 
     Angles distances:
-    python -m stamptools -l --centerm --ref_plane -mref 0 -atref 11 12 13
+        python -m stamptools -l --centerm --ref_plane -mref 0 -atref 11 12 13
 
-    RDF analysis:
-    python -m stamptools [-d DONNEES.in or -l] --rdf [all,cm,i-j-k] -mref 0
-
-    MSD analysis
-
-    Center of mass analysis
+    Aggregate analysis:
+        python -m stamptools -d DONNEES.in --aggregate 0:19 --traj_type GRO -b 0.0 -e 100.
 
 """
 
@@ -130,6 +118,15 @@ def options():
         "--molprop",
         help="Analyze the shape and size of the molecules present.",
         action="store_true"
+    )
+
+    analysis.add_argument(
+        "--aggregate",
+        help="Analyze the shape and size from a aggregate present, define mol\
+selection, start from resid 0. Examples:\
+\"[0 1 2 3 4 8\" \"0:20\" \"0 to 20\"",
+        nargs="+",
+        default=None
     )
 
     analysis.add_argument(
@@ -339,12 +336,11 @@ def to_Continue_analysis(system, output, **kwargs):
     """Determine if the analysis continues from the last analyzed frame."""
     # begin frame
     b = 0
-
     if os.path.exists(output):
         dat = pd.read_csv(output)
         if len(dat) == 0:
             print("Blank file")
-        return b
+            return b
 
         # Remove incomplete frames.
         dat = clean_data(dat)
@@ -358,8 +354,18 @@ def to_Continue_analysis(system, output, **kwargs):
  frames analyzed.")
             b = len(frames_readed)
 
+        elif len(frames_readed) == len(system.GROs):
+            print("The number of GRO files is equal to the number of\
+ frames analyzed.")
+            b = len(frames_readed)
+
         elif len(frames_readed) < len(system.XYZs):
             print("The number of XYZ files is greater than the number of\
+ files analyzed.")
+            b = len(frames_readed)
+
+        elif len(frames_readed) < len(system.GROs):
+            print("The number of GRO files is greater than the number of\
  files analyzed.")
             b = len(frames_readed)
 
@@ -370,7 +376,7 @@ def main():
     """Run main function."""
     print(TITLE)
     args = options()
-    
+
     if args["donnees"]:
         system = STAMP(
             donnees=args["donnees"],
@@ -378,42 +384,42 @@ def main():
             traj_type=args["traj_type"],
             nproc=args["NUMPROC"]
         )
-    
+
         if args["traj_type"] == "XTC":
             print("Analysis will be performed using xtc file from gromacs.")
             assert args["top"] is not None, "If you are going to use XTC you must define a topology (gro)"
             assert args["xtc"] is not None, "There must be an xtc trajectory"
             system.top = args["top"]
             system.xtc = args["xtc"]
-    
+
     elif args["fatomes"] and not args["donnees"]:
         print("Working with the system topology.")
         fatomes = TOPOL(args["fatomes"])
         print("FAtomes file:", fatomes.file)
-    
+
     elif args["autocorrelation"]:
         print("Data processing analysis")
-    
+
     else:
         print("The state of the system must be defined.")
         exit()
-    
+
     # Initializes the trajectory variable
     traj = None
-    
+
     # Others options:
-    
+
     if isinstance(args["mol_traj"], int):
         resid = args["mol_traj"]
         print("Resid:", resid)
         if traj is None:
             traj = read_traj(system, **args)
-    
+
         mol_ndx = system.atoms_per_mol[resid]
         connectivity = system.connectivity
         box_in_frame = system.box_in_frame
         time_per_frame = system.time_per_frame
-    
+
         mol_traj_analysis(
             resid,
             mol_ndx,
@@ -422,32 +428,34 @@ def main():
             box_in_frame,
             o_format=args["format"]
         )
-    
+
     # =============================================================================
     # Structural analysis functions
     # =============================================================================
-    
+
     if args["molprop"]:
         # output name
         output = "molprop.csv"
         if args["reset"]:
             os.remove(output)
             print(f"File {output} removed.")
-    
+
         # Run from the last frame analyzed
         b = to_Continue_analysis(system, output, **args)
+        if b != 0:
+            print("Start from frame:", b)
 
         if b == 0 and not args["reset"]:
             args["reset"] = True
         elif b > 0:
             traj = system.get_traj(b=b)
-    
+
         if traj is None:
             traj = read_traj(system, **args)
-    
+
         traj_analysis(
             system.atoms_per_mol,
-            system.topology, 
+            system.topology,
             traj,
             system.box_in_frame,
             system.connectivity,
@@ -457,7 +465,83 @@ def main():
         )
         # save information in file
         print(f"file {output} saved.")
-    
+
+    if args["aggregate"] is not None:
+        print(args["aggregate"])
+        # output name
+        output = "aggprop.csv"
+        if args["reset"]:
+            os.remove(output)
+            print(f"File {output} removed.")
+
+        def mol_selections(sel):
+            """
+            Generate a list of residues using an expression.
+
+            Examples:
+            ---------
+            0 1 2 3 4 8
+
+            0:20
+
+            0 to 20
+            """
+            molecules = []
+
+            if "to" in sel and len(sel) == 3:
+                b = int(sel[0])
+                e = int(sel[2])
+                for sub_i in range(b, e + 1):
+                    molecules.append(sub_i)
+
+                return molecules
+
+            for i in sel:
+                if ":" in i:
+                    b, e = i.split(":")
+                    b = int(b)
+                    e = int(e)
+                    for sub_i in range(b, e + 1):
+                        molecules.append(sub_i)
+                else:
+                    molecules.append(int(i))
+
+            return molecules
+
+        mols = mol_selections(args["aggregate"])
+
+        # Run from the last frame analyzed
+        b = to_Continue_analysis(system, output, **args)
+        if b != 0:
+            print("Start from frame:", b)
+
+        if b == 0 and not args["reset"]:
+            args["reset"] = True
+        elif b > 0:
+            traj = system.get_traj(b=b)
+
+        if traj is None:
+            traj = read_traj(system, **args)
+
+        ndx_mols_atoms = {}
+        for imol in mols:
+            # print(imol, system.atoms_per_mol[imol])
+            ndx_mols_atoms[imol] = system.atoms_per_mol[imol]["index"]
+
+        traj_analysis_agg(
+            ndx_mols_atoms,
+            system.topology,
+            traj,
+            system.box_in_frame,
+            system.connectivity,
+            b=b,
+            reset=args["reset"],
+            nproc=args["NUMPROC"]
+        )
+        # save information in file
+        print(f"file {output} saved.")
+        print("file agg_traj.xyz saved.")
+
     if args["autocorrelation"]:
         geom = args["geom_file"]
         assert geom is not None, "You must select a geometry file using: --geom_file"
